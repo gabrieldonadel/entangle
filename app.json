@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.gabrieldonadel.entangle-mobile",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "This app needs to find your Mac on the local network to use it as a remote trackpad."
+      }
     },
     "android": {
       "adaptiveIcon": {
