@@ -1,0 +1,19 @@
+{
+  "name": "entangle-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "desktop": "pnpm --filter entangle",
+    "mobile": "pnpm --filter entangle-mobile",
+    "desktop:macos": "pnpm --filter entangle run macos",
+    "desktop:start": "pnpm --filter entangle run start",
+    "mobile:start": "pnpm --filter entangle-mobile run start",
+    "mobile:ios": "pnpm --filter entangle-mobile run ios",
+    "mobile:android": "pnpm --filter entangle-mobile run android",
+    "lint": "pnpm -r run lint"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

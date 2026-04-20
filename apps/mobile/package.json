@@ -8,7 +8,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "eas-build-pre-install": "./scripts/eas-build-pre-install.sh"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
@@ -36,7 +37,8 @@
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
     "react-native-web": "~0.20.0",
-    "react-native-webview": "13.13.5"
+    "react-native-webview": "13.13.5",
+    "expo-build-properties": "~0.14.7"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

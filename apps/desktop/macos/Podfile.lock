@@ -1265,6 +1265,72 @@ PODS:
     - React-jsiexecutor
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
+  - react-native-safe-area-context (5.5.0):
+    - DoubleConversion
+    - glog
+    - RCT-Folly (= 2024.11.18.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - react-native-safe-area-context/common (= 5.5.0)
+    - react-native-safe-area-context/fabric (= 5.5.0)
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
+  - react-native-safe-area-context/common (5.5.0):
+    - DoubleConversion
+    - glog
+    - RCT-Folly (= 2024.11.18.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
+  - react-native-safe-area-context/fabric (5.5.0):
+    - DoubleConversion
+    - glog
+    - RCT-Folly (= 2024.11.18.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - react-native-safe-area-context/common
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - React-NativeModulesApple (0.78.3):
     - glog
     - React-callinvoker
@@ -1576,6 +1642,7 @@ DEPENDENCIES:
   - React-idlecallbacksnativemodule (from `../node_modules/react-native-macos/ReactCommon/react/nativemodule/idlecallbacks`)
   - React-ImageManager (from `../node_modules/react-native-macos/ReactCommon/react/renderer/imagemanager/platform/ios`)
   - React-jsc (from `../node_modules/react-native-macos/ReactCommon/jsc`)
+  - React-jsc/Fabric (from `../node_modules/react-native-macos/ReactCommon/jsc`)
   - React-jserrorhandler (from `../node_modules/react-native-macos/ReactCommon/jserrorhandler`)
   - React-jsi (from `../node_modules/react-native-macos/ReactCommon/jsi`)
   - React-jsiexecutor (from `../node_modules/react-native-macos/ReactCommon/jsiexecutor`)
@@ -1585,6 +1652,7 @@ DEPENDENCIES:
   - React-logger (from `../node_modules/react-native-macos/ReactCommon/logger`)
   - React-Mapbuffer (from `../node_modules/react-native-macos/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native-macos/ReactCommon/react/nativemodule/microtasks`)
+  - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - React-NativeModulesApple (from `../node_modules/react-native-macos/ReactCommon/react/nativemodule/core/platform/ios`)
   - React-perflogger (from `../node_modules/react-native-macos/ReactCommon/reactperflogger`)
   - React-performancetimeline (from `../node_modules/react-native-macos/ReactCommon/react/performance/timeline`)
@@ -1702,6 +1770,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-macos/ReactCommon"
   React-microtasksnativemodule:
     :path: "../node_modules/react-native-macos/ReactCommon/react/nativemodule/microtasks"
+  react-native-safe-area-context:
+    :path: "../node_modules/react-native-safe-area-context"
   React-NativeModulesApple:
     :path: "../node_modules/react-native-macos/ReactCommon/react/nativemodule/core/platform/ios"
   React-perflogger:
@@ -1765,12 +1835,12 @@ SPEC CHECKSUMS:
   boost: 7d49a506d1ac47358fea28558d184dd6431170ca
   DoubleConversion: 10f51d3e1238973c033faac2d84c0ea114942f53
   EXConstants: be238322d57d084dc055dbd5d6fe6479510504ce
-  Expo: 0a3c717980a2eccf234e6c14532a40f4f52b2ee1
+  Expo: 15b775de7e4a6491397cc4313d1e048b40fdd130
   ExpoAsset: 3ea3275cca6a7793b3d36fbf1075c590f803fbcb
   ExpoFileSystem: 3a98ca2a6f13674ecfd97327d1b44a8ace444cbd
   ExpoFont: 312c73403bbd4f98e1d6a5330641a56292583cd2
   ExpoKeepAwake: e8dedc115d9f6f24b153ccd2d1d8efcdfd68a527
-  ExpoModulesCore: 8425410c3ba24afe1e39bd494248ce9605e686de
+  ExpoModulesCore: da17833e20df10b1ba63dd8c843313e44767259a
   fast_float: 44983b3bddb2d2ed3021a98be86f60ec8abc9ffd
   FBLazyVector: b61b46a4137164b884a21e2ae3e289e1ccef5700
   fmt: f6af2d677a106e3e44c9536a4c0c7f03ab53c854
@@ -1805,15 +1875,16 @@ SPEC CHECKSUMS:
   React-logger: 7692258489bc7f1fc9b27f65eb0ddcd80ede1aa1
   React-Mapbuffer: e67b47b96890c68b3bf1277345e0bf3b43189ccb
   React-microtasksnativemodule: 678a11284092266b066e9d473ade17a4bf77d98f
+  react-native-safe-area-context: 12ee15d28d7c91ee32fda27ed28572057eade3d7
   React-NativeModulesApple: 535d6b2d9634a3e62c61204784c690ea45c3d8e4
   React-perflogger: 264dc0f53bd9ee0fd734106002b531966ecc3256
   React-performancetimeline: d4f03d4699df0321c6303735cdede7f9dc6292a2
   React-RCTActionSheet: 411a6257051d5b24dc66704851cc9235f958e65a
   React-RCTAnimation: c67f4637f01a3e2079afba0a55cb522eb5156076
-  React-RCTAppDelegate: 298061ddd70e40d74c49289c280a0f2882b6f5b5
+  React-RCTAppDelegate: d5e1199c6381550a928bb67b05008d08c19e5c51
   React-RCTBlob: a9d5e0eae25de7fb4d3e5e89d1a3d708541633a7
-  React-RCTFabric: 65e96f7602d5febb707cb1c240db39181318f166
-  React-RCTFBReactNativeSpec: c0fa566ff2a66f09aa6c94a76889d9c0b8c1e1b1
+  React-RCTFabric: 51b084009a25601e6adf4ee858e3e8752efe43c7
+  React-RCTFBReactNativeSpec: 10ebdb1bbbdad00183581fc1eccd418c38bb329c
   React-RCTImage: 7f252b669d1a9a730a0f43f08e1af2d54129fc40
   React-RCTLinking: e0860ec9f132e1d3701fd065076e730003fbc7d0
   React-RCTNetwork: c604de4daff9e8c2e9171f82b5e7b6100d7b4f08
@@ -1835,6 +1906,6 @@ SPEC CHECKSUMS:
   SocketRocket: 03f7111df1a343b162bf5b06ead333be808e1e0a
   Yoga: f89a870053f1a8fbee8c98e35a1b9eff44ce2015
 
-PODFILE CHECKSUM: c3f4c696f9520a08516670dafc78c9aec55afdb6
+PODFILE CHECKSUM: 8a0a3a1311c4bd993fddc822cbe0e3b1c19c09a4
 
 COCOAPODS: 1.16.2
