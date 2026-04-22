@@ -7,24 +7,19 @@
     "icon": "./assets/images/icon.png",
     "scheme": "entanglemobile",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.gabrieldonadel.entangle-mobile",
-      "infoPlist": {
-        "NSLocalNetworkUsageDescription": "This app needs to find your Mac on the local network to use it as a remote trackpad."
-      }
+      "icon": "./assets/expo.icon"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "edgeToEdgeEnabled": true,
-      "package": "com.gabrieldonadel.entanglemobile"
+      "predictiveBackGestureEnabled": false
     },
     "web": {
-      "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
@@ -33,29 +28,17 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
-        }
-      ],
-      [
-        "expo-build-properties",
-        {
+          "backgroundColor": "#208AEF",
           "android": {
-            "buildFromSource": true
+            "image": "./assets/images/splash-icon.png",
+            "imageWidth": 76
           }
         }
       ]
     ],
     "experiments": {
-      "typedRoutes": true
-    },
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "220d921b-e531-4064-8453-3be26e897841"
-      }
+      "typedRoutes": true,
+      "reactCompiler": true
     }
   }
 }
