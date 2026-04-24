@@ -5,6 +5,8 @@ type NativeModuleType = {
   stopServer(): Promise<void>;
   sendToClient(clientId: string, text: string): Promise<void>;
   broadcast(text: string): Promise<void>;
+  isAccessibilityTrusted(): boolean;
+  promptAccessibility(): Promise<boolean>;
   addListener(event: string): void;
   removeListeners(count: number): void;
 };
@@ -13,9 +15,10 @@ const nativeModule = requireNativeModule<NativeModuleType>('EntangleServer');
 
 export type ClientConnectedEvent = { id: string; host: string };
 export type ClientDisconnectedEvent = { id: string };
-export type ServerMessageEvent = { id: string; text: string };
+export type ServerMessageEvent = { id: string; text: string; handledNatively: boolean };
 export type ServerErrorEvent = { message: string };
 export type ServerReadyEvent = { port: number; serviceName: string };
+export type AccessibilityChangedEvent = { trusted: boolean };
 
 export type EntangleServerEvents = {
   clientConnected: (event: ClientConnectedEvent) => void;
@@ -23,6 +26,7 @@ export type EntangleServerEvents = {
   message: (event: ServerMessageEvent) => void;
   error: (event: ServerErrorEvent) => void;
   serverReady: (event: ServerReadyEvent) => void;
+  accessibilityChanged: (event: AccessibilityChangedEvent) => void;
 };
 
 export const eventEmitter = new EventEmitter<EntangleServerEvents>(nativeModule as any);
@@ -43,10 +47,20 @@ export function broadcast(text: string) {
   return nativeModule.broadcast(text);
 }
 
+export function isAccessibilityTrusted() {
+  return nativeModule.isAccessibilityTrusted();
+}
+
+export function promptAccessibility() {
+  return nativeModule.promptAccessibility();
+}
+
 export default {
   startServer,
   stopServer,
   sendToClient,
   broadcast,
+  isAccessibilityTrusted,
+  promptAccessibility,
   eventEmitter,
 };

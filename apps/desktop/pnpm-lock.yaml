@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  expo-modules-core:
+    hash: 62466ecbf27d3de68d2d072e3d5d5e5a1c4bddee6d71b76d858610fe1daf193a
+    path: patches/expo-modules-core.patch
+
 importers:
 
   .:
@@ -14,6 +19,9 @@ importers:
       expo:
         specifier: ^54.0.12
         version: 54.0.33(@babel/core@7.29.0)(react-native@0.81.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)(typescript@5.9.3)
+      expo-modules-core:
+        specifier: '*'
+        version: 3.0.29(patch_hash=62466ecbf27d3de68d2d072e3d5d5e5a1c4bddee6d71b76d858610fe1daf193a)(react-native@0.81.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)
       react:
         specifier: 19.1.4
         version: 19.1.4
@@ -6794,7 +6802,7 @@ snapshots:
       require-from-string: 2.0.2
       resolve-from: 5.0.0
 
-  expo-modules-core@3.0.29(react-native@0.81.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4):
+  expo-modules-core@3.0.29(patch_hash=62466ecbf27d3de68d2d072e3d5d5e5a1c4bddee6d71b76d858610fe1daf193a)(react-native@0.81.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4):
     dependencies:
       invariant: 2.2.4
       react: 19.1.4
@@ -6821,7 +6829,7 @@ snapshots:
       expo-font: 14.0.11(expo@54.0.33(@babel/core@7.29.0)(react-native@0.81.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)(typescript@5.9.3))(react-native@0.81.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)
       expo-keep-awake: 15.0.8(expo@54.0.33(@babel/core@7.29.0)(react-native@0.81.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)(typescript@5.9.3))(react@19.1.4)
       expo-modules-autolinking: 3.0.24
-      expo-modules-core: 3.0.29(react-native@0.81.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)
+      expo-modules-core: 3.0.29(patch_hash=62466ecbf27d3de68d2d072e3d5d5e5a1c4bddee6d71b76d858610fe1daf193a)(react-native@0.81.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)
       pretty-format: 29.7.0
       react: 19.1.4
       react-native: 0.81.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4)

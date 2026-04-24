@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
+import { AccessibilityGate } from './src/components/AccessibilityGate';
 import { ConnectedClients } from './src/components/ConnectedClients';
 import { ServerStatus } from './src/components/ServerStatus';
 import { useServerStore } from './src/server-state';
@@ -20,17 +21,19 @@ function App(): React.JSX.Element {
     <SafeAreaProvider>
       <StatusBar barStyle="light-content" />
       <SafeAreaView style={styles.root}>
-        <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.heading}>Entangle</Text>
-          <Text style={styles.subheading}>Remote mouse for macOS</Text>
-          <ServerStatus />
-          <ConnectedClients />
-          <View style={styles.footerCard}>
-            <Text style={styles.footerText}>
-              This Mac is advertising on your local network. Any device on the same Wi-Fi can connect without pairing.
-            </Text>
-          </View>
-        </ScrollView>
+        <AccessibilityGate>
+          <ScrollView contentContainerStyle={styles.content}>
+            <Text style={styles.heading}>Entangle</Text>
+            <Text style={styles.subheading}>Remote mouse for macOS</Text>
+            <ServerStatus />
+            <ConnectedClients />
+            <View style={styles.footerCard}>
+              <Text style={styles.footerText}>
+                This Mac is advertising on your local network. Any device on the same Wi-Fi can connect without pairing.
+              </Text>
+            </View>
+          </ScrollView>
+        </AccessibilityGate>
       </SafeAreaView>
     </SafeAreaProvider>
   );

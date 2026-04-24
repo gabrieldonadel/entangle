@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import EntangleServer, {
+  type AccessibilityChangedEvent,
   type ClientConnectedEvent,
   type ClientDisconnectedEvent,
   type ServerErrorEvent,
@@ -28,8 +29,10 @@ interface ServerState {
   clients: Record<string, ClientInfo>;
   lastError: string | null;
   messageRate: number;
+  accessibilityTrusted: boolean;
   start: () => Promise<void>;
   stop: () => Promise<void>;
+  requestAccessibility: () => Promise<boolean>;
 }
 
 let inboundSinceTick = 0;
@@ -42,6 +45,12 @@ export const useServerStore = create<ServerState>((set, get) => ({
   clients: {},
   lastError: null,
   messageRate: 0,
+  accessibilityTrusted: EntangleServer.isAccessibilityTrusted(),
+  requestAccessibility: async () => {
+    const trusted = await EntangleServer.promptAccessibility();
+    set({ accessibilityTrusted: trusted });
+    return trusted;
+  },
   start: async () => {
     if (get().phase === 'starting' || get().phase === 'running') return;
     set({ phase: 'starting', lastError: null });
@@ -120,6 +129,10 @@ eventEmitter.addListener('error', (event: ServerErrorEvent) => {
 
 eventEmitter.addListener('serverReady', (event: ServerReadyEvent) => {
   useServerStore.setState({ port: event.port, serviceName: event.serviceName, phase: 'running' });
+});
+
+eventEmitter.addListener('accessibilityChanged', (event: AccessibilityChangedEvent) => {
+  useServerStore.setState({ accessibilityTrusted: event.trusted });
 });
 
 function handleMessage(clientId: string, msg: Message) {
