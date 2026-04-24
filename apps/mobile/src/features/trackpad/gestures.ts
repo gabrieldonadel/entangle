@@ -9,8 +9,6 @@ let pendingDx = 0;
 let pendingDy = 0;
 let pendingSeq = 0;
 let rafHandle: number | null = null;
-let lastX = 0;
-let lastY = 0;
 
 function flushMove() {
   rafHandle = null;
@@ -41,16 +39,8 @@ export function createTrackpadGestures() {
     .minPointers(1)
     .maxPointers(1)
     .minDistance(0)
-    .onStart((event) => {
-      lastX = event.x;
-      lastY = event.y;
-    })
-    .onUpdate((event) => {
-      const dx = event.x - lastX;
-      const dy = event.y - lastY;
-      lastX = event.x;
-      lastY = event.y;
-      accumulateMove(dx, dy);
+    .onChange((event) => {
+      accumulateMove(event.changeX, event.changeY);
     })
     .onEnd(() => {
       flushMove();
@@ -59,6 +49,7 @@ export function createTrackpadGestures() {
 
   const tap = Gesture.Tap()
     .maxDuration(250)
+    .maxDistance(8)
     .numberOfTaps(1)
     .onStart(() => {
       sendMessage({ v: PROTOCOL_VERSION, t: 'p.click', button: 'left', phase: 'tap' });
@@ -67,6 +58,7 @@ export function createTrackpadGestures() {
 
   const twoFingerTap = Gesture.Tap()
     .maxDuration(250)
+    .maxDistance(12)
     .numberOfTaps(1)
     .minPointers(2)
     .onStart(() => {
@@ -74,5 +66,5 @@ export function createTrackpadGestures() {
     })
     .runOnJS(true);
 
-  return Gesture.Exclusive(twoFingerTap, tap, pan);
+  return Gesture.Race(twoFingerTap, tap, pan);
 }
