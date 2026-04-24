@@ -1,3 +1,18 @@
 {
-  "extends": "@react-native/typescript-config/tsconfig.json"
+  "extends": "@react-native/typescript-config/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@entangle/protocol": ["../../packages/shared/src"],
+      "@entangle/protocol/*": ["../../packages/shared/src/*"],
+      "entangle-server": ["./modules/entangle-server/src"],
+      "entangle-server/*": ["./modules/entangle-server/src/*"]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "../../packages/shared/src/**/*.ts",
+    "./modules/entangle-server/src/**/*.ts"
+  ]
 }

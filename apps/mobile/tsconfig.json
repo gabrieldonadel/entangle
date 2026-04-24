@@ -8,6 +8,12 @@
       ],
       "@/assets/*": [
         "./assets/*"
+      ],
+      "@entangle/protocol": [
+        "../../packages/shared/src"
+      ],
+      "@entangle/protocol/*": [
+        "../../packages/shared/src/*"
       ]
     }
   },

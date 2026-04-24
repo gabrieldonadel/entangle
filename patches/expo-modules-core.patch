@@ -1,0 +1,12 @@
+diff --git a/ios/Platform/Platform.h b/ios/Platform/Platform.h
+index 5131633a1d9c4b4ad29473db92f1cec121c18c5e..8bf4cb7bca731adbd6964a090cfc81fbcab84ad6 100644
+--- a/ios/Platform/Platform.h
++++ b/ios/Platform/Platform.h
+@@ -13,6 +13,7 @@
+ @compatibility_alias UIResponder NSResponder;
+ @compatibility_alias UIColor NSColor;
+ @compatibility_alias UIWindow NSWindow;
++@compatibility_alias UIImage NSImage;
+ 
+ #ifndef UIApplication
+ @compatibility_alias UIApplication NSApplication;

@@ -4,19 +4,33 @@ import ReactAppDependencyProvider
 
 @main
 class AppDelegate: ExpoAppDelegate {
+  var window: UIWindow?
+  
   var reactNativeDelegate: ExpoReactNativeFactoryDelegate?
   var reactNativeFactory: RCTReactNativeFactory?
-
-  override func applicationDidFinishLaunching(_ notification: Notification) {
+  
+  public override func applicationDidFinishLaunching(_ notification: Notification) {
     let delegate = ReactNativeDelegate()
     let factory = ExpoReactNativeFactory(delegate: delegate)
     delegate.dependencyProvider = RCTAppDependencyProvider()
-
+    
     reactNativeDelegate = delegate
     reactNativeFactory = factory
     bindReactNativeFactory(factory)
-
-    super.applicationDidFinishLaunching(notification)
+    
+    let launchOptions = notification.userInfo
+    window = UIWindow(
+      contentRect: NSRect(x: 0, y: 0, width: 1280, height: 720),
+      styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+      backing: .buffered,
+      defer: false
+    )
+    factory.startReactNative(
+      withModuleName: "main",
+      in: window,
+      launchOptions: launchOptions)
+    
+    return super.applicationDidFinishLaunching(notification)
   }
 }
 

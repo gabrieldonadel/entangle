@@ -8,7 +8,12 @@
     "scheme": "entanglemobile",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Entangle needs local-network access to discover your Mac and send pointer events.",
+        "NSBonjourServices": ["_entangle._tcp."]
+      },
+      "bundleIdentifier": "com.gabrieldonadel.entangle-mobile"
     },
     "android": {
       "adaptiveIcon": {

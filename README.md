@@ -7,7 +7,7 @@ This monorepo houses both clients:
 | App     | Path                         | Platform      | Stack                             |
 | ------- | ---------------------------- | ------------- | --------------------------------- |
 | Desktop | [apps/desktop](apps/desktop) | macOS         | React Native macOS 0.78 + Expo 53 |
-| Mobile  | [apps/mobile](apps/mobile)   | iOS / Android | Expo 53 + Expo Router             |
+| Mobile  | [apps/mobile](apps/mobile)   | iOS / Android | Expo 55 + Expo Router             |
 
 ## Requirements
 
