@@ -16,11 +16,14 @@ public class EntangleServerModule: Module {
     OnCreate {
       self.lastAccessibilityState = AccessibilityCheck.isTrusted()
       self.startAccessibilityPolling()
+      DockEnumerator.shared.start()
     }
 
     OnDestroy {
       self.accessibilityTimer?.cancel()
       self.accessibilityTimer = nil
+      DockEnumerator.shared.stop()
+      DockEnumerator.shared.onUpdate = nil
       self.server?.stop()
       self.server = nil
     }
@@ -69,6 +72,20 @@ public class EntangleServerModule: Module {
     let server = WebSocketServer(serviceType: "_entangle._tcp.", serviceName: name)
     self.serviceName = name
 
+    wireServerEvents(server, name: name, promise: promise)
+    wireDockEvents(server)
+
+    do {
+      try server.start()
+      self.server = server
+    } catch {
+      promise.reject("ENTANGLE_START_FAILED", error.localizedDescription)
+    }
+  }
+
+  // MARK: - Wiring helpers
+
+  private func wireServerEvents(_ server: WebSocketServer, name: String, promise: Promise) {
     server.onReady = { [weak self] port in
       guard let self = self else { return }
       self.serverPort = port
@@ -79,16 +96,15 @@ public class EntangleServerModule: Module {
       ])
     }
     server.onClientConnected = { [weak self] id, host in
-      self?.sendEvent("clientConnected", [
-        "id": id.uuidString,
-        "host": host
-      ])
+      self?.sendEvent("clientConnected", ["id": id.uuidString, "host": host])
     }
     server.onClientDisconnected = { [weak self] id in
       self?.sendEvent("clientDisconnected", ["id": id.uuidString])
     }
     server.onMessage = { [weak self] id, text in
-      let handledNatively = MessageDispatcher.handle(text)
+      let handledNatively = MessageDispatcher.handle(text) { response in
+        self?.server?.send(response, to: id)
+      }
       self?.sendEvent("message", [
         "id": id.uuidString,
         "text": text,
@@ -98,12 +114,16 @@ public class EntangleServerModule: Module {
     server.onError = { [weak self] message in
       self?.sendEvent("error", ["message": message])
     }
+  }
 
-    do {
-      try server.start()
-      self.server = server
-    } catch {
-      promise.reject("ENTANGLE_START_FAILED", error.localizedDescription)
+  private func wireDockEvents(_ server: WebSocketServer) {
+    DockEnumerator.shared.onUpdate = { [weak server] apps in
+      guard let server = server,
+            let payload = MessageDispatcher.encodeDockList(apps) else { return }
+      server.broadcast(payload)
+    }
+    DockEnumerator.shared.onError = { [weak self] message in
+      self?.sendEvent("error", ["message": message])
     }
   }
 

@@ -1,12 +1,15 @@
 import Foundation
 
 /// Parses JSON messages from mobile clients and dispatches hot-path events
-/// (pointer, click, scroll, drag) directly to native controllers.
+/// (pointer, click, scroll, drag, keyboard, dock) directly to native
+/// controllers.
 ///
 /// Returns true when the message was handled natively and does not need to be
-/// surfaced to JavaScript for further processing.
+/// surfaced to JavaScript for further processing. Handlers can call the
+/// supplied `respond` closure to send a message back to the originating
+/// client (used for request-response pairs like `d.list`).
 enum MessageDispatcher {
-  static func handle(_ text: String) -> Bool {
+  static func handle(_ text: String, respond: (String) -> Void) -> Bool {
     guard let data = text.data(using: .utf8),
           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
           let tag = json["t"] as? String else {
@@ -26,6 +29,10 @@ enum MessageDispatcher {
       return handleKeyText(json)
     case "k.key":
       return handleKeyPress(json)
+    case "d.list":
+      return handleDockList(respond: respond)
+    case "d.activate":
+      return handleDockActivate(json)
     default:
       return false
     }
@@ -106,7 +113,35 @@ enum MessageDispatcher {
     return true
   }
 
+  private static func handleDockList(respond: (String) -> Void) -> Bool {
+    let apps = DockEnumerator.shared.currentApps()
+    if let encoded = encodeDockList(apps) {
+      respond(encoded)
+    }
+    return true
+  }
+
+  private static func handleDockActivate(_ json: [String: Any]) -> Bool {
+    guard let bundleId = json["bundleId"] as? String, !bundleId.isEmpty else {
+      return false
+    }
+    DockEnumerator.shared.activate(bundleId: bundleId)
+    return true
+  }
+
   // MARK: - Helpers
+
+  static func encodeDockList(_ apps: [DockEnumerator.DockApp]) -> String? {
+    let payload: [String: Any] = [
+      "v": 1,
+      "t": "d.list",
+      "apps": apps.map { $0.toDictionary() }
+    ]
+    guard let data = try? JSONSerialization.data(withJSONObject: payload) else {
+      return nil
+    }
+    return String(data: data, encoding: .utf8)
+  }
 
   private static func numeric(_ value: Any?) -> Double? {
     if let number = value as? Double { return number }

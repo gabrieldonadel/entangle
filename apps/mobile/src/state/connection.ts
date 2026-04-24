@@ -6,8 +6,12 @@ import {
   HEARTBEAT_INTERVAL_MS,
   HEARTBEAT_TIMEOUT_MS,
   PROTOCOL_VERSION,
+  isDockListResponse,
+  isDockUpdate,
 } from '@entangle/protocol';
-import type { ClientMessage, Message } from '@entangle/protocol';
+import type { ClientMessage, DockApp, Message } from '@entangle/protocol';
+
+import { useDock } from './dock';
 
 export type ConnectionPhase =
   | 'idle'
@@ -64,6 +68,7 @@ export const useConnection = create<ConnectionState>((set, get) => ({
       } catch {}
       socket = null;
     }
+    useDock.getState().clear();
     set({ phase: 'idle', target: null, serverName: null, latencyMs: null });
   },
   send: (msg) => {
@@ -125,6 +130,14 @@ function openSocket() {
 }
 
 function handleMessage(msg: Message) {
+  if (isDockListResponse(msg)) {
+    useDock.getState().setApps(msg.apps);
+    return;
+  }
+  if (isDockUpdate(msg)) {
+    applyDockUpdate(msg);
+    return;
+  }
   switch (msg.t) {
     case 'welcome':
       useConnection.setState({ serverName: msg.server.name });
@@ -141,6 +154,23 @@ function handleMessage(msg: Message) {
     default:
       return;
   }
+}
+
+function applyDockUpdate(msg: {
+  added?: DockApp[];
+  removed?: string[];
+  changed?: Partial<DockApp>[];
+}) {
+  const { apps } = useDock.getState();
+  const byId = new Map(apps.map((app) => [app.bundleId, app]));
+  for (const bundleId of msg.removed ?? []) byId.delete(bundleId);
+  for (const app of msg.added ?? []) byId.set(app.bundleId, app);
+  for (const change of msg.changed ?? []) {
+    if (!change.bundleId) continue;
+    const existing = byId.get(change.bundleId);
+    if (existing) byId.set(change.bundleId, { ...existing, ...change } as DockApp);
+  }
+  useDock.getState().setApps(Array.from(byId.values()));
 }
 
 function startHeartbeat() {
