@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useConnection } from '@/state/connection';
@@ -18,6 +18,8 @@ export default function SettingsScreen() {
   const disconnect = useConnection((s) => s.disconnect);
   const pointerSensitivity = useSettings((s) => s.pointerSensitivity);
   const setPointerSensitivity = useSettings((s) => s.setPointerSensitivity);
+  const naturalScroll = useSettings((s) => s.naturalScroll);
+  const setNaturalScroll = useSettings((s) => s.setNaturalScroll);
 
   return (
     <SafeAreaView style={styles.root}>
@@ -46,6 +48,18 @@ export default function SettingsScreen() {
               </Pressable>
             );
           })}
+        </View>
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.toggleRow}>
+          <View style={styles.toggleLabels}>
+            <Text style={styles.toggleTitle}>Natural scroll</Text>
+            <Text style={styles.toggleSubtitle}>
+              Content follows fingers. Turn off if scroll feels inverted on your Mac.
+            </Text>
+          </View>
+          <Switch value={naturalScroll} onValueChange={setNaturalScroll} />
         </View>
       </View>
 
@@ -104,6 +118,25 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 2,
     fontVariant: ['tabular-nums'],
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  toggleLabels: {
+    flex: 1,
+  },
+  toggleTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  toggleSubtitle: {
+    color: '#8e8e93',
+    fontSize: 12,
+    marginTop: 4,
+    lineHeight: 16,
   },
   disconnect: {
     marginTop: 12,

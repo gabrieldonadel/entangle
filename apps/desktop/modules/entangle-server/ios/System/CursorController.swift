@@ -7,6 +7,7 @@ final class CursorController {
 
   private let eventSource: CGEventSource?
   private let queue = DispatchQueue(label: "entangle.cursor", qos: .userInteractive)
+  private var isDragging: Bool = false
 
   private init() {
     self.eventSource = CGEventSource(stateID: .hidSystemState)
@@ -16,7 +17,7 @@ final class CursorController {
     queue.async {
       let current = self.currentMouseLocation()
       let target = self.clampToScreens(CGPoint(x: current.x + dx, y: current.y + dy))
-      self.postMove(to: target)
+      self.postMove(to: target, dragging: self.isDragging)
     }
   }
 
@@ -31,6 +32,22 @@ final class CursorController {
         self.postButton(button, isDown: true)
         self.postButton(button, isDown: false)
       }
+    }
+  }
+
+  func dragBegin() {
+    queue.async {
+      guard !self.isDragging else { return }
+      self.isDragging = true
+      self.postButton(.left, isDown: true)
+    }
+  }
+
+  func dragEnd() {
+    queue.async {
+      guard self.isDragging else { return }
+      self.postButton(.left, isDown: false)
+      self.isDragging = false
     }
   }
 
@@ -68,10 +85,10 @@ final class CursorController {
     return CGPoint(x: x, y: y)
   }
 
-  private func postMove(to point: CGPoint) {
+  private func postMove(to point: CGPoint, dragging: Bool) {
     let event = CGEvent(
       mouseEventSource: eventSource,
-      mouseType: .mouseMoved,
+      mouseType: dragging ? .leftMouseDragged : .mouseMoved,
       mouseCursorPosition: point,
       mouseButton: .left
     )
