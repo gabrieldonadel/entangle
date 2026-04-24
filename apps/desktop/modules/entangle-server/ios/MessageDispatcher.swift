@@ -22,6 +22,10 @@ enum MessageDispatcher {
       return handlePointerDrag(json)
     case "s.wheel":
       return handleScrollWheel(json)
+    case "k.text":
+      return handleKeyText(json)
+    case "k.key":
+      return handleKeyPress(json)
     default:
       return false
     }
@@ -76,6 +80,29 @@ enum MessageDispatcher {
     default: return false
     }
     ScrollController.shared.scroll(dx: Int32(deltaX), dy: Int32(deltaY), phase: phase)
+    return true
+  }
+
+  private static func handleKeyText(_ json: [String: Any]) -> Bool {
+    guard let text = json["text"] as? String, !text.isEmpty else { return false }
+    KeyController.shared.typeText(text)
+    return true
+  }
+
+  private static func handleKeyPress(_ json: [String: Any]) -> Bool {
+    guard let codeRaw = json["code"] as? String,
+          let code = KeyCodeName(rawValue: codeRaw),
+          let phaseRaw = json["phase"] as? String,
+          let phase = KeyPhase(rawValue: phaseRaw) else {
+      return false
+    }
+    let mods: UInt32
+    if let maskValue = numeric(json["mods"]) {
+      mods = UInt32(maskValue)
+    } else {
+      mods = 0
+    }
+    KeyController.shared.pressKey(code: code, phase: phase, mods: mods)
     return true
   }
 
