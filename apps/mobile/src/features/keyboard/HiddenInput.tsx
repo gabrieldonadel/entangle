@@ -10,8 +10,11 @@ export interface HiddenInputHandle {
   blur: () => void;
 }
 
-export const HiddenInput = forwardRef<TextInput, { onFocusChange?: (focused: boolean) => void }>(
-  ({ onFocusChange }, ref) => {
+export const HiddenInput = forwardRef<
+  TextInput,
+  { onFocusChange?: (focused: boolean) => void; inputAccessoryViewID?: string }
+>(
+  ({ onFocusChange, inputAccessoryViewID }, ref) => {
     const [buffer, setBuffer] = useState('');
     const lastRef = useRef('');
 
@@ -68,6 +71,7 @@ export const HiddenInput = forwardRef<TextInput, { onFocusChange?: (focused: boo
         caretHidden
         style={styles.hidden}
         keyboardAppearance="dark"
+        inputAccessoryViewID={inputAccessoryViewID}
       />
     );
   }

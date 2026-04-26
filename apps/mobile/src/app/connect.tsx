@@ -43,7 +43,6 @@ export default function ConnectScreen() {
     connect(target);
   };
 
-  console.log("scanning", scanning);
   return (
     <SafeAreaView style={styles.root}>
       <Stack.Screen options={{ title: "Connect" }} />
