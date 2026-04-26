@@ -231,6 +231,10 @@ export function getSocket(): WebSocket | null {
   return socket;
 }
 
+export function hasUserDisconnected(): boolean {
+  return manuallyDisconnected;
+}
+
 NetInfo.addEventListener((state) => {
   if (!state.isConnected) return;
   const { phase, target } = useConnection.getState();
