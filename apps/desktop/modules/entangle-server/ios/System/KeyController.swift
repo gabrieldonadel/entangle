@@ -56,9 +56,25 @@ final class KeyController {
     guard let event = CGEvent(keyboardEventSource: eventSource, virtualKey: virtualKey, keyDown: keyDown) else {
       return
     }
-    event.flags = flags
+    var combinedFlags = flags
+    if Self.extendedKeys.contains(virtualKey) {
+      combinedFlags.insert(.maskSecondaryFn)
+    }
+    event.flags = combinedFlags
     event.post(tap: .cghidEventTap)
   }
+
+  /// Arrow keys, navigation keys and F-keys carry `kCGEventFlagMaskSecondaryFn`
+  /// when typed on a real Mac keyboard. macOS shortcut detection (Spaces,
+  /// Mission Control, etc.) requires this flag to be set, so we add it for
+  /// these keys when synthesizing events.
+  private static let extendedKeys: Set<CGKeyCode> = [
+    0x7B, 0x7C, 0x7D, 0x7E,           // arrow keys
+    0x73, 0x74, 0x77, 0x79,           // home, pageUp, end, pageDown
+    0x7A, 0x78, 0x63, 0x76,           // F1–F4
+    0x60, 0x61, 0x62, 0x64,           // F5–F8
+    0x65, 0x6D, 0x67, 0x6F            // F9–F12
+  ]
 
   private static func flagsForMask(_ mask: UInt32) -> CGEventFlags {
     var flags: CGEventFlags = []

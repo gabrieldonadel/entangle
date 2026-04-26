@@ -16,25 +16,40 @@ enum MessageDispatcher {
       return false
     }
 
+    if let handled = dispatchInput(tag: tag, json: json) {
+      return handled
+    }
+    if let handled = dispatchSystem(tag: tag, json: json, respond: respond) {
+      return handled
+    }
+    return false
+  }
+
+  private static func dispatchInput(tag: String, json: [String: Any]) -> Bool? {
     switch tag {
-    case "p.move":
-      return handlePointerMove(json)
-    case "p.click":
-      return handlePointerClick(json)
-    case "p.drag":
-      return handlePointerDrag(json)
-    case "s.wheel":
-      return handleScrollWheel(json)
-    case "k.text":
-      return handleKeyText(json)
-    case "k.key":
-      return handleKeyPress(json)
-    case "d.list":
-      return handleDockList(respond: respond)
-    case "d.activate":
-      return handleDockActivate(json)
-    default:
-      return false
+    case "p.move": return handlePointerMove(json)
+    case "p.click": return handlePointerClick(json)
+    case "p.drag": return handlePointerDrag(json)
+    case "s.wheel": return handleScrollWheel(json)
+    case "k.text": return handleKeyText(json)
+    case "k.key": return handleKeyPress(json)
+    default: return nil
+    }
+  }
+
+  private static func dispatchSystem(
+    tag: String,
+    json: [String: Any],
+    respond: (String) -> Void
+  ) -> Bool? {
+    switch tag {
+    case "d.list": return handleDockList(respond: respond)
+    case "d.activate": return handleDockActivate(json)
+    case "g.space": return handleSpaceGesture(json)
+    case "g.mission":
+      GestureController.missionControl()
+      return true
+    default: return nil
     }
   }
 
@@ -127,6 +142,20 @@ enum MessageDispatcher {
     }
     DockEnumerator.shared.activate(bundleId: bundleId)
     return true
+  }
+
+  private static func handleSpaceGesture(_ json: [String: Any]) -> Bool {
+    guard let dir = json["dir"] as? String else { return false }
+    switch dir {
+    case "left":
+      GestureController.spaceLeft()
+      return true
+    case "right":
+      GestureController.spaceRight()
+      return true
+    default:
+      return false
+    }
   }
 
   // MARK: - Helpers

@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-screens/experimental';
 
 import { HiddenInput } from '@/features/keyboard/HiddenInput';
 import { ModifierBar } from '@/features/keyboard/ModifierBar';
@@ -31,38 +31,43 @@ export default function KeyboardScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.body}>
-          <Text style={styles.title}>Keyboard</Text>
-          <Text style={styles.subtitle}>
-            Keystrokes forward to your Mac. Modifiers are one-shot: they apply to the next
-            special key and then clear.
-          </Text>
-          <Pressable style={[styles.focusButton, focused && styles.focusButtonActive]} onPress={focusInput}>
-            <Text style={styles.focusButtonText}>
-              {focused ? 'Typing active — tap to stay focused' : 'Tap to start typing'}
+    <View style={styles.root}>
+      <SafeAreaView edges={{ top: true, bottom: true }} style={styles.safe}>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={styles.body}>
+            <Text style={styles.title}>Keyboard</Text>
+            <Text style={styles.subtitle}>
+              Keystrokes forward to your Mac. Modifiers are one-shot: they apply to the next
+              special key and then clear.
             </Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.bar}>
-          <ModifierBar />
-          <View style={styles.specialKeys}>
-            <SpecialKeys />
+            <Pressable
+              style={[styles.focusButton, focused && styles.focusButtonActive]}
+              onPress={focusInput}>
+              <Text style={styles.focusButtonText}>
+                {focused ? 'Typing active — tap to stay focused' : 'Tap to start typing'}
+              </Text>
+            </Pressable>
           </View>
-        </View>
 
-        <HiddenInput ref={inputRef} onFocusChange={setFocused} />
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          <View style={styles.bar}>
+            <ModifierBar />
+            <View style={styles.specialKeys}>
+              <SpecialKeys />
+            </View>
+          </View>
+
+          <HiddenInput ref={inputRef} onFocusChange={setFocused} />
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000' },
+  safe: { flex: 1 },
   flex: { flex: 1 },
   body: {
     flex: 1,

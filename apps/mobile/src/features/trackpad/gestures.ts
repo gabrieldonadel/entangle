@@ -104,7 +104,7 @@ export function createTrackpadGestures() {
   const scrollPan = Gesture.Pan()
     .minPointers(2)
     .maxPointers(2)
-    .minDistance(0)
+    .minDistance(10)
     .onStart(() => {
       sendMessage({
         v: PROTOCOL_VERSION,
@@ -129,25 +129,11 @@ export function createTrackpadGestures() {
     })
     .runOnJS(true);
 
-  const tap = Gesture.Tap()
-    .maxDuration(250)
-    .maxDistance(8)
-    .numberOfTaps(1)
-    .onStart(() => {
-      sendMessage({
-        v: PROTOCOL_VERSION,
-        t: "p.click",
-        button: "left",
-        phase: "tap",
-      });
-    })
-    .runOnJS(true);
-
-  const twoFingerTap = Gesture.Tap()
-    .maxDuration(250)
-    .maxDistance(12)
-    .numberOfTaps(1)
+  const twoFingerDoubleTap = Gesture.Tap()
+    .numberOfTaps(2)
     .minPointers(2)
+    .maxDuration(300)
+    .maxDistance(15)
     .onStart(() => {
       sendMessage({
         v: PROTOCOL_VERSION,
@@ -158,5 +144,19 @@ export function createTrackpadGestures() {
     })
     .runOnJS(true);
 
-  return Gesture.Race(twoFingerTap, tap, scrollPan, dragPan, pan);
+  const tap = Gesture.Tap()
+    .numberOfTaps(1)
+    .maxDuration(250)
+    .maxDistance(8)
+    .onStart(() => {
+      sendMessage({
+        v: PROTOCOL_VERSION,
+        t: "p.click",
+        button: "left",
+        phase: "tap",
+      });
+    })
+    .runOnJS(true);
+
+  return Gesture.Race(twoFingerDoubleTap, tap, scrollPan, dragPan, pan);
 }

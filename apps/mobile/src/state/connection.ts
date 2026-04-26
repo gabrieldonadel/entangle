@@ -1,3 +1,4 @@
+import NetInfo from '@react-native-community/netinfo';
 import { create } from 'zustand';
 
 import {
@@ -30,6 +31,8 @@ interface ConnectionState {
   phase: ConnectionPhase;
   target: ConnectionTarget | null;
   serverName: string | null;
+  serverVersion: string | null;
+  serverCaps: string[];
   lastError: string | null;
   latencyMs: number | null;
   connect: (target: ConnectionTarget) => void;
@@ -51,6 +54,8 @@ export const useConnection = create<ConnectionState>((set, get) => ({
   phase: 'idle',
   target: null,
   serverName: null,
+  serverVersion: null,
+  serverCaps: [],
   lastError: null,
   latencyMs: null,
   connect: (target) => {
@@ -69,7 +74,14 @@ export const useConnection = create<ConnectionState>((set, get) => ({
       socket = null;
     }
     useDock.getState().clear();
-    set({ phase: 'idle', target: null, serverName: null, latencyMs: null });
+    set({
+      phase: 'idle',
+      target: null,
+      serverName: null,
+      serverVersion: null,
+      serverCaps: [],
+      latencyMs: null,
+    });
   },
   send: (msg) => {
     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -140,7 +152,11 @@ function handleMessage(msg: Message) {
   }
   switch (msg.t) {
     case 'welcome':
-      useConnection.setState({ serverName: msg.server.name });
+      useConnection.setState({
+        serverName: msg.server.name,
+        serverVersion: msg.server.version,
+        serverCaps: msg.caps,
+      });
       return;
     case 'pong':
       if (pongTimeout) {
@@ -214,3 +230,16 @@ function clearTimers() {
 export function getSocket(): WebSocket | null {
   return socket;
 }
+
+NetInfo.addEventListener((state) => {
+  if (!state.isConnected) return;
+  const { phase, target } = useConnection.getState();
+  if (!target) return;
+  if (phase !== 'reconnecting' && phase !== 'closed') return;
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  reconnectAttempt = 0;
+  openSocket();
+});

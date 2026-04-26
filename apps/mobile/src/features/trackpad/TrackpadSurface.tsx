@@ -11,7 +11,7 @@ export function TrackpadSurface() {
     <GestureDetector gesture={gesture}>
       <View style={styles.surface}>
         <Text style={styles.hint}>
-          Drag · Tap · 2-finger tap = right-click · 2-finger drag = scroll · Hold then drag
+          Drag · Tap · Double 2-finger tap = right-click · 2-finger drag = scroll · Hold then drag
         </Text>
       </View>
     </GestureDetector>

@@ -20,7 +20,7 @@ export default function TabsLayout() {
         />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="dock">
+      <NativeTabs.Trigger name="dock" disableAutomaticContentInsets>
         <NativeTabs.Trigger.Label>Dock</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={require('@/assets/images/tabIcons/explore.png')}
@@ -28,7 +28,7 @@ export default function TabsLayout() {
         />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="keyboard">
+      <NativeTabs.Trigger name="keyboard" disableAutomaticContentInsets>
         <NativeTabs.Trigger.Label>Keyboard</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={require('@/assets/images/tabIcons/home.png')}
