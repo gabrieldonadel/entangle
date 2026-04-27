@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg-mono" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#222222"/>
+      <stop offset="100%" stop-color="#0A0A0A"/>
+    </linearGradient>
+    <radialGradient id="orb-mono" cx="35%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="60%" stop-color="#A8A8A8"/>
+      <stop offset="100%" stop-color="#3C3C3C"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="232" fill="url(#bg-mono)"/>
+  <path d="M 61 195 Q 61 41 215 41 L 809 41 Q 963 41 963 195" stroke="#FFFFFF" stroke-width="8" fill="none" opacity="0.16"/>
+  <circle cx="328" cy="512" r="113" fill="#FFFFFF" opacity="0.07"/>
+  <circle cx="696" cy="512" r="92" fill="#FFFFFF" opacity="0.07"/>
+  <path d="M 328 512 Q 420 384 512 512 T 696 512" stroke="#FFFFFF" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.50"/>
+  <circle cx="328" cy="512" r="87" fill="url(#orb-mono)"/>
+  <circle cx="696" cy="512" r="72" fill="url(#orb-mono)"/>
+  <ellipse cx="302" cy="471" rx="28" ry="18" fill="#FFFFFF" opacity="0.85"/>
+  <ellipse cx="676" cy="486" rx="23" ry="15" fill="#FFFFFF" opacity="0.80"/>
+</svg>
