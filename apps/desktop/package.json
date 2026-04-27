@@ -5,7 +5,7 @@
   "scripts": {
     "macos": "react-native run-macos",
     "lint": "eslint .",
-    "start": "expo start",
+    "start": "expo start --port 8090",
     "test": "jest"
   },
   "dependencies": {
