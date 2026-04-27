@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "entangle-mobile",
+    "name": "entangle",
     "slug": "entangle-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -11,7 +11,10 @@
       "icon": "./assets/AppIcon.icon",
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "Entangle needs local-network access to discover your Mac and send pointer events.",
-        "NSBonjourServices": ["_entangle._tcp."]
+        "NSBonjourServices": [
+          "_entangle._tcp.",
+          "_entangle._tcp."
+        ]
       },
       "bundleIdentifier": "com.gabrieldonadel.entangle-mobile"
     },
@@ -44,6 +47,18 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "220d921b-e531-4064-8453-3be26e897841"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/220d921b-e531-4064-8453-3be26e897841"
     }
   }
 }
