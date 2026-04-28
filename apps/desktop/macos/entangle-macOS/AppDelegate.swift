@@ -1,5 +1,5 @@
 import AppKit
-import Expo
+internal import Expo
 import React
 import ReactAppDependencyProvider
 
@@ -19,7 +19,6 @@ class AppDelegate: ExpoAppDelegate, NSWindowDelegate {
 
     reactNativeDelegate = delegate
     reactNativeFactory = factory
-    bindReactNativeFactory(factory)
 
     setupStatusItem()
 

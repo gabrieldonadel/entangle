@@ -42,5 +42,14 @@ target 'entangle-macOS' do
     end
 
     react_native_post_install(installer)
+
+    # Xcode 26 ships explicit modules on by default. RN-macOS 0.81 only disables
+    # SWIFT_ENABLE_EXPLICIT_MODULES; the Clang side still trips on headers like
+    # RCTUIKit.h ("module '_DarwinFoundation1' is needed but has not been provided").
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings["SWIFT_ENABLE_EXPLICIT_MODULES"] = "NO"
+      end
+    end
   end
 end

@@ -1,2 +1,3 @@
 patchedDependencies:
+  expo: patches/expo.patch
   expo-modules-core: patches/expo-modules-core.patch

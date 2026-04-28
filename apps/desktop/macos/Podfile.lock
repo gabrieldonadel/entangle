@@ -3,9 +3,9 @@ PODS:
   - DoubleConversion (1.1.6)
   - EntangleServer (0.0.1):
     - ExpoModulesCore
-  - EXConstants (18.0.13):
+  - EXConstants (55.0.15):
     - ExpoModulesCore
-  - Expo (54.0.33):
+  - Expo (55.0.18):
     - boost
     - DoubleConversion
     - ExpoModulesCore
@@ -36,17 +36,20 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - ExpoAsset (12.0.12):
+  - ExpoAsset (55.0.16):
     - ExpoModulesCore
-  - ExpoFileSystem (19.0.21):
+  - ExpoFileSystem (55.0.17):
     - ExpoModulesCore
-  - ExpoFont (14.0.11):
+  - ExpoFont (55.0.6):
     - ExpoModulesCore
-  - ExpoKeepAwake (15.0.8):
+  - ExpoKeepAwake (55.0.6):
     - ExpoModulesCore
-  - ExpoModulesCore (3.0.29):
+  - ExpoLogBox (55.0.11):
+    - React-Core
+  - ExpoModulesCore (55.0.23):
     - boost
     - DoubleConversion
+    - ExpoModulesJSI
     - fast_float
     - fmt
     - glog
@@ -73,6 +76,11 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
+  - ExpoModulesJSI (55.0.23):
+    - hermes-engine
+    - React-Core
+    - React-runtimescheduler
+    - ReactCommon
   - fast_float (8.0.0)
   - FBLazyVector (0.81.7)
   - fmt (11.0.2)
@@ -1821,7 +1829,7 @@ PODS:
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
     - SocketRocket
-  - react-native-safe-area-context (5.7.0):
+  - react-native-safe-area-context (5.6.2):
     - boost
     - DoubleConversion
     - fast_float
@@ -1839,8 +1847,8 @@ PODS:
     - React-graphics
     - React-ImageManager
     - React-jsi
-    - react-native-safe-area-context/common (= 5.7.0)
-    - react-native-safe-area-context/fabric (= 5.7.0)
+    - react-native-safe-area-context/common (= 5.6.2)
+    - react-native-safe-area-context/fabric (= 5.6.2)
     - React-NativeModulesApple
     - React-RCTFabric
     - React-renderercss
@@ -1851,7 +1859,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-safe-area-context/common (5.7.0):
+  - react-native-safe-area-context/common (5.6.2):
     - boost
     - DoubleConversion
     - fast_float
@@ -1879,7 +1887,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-safe-area-context/fabric (5.7.0):
+  - react-native-safe-area-context/fabric (5.6.2):
     - boost
     - DoubleConversion
     - fast_float
@@ -2420,13 +2428,15 @@ DEPENDENCIES:
   - boost (from `../node_modules/react-native-macos/third-party-podspecs/boost.podspec`)
   - DoubleConversion (from `../node_modules/react-native-macos/third-party-podspecs/DoubleConversion.podspec`)
   - EntangleServer (from `../modules/entangle-server/ios`)
-  - "EXConstants (from `../node_modules/.pnpm/expo-constants@18.0.13_expo@54.0.33_@babel+core@7.29.0_react-native@0.81.6_@babel+core@_fde92e5d374e5b02bd06e675c1c2ec56/node_modules/expo-constants/ios`)"
-  - "Expo (from `../node_modules/.pnpm/expo@54.0.33_@babel+core@7.29.0_react-native@0.81.6_@babel+core@7.29.0_@types+react@19._a125c8514373a99b717a7a4ad5f6b11d/node_modules/expo`)"
-  - "ExpoAsset (from `../node_modules/.pnpm/expo-asset@12.0.12_expo@54.0.33_@babel+core@7.29.0_react-native@0.81.6_@babel+core@7.29_9ceb05da47807a286d6465bd6b5b1e3b/node_modules/expo-asset/ios`)"
-  - "ExpoFileSystem (from `../node_modules/.pnpm/expo-file-system@19.0.21_expo@54.0.33_@babel+core@7.29.0_react-native@0.81.6_@babel+cor_72410cb8e4772a2a7a69083d477e6715/node_modules/expo-file-system/ios`)"
-  - "ExpoFont (from `../node_modules/.pnpm/expo-font@14.0.11_expo@54.0.33_@babel+core@7.29.0_react-native@0.81.6_@babel+core@7.29._fcf64cba0cb63ae591bad2d92aa234f0/node_modules/expo-font/ios`)"
-  - "ExpoKeepAwake (from `../node_modules/.pnpm/expo-keep-awake@15.0.8_expo@54.0.33_@babel+core@7.29.0_react-native@0.81.6_@babel+core@_3fcbb9d420eb4385ccfe6ec5c564b59d/node_modules/expo-keep-awake/ios`)"
-  - "ExpoModulesCore (from `../node_modules/.pnpm/expo-modules-core@3.0.29_patch_hash=62466ecbf27d3de68d2d072e3d5d5e5a1c4bddee6d71b76d858_83d924877008fa52ac4d7abaa298302d/node_modules/expo-modules-core`)"
+  - "EXConstants (from `../node_modules/.pnpm/expo-constants@55.0.15_expo@55.0.18_react-native@0.83.6_@babel+core@7.29.0_@types+react@19.2.14_react@19.2.0_/node_modules/expo-constants/ios`)"
+  - "Expo (from `../node_modules/.pnpm/expo@55.0.18_patch_hash=7d9700d7a25595bbba864ad643271174c1daca8c25ebfab0b69ad92e99d93fe_1ded00eb6ae838a98f0464947e605c92/node_modules/expo`)"
+  - "ExpoAsset (from `../node_modules/.pnpm/expo-asset@55.0.16_expo@55.0.18_react-native@0.83.6_@babel+core@7.29.0_@types+react@19._dca3810c9aa981687fb5d5380116e860/node_modules/expo-asset/ios`)"
+  - "ExpoFileSystem (from `../node_modules/.pnpm/expo-file-system@55.0.17_expo@55.0.18_react-native@0.83.6_@babel+core@7.29.0_@types+react@19.2.14_react@19.2.0_/node_modules/expo-file-system/ios`)"
+  - "ExpoFont (from `../node_modules/.pnpm/expo-font@55.0.6_expo@55.0.18_react-native@0.83.6_@babel+core@7.29.0_@types+react@19.2.14_react@19.2.0__react@19.2.0/node_modules/expo-font/ios`)"
+  - "ExpoKeepAwake (from `../node_modules/.pnpm/expo-keep-awake@55.0.6_expo@55.0.18_react@19.2.0/node_modules/expo-keep-awake/ios`)"
+  - "ExpoLogBox (from `../node_modules/.pnpm/@expo+log-box@55.0.11_@expo+dom-webview@55.0.5_expo@55.0.18_react-native@0.83.6_@babel+_204d282634ded66ef24780fad851b983/node_modules/@expo/log-box`)"
+  - "ExpoModulesCore (from `../node_modules/.pnpm/expo-modules-core@55.0.23_patch_hash=29c69776964a3816f63742ce7600dd29957e96935e26db36d6_d33bd1b8c2199e36aeb557a9951ea3dd/node_modules/expo-modules-core`)"
+  - "ExpoModulesJSI (from `../node_modules/.pnpm/expo-modules-core@55.0.23_patch_hash=29c69776964a3816f63742ce7600dd29957e96935e26db36d6_d33bd1b8c2199e36aeb557a9951ea3dd/node_modules/expo-modules-core`)"
   - fast_float (from `../node_modules/react-native-macos/third-party-podspecs/fast_float.podspec`)
   - FBLazyVector (from `../node_modules/react-native-macos/Libraries/FBLazyVector`)
   - fmt (from `../node_modules/react-native-macos/third-party-podspecs/fmt.podspec`)
@@ -2466,7 +2476,7 @@ DEPENDENCIES:
   - React-logger (from `../node_modules/react-native-macos/ReactCommon/logger`)
   - React-Mapbuffer (from `../node_modules/react-native-macos/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native-macos/ReactCommon/react/nativemodule/microtasks`)
-  - "react-native-safe-area-context (from `../node_modules/.pnpm/react-native-safe-area-context@5.7.0_react-native@0.81.6_@babel+core@7.29.0_@types+reac_f2cfd52bdbf0bb88eabe5a4d052cde90/node_modules/react-native-safe-area-context`)"
+  - "react-native-safe-area-context (from `../node_modules/.pnpm/react-native-safe-area-context@5.6.2_react-native@0.83.6_@babel+core@7.29.0_@types+reac_718ab028d733bb177adb5fc45294c411/node_modules/react-native-safe-area-context`)"
   - React-NativeModulesApple (from `../node_modules/react-native-macos/ReactCommon/react/nativemodule/core/platform/ios`)
   - React-oscompat (from `../node_modules/react-native-macos/ReactCommon/oscompat`)
   - React-perflogger (from `../node_modules/react-native-macos/ReactCommon/reactperflogger`)
@@ -2512,19 +2522,23 @@ EXTERNAL SOURCES:
   EntangleServer:
     :path: "../modules/entangle-server/ios"
   EXConstants:
-    :path: "../node_modules/.pnpm/expo-constants@18.0.13_expo@54.0.33_@babel+core@7.29.0_react-native@0.81.6_@babel+core@_fde92e5d374e5b02bd06e675c1c2ec56/node_modules/expo-constants/ios"
+    :path: "../node_modules/.pnpm/expo-constants@55.0.15_expo@55.0.18_react-native@0.83.6_@babel+core@7.29.0_@types+react@19.2.14_react@19.2.0_/node_modules/expo-constants/ios"
   Expo:
-    :path: "../node_modules/.pnpm/expo@54.0.33_@babel+core@7.29.0_react-native@0.81.6_@babel+core@7.29.0_@types+react@19._a125c8514373a99b717a7a4ad5f6b11d/node_modules/expo"
+    :path: "../node_modules/.pnpm/expo@55.0.18_patch_hash=7d9700d7a25595bbba864ad643271174c1daca8c25ebfab0b69ad92e99d93fe_1ded00eb6ae838a98f0464947e605c92/node_modules/expo"
   ExpoAsset:
-    :path: "../node_modules/.pnpm/expo-asset@12.0.12_expo@54.0.33_@babel+core@7.29.0_react-native@0.81.6_@babel+core@7.29_9ceb05da47807a286d6465bd6b5b1e3b/node_modules/expo-asset/ios"
+    :path: "../node_modules/.pnpm/expo-asset@55.0.16_expo@55.0.18_react-native@0.83.6_@babel+core@7.29.0_@types+react@19._dca3810c9aa981687fb5d5380116e860/node_modules/expo-asset/ios"
   ExpoFileSystem:
-    :path: "../node_modules/.pnpm/expo-file-system@19.0.21_expo@54.0.33_@babel+core@7.29.0_react-native@0.81.6_@babel+cor_72410cb8e4772a2a7a69083d477e6715/node_modules/expo-file-system/ios"
+    :path: "../node_modules/.pnpm/expo-file-system@55.0.17_expo@55.0.18_react-native@0.83.6_@babel+core@7.29.0_@types+react@19.2.14_react@19.2.0_/node_modules/expo-file-system/ios"
   ExpoFont:
-    :path: "../node_modules/.pnpm/expo-font@14.0.11_expo@54.0.33_@babel+core@7.29.0_react-native@0.81.6_@babel+core@7.29._fcf64cba0cb63ae591bad2d92aa234f0/node_modules/expo-font/ios"
+    :path: "../node_modules/.pnpm/expo-font@55.0.6_expo@55.0.18_react-native@0.83.6_@babel+core@7.29.0_@types+react@19.2.14_react@19.2.0__react@19.2.0/node_modules/expo-font/ios"
   ExpoKeepAwake:
-    :path: "../node_modules/.pnpm/expo-keep-awake@15.0.8_expo@54.0.33_@babel+core@7.29.0_react-native@0.81.6_@babel+core@_3fcbb9d420eb4385ccfe6ec5c564b59d/node_modules/expo-keep-awake/ios"
+    :path: "../node_modules/.pnpm/expo-keep-awake@55.0.6_expo@55.0.18_react@19.2.0/node_modules/expo-keep-awake/ios"
+  ExpoLogBox:
+    :path: "../node_modules/.pnpm/@expo+log-box@55.0.11_@expo+dom-webview@55.0.5_expo@55.0.18_react-native@0.83.6_@babel+_204d282634ded66ef24780fad851b983/node_modules/@expo/log-box"
   ExpoModulesCore:
-    :path: "../node_modules/.pnpm/expo-modules-core@3.0.29_patch_hash=62466ecbf27d3de68d2d072e3d5d5e5a1c4bddee6d71b76d858_83d924877008fa52ac4d7abaa298302d/node_modules/expo-modules-core"
+    :path: "../node_modules/.pnpm/expo-modules-core@55.0.23_patch_hash=29c69776964a3816f63742ce7600dd29957e96935e26db36d6_d33bd1b8c2199e36aeb557a9951ea3dd/node_modules/expo-modules-core"
+  ExpoModulesJSI:
+    :path: "../node_modules/.pnpm/expo-modules-core@55.0.23_patch_hash=29c69776964a3816f63742ce7600dd29957e96935e26db36d6_d33bd1b8c2199e36aeb557a9951ea3dd/node_modules/expo-modules-core"
   fast_float:
     :podspec: "../node_modules/react-native-macos/third-party-podspecs/fast_float.podspec"
   FBLazyVector:
@@ -2603,7 +2617,7 @@ EXTERNAL SOURCES:
   React-microtasksnativemodule:
     :path: "../node_modules/react-native-macos/ReactCommon/react/nativemodule/microtasks"
   react-native-safe-area-context:
-    :path: "../node_modules/.pnpm/react-native-safe-area-context@5.7.0_react-native@0.81.6_@babel+core@7.29.0_@types+reac_f2cfd52bdbf0bb88eabe5a4d052cde90/node_modules/react-native-safe-area-context"
+    :path: "../node_modules/.pnpm/react-native-safe-area-context@5.6.2_react-native@0.83.6_@babel+core@7.29.0_@types+reac_718ab028d733bb177adb5fc45294c411/node_modules/react-native-safe-area-context"
   React-NativeModulesApple:
     :path: "../node_modules/react-native-macos/ReactCommon/react/nativemodule/core/platform/ios"
   React-oscompat:
@@ -2671,13 +2685,15 @@ SPEC CHECKSUMS:
   boost: cea1d4f90a3a59537f3deb03ff5656489d7133dd
   DoubleConversion: d31b1eb37f6d6f456530c4fd9124b857d6889cab
   EntangleServer: 365e7b16aa590cc26373f67d273a8329c69a6def
-  EXConstants: fce59a631a06c4151602843667f7cfe35f81e271
-  Expo: ffcd2fb31776b663b84501a2568cab7dd7c0f9cb
-  ExpoAsset: f867e55ceb428aab99e1e8c082b5aee7c159ea18
-  ExpoFileSystem: 858a44267a3e6e9057e0888ad7c7cfbf55d52063
-  ExpoFont: f543ce20a228dd702813668b1a07b46f51878d47
-  ExpoKeepAwake: 55f75eca6499bb9e4231ebad6f3e9cb8f99c0296
-  ExpoModulesCore: d86dab8a6c8f1184f9b0b0503ace93919882aa15
+  EXConstants: 5caf448ff399f60be9d1053e77aed32e39411900
+  Expo: 5c1df9355a2d5b69d4f4e9067c913d7d4d57d53d
+  ExpoAsset: f56ed740b6a127da2bfd90832cf688ae309d4410
+  ExpoFileSystem: a0e4a5a09c9c4f84338289b273a172609452dec9
+  ExpoFont: cdd7a1d574a376fa003c713eff49e0a4df8672c7
+  ExpoKeepAwake: a1baf9810a2dee1905aa9bdd336852598f7220e9
+  ExpoLogBox: 617da77cbc083627692b2ea050a3666808aef2cd
+  ExpoModulesCore: ea1e6ae9f489d028f46885ebcd5f1000ec62a4da
+  ExpoModulesJSI: 24121c9a2f32d5f6b6ca2f7ff54925be716d5841
   fast_float: 20817c22759af6ac8d4d67e6e059b8b499953656
   FBLazyVector: e8ec216d79635ba4c9fb0e9becc30391ca4bff1b
   fmt: 24e7591456deb60b4a77518f83d9a916ac84223f
@@ -2716,7 +2732,7 @@ SPEC CHECKSUMS:
   React-logger: 079107325dda1ad527b324f4f3cf61e4f6ce4600
   React-Mapbuffer: 59df6730a578de280cd8675cdf5440b91c243bdf
   React-microtasksnativemodule: 255f0b29a74d001ecd202e4d5f7f170a009b3987
-  react-native-safe-area-context: befb5404eb8a16fdc07fa2bebab3568ecabcbb8a
+  react-native-safe-area-context: c00143b4823773bba23f2f19f85663ae89ceb460
   React-NativeModulesApple: c1e8f5e34efed354e5a066ef47c45a4ca5dddbb4
   React-oscompat: b359d251f6ea20fa91e5e0f99fd7b563f50a8af3
   React-perflogger: e5156a6e931998e62a95a5e1a4428e3a17a0e5cf
@@ -2745,11 +2761,11 @@ SPEC CHECKSUMS:
   React-timing: f91e37f2154ef9b25e1ded28326f9998669145f1
   React-utils: 35e85af00d70760e6fda280c78d184da64d89e3d
   ReactAppDependencyProvider: 17d150a60ad301142905427154168f58641e38c4
-  ReactCodegen: 5d5eefb7d2aa4aff8cd0afd4102ffbcdc4b20ab2
+  ReactCodegen: 202d9a000a4a754b0946dbdf9c22eafc419c8869
   ReactCommon: b2b6ff304cf01e1b67d8e9646e34d58320be0964
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: 8a0df683a71bee13fe0b9d8b653d1a062ff65b2e
 
-PODFILE CHECKSUM: cadc5dc22eca4a9893c6dbe8208e3a704e9d6960
+PODFILE CHECKSUM: e0831e59c8f6ac5a3d0714227d6e469217e2d8d9
 
 COCOAPODS: 1.16.2

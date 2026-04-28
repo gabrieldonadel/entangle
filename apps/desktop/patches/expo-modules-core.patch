@@ -1,12 +1,56 @@
+diff --git a/ios/Fabric/ExpoFabricViewObjC.h b/ios/Fabric/ExpoFabricViewObjC.h
+index a5651e881ade33231b64522b6b368de9c14b9820..e59a34eeece855a02d9ba90bb0f06370d9dbc674 100644
+--- a/ios/Fabric/ExpoFabricViewObjC.h
++++ b/ios/Fabric/ExpoFabricViewObjC.h
+@@ -15,7 +15,15 @@
+ // The actual C++ implementation inherits from RCTViewComponentView (which is a UIView subclass).
+ // Methods that Swift needs to override must be declared here (not in a category) so Swift
+ // can properly override them.
++//
++// On macOS, react-native-macos provides RCTUIView (an NSView subclass with iOS-compatible methods
++// like layoutSubviews and didMoveToWindow). We must inherit from it so Swift overrides resolve correctly.
++#if TARGET_OS_OSX
++#import <React/RCTUIKit.h>
++@interface ExpoFabricViewObjC : RCTUIView
++#else
+ @interface ExpoFabricViewObjC : UIView
++#endif
+ 
+ /*
+  * Called for mounting (attaching) a child component view inside `self` component view.
 diff --git a/ios/Platform/Platform.h b/ios/Platform/Platform.h
-index 5131633a1d9c4b4ad29473db92f1cec121c18c5e..8bf4cb7bca731adbd6964a090cfc81fbcab84ad6 100644
+index ec6ad8d1892d963b3442582ef7f28c4058b0f529..e5dc7ecd36c1c7ae358fa318de291d520bc38e92 100644
 --- a/ios/Platform/Platform.h
 +++ b/ios/Platform/Platform.h
-@@ -13,6 +13,7 @@
- @compatibility_alias UIResponder NSResponder;
- @compatibility_alias UIColor NSColor;
- @compatibility_alias UIWindow NSWindow;
-+@compatibility_alias UIImage NSImage;
+@@ -8,9 +8,7 @@
  
- #ifndef UIApplication
- @compatibility_alias UIApplication NSApplication;
+ #import <AppKit/AppKit.h>
+ 
+-#if !__building_module(ExpoModulesCore)
+ #import <React/RCTUIKit.h>
+-#endif
+ 
+ @compatibility_alias UIView NSView;
+ @compatibility_alias UIResponder NSResponder;
+diff --git a/ios/Protocols/EXReactDelegateProtocol.h b/ios/Protocols/EXReactDelegateProtocol.h
+index f89f46203531ac1c312dcbdfeb69047b1753ddfb..1ef4a0a11a4b0206e323a3ae26e8d9361fec5758 100644
+--- a/ios/Protocols/EXReactDelegateProtocol.h
++++ b/ios/Protocols/EXReactDelegateProtocol.h
+@@ -14,10 +14,15 @@ NS_ASSUME_NONNULL_BEGIN
+ /**
+  Creates a React root view with the given module name and properties.
+  */
+-- (UIView *)createReactRootViewWithModuleName:(NSString *)moduleName
++#if !TARGET_OS_OSX
++ - (UIView *)createReactRootViewWithModuleName:(NSString *)moduleName
+                             initialProperties:(nullable NSDictionary<NSString *, id> *)initialProperties
+                                 launchOptions:(nullable NSDictionary<UIApplicationLaunchOptionsKey, id> *)launchOptions;
+-
++#else
++- (NSView *)createReactRootViewWithModuleName:(NSString *)moduleName
++                            initialProperties:(nullable NSDictionary<NSString *, id> *)initialProperties
++                              launchOptions:(nullable NSDictionary *)launchOptions;
++#endif
+ /**
+  Returns the bundle URL for the React Native bundle.
+  */
