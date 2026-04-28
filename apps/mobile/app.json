@@ -11,10 +11,8 @@
       "icon": "./assets/AppIcon.icon",
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "Entangle needs local-network access to discover your Mac and send pointer events.",
-        "NSBonjourServices": [
-          "_entangle._tcp.",
-          "_entangle._tcp."
-        ]
+        "NSBonjourServices": ["_entangle._tcp.", "_entangle._tcp."],
+        "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.gabrieldonadel.entangle-mobile"
     },
@@ -36,11 +34,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "android": {
-            "image": "./assets/images/splash-icon.png",
-            "imageWidth": 76
-          }
+          "backgroundColor": "#0E1014",
+          "image": "./assets/images/splash.png",
+          "resizeMode": "cover"
         }
       ]
     ],

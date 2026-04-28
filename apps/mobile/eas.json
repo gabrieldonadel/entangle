@@ -4,6 +4,9 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "base": {
+      "pnpm": "10.33.0"
+    },
     "development": {
       "developmentClient": true,
       "distribution": "internal",

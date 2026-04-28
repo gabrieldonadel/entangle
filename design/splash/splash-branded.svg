@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1170 2532" width="1170" height="2532">
+  <defs>
+    <linearGradient id="bg" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#2A2D34"/>
+      <stop offset="100%" stop-color="#0E1014"/>
+    </linearGradient>
+    <radialGradient id="orb" cx="35%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#D6E4F4"/>
+      <stop offset="55%" stop-color="#7393B8"/>
+      <stop offset="100%" stop-color="#2C3E58"/>
+    </radialGradient>
+    <radialGradient id="ambient" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#A3BBD6" stop-opacity="0.18"/>
+      <stop offset="50%" stop-color="#A3BBD6" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#A3BBD6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1170" height="2532" fill="url(#bg)"/>
+  <ellipse cx="585" cy="1100" rx="600" ry="480" fill="url(#ambient)"/>
+  <g transform="translate(585, 1100)">
+    <circle cx="-130" cy="0" r="148" fill="#A3BBD6" opacity="0.10"/>
+    <circle cx="120" cy="0" r="120" fill="#A3BBD6" opacity="0.10"/>
+    <path d="M -130 0 Q -60 -90 0 0 T 120 0" stroke="#A3BBD6" stroke-width="13" fill="none" stroke-linecap="round" opacity="0.65"/>
+    <circle cx="-130" cy="0" r="115" fill="url(#orb)"/>
+    <circle cx="120" cy="0" r="95" fill="url(#orb)"/>
+    <ellipse cx="-167" cy="-44" rx="36" ry="23" fill="#FFFFFF" opacity="0.78"/>
+    <ellipse cx="95" cy="-30" rx="30" ry="20" fill="#FFFFFF" opacity="0.72"/>
+  </g>
+  <text x="585" y="1500" text-anchor="middle" fill="#E5E7EB" font-family="-apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', sans-serif" font-size="118" font-weight="600" letter-spacing="-2">Entangle</text>
+  <text x="585" y="1565" text-anchor="middle" fill="#6B7280" font-family="-apple-system, BlinkMacSystemFont, system-ui, sans-serif" font-size="38" font-weight="500" letter-spacing="8">SPOOKY ACTION AT A DISTANCE</text>
+</svg>
