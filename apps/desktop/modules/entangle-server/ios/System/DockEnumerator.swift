@@ -37,10 +37,22 @@ final class DockEnumerator {
   private var iconCache: [String: String] = [:]
   private var pathByBundleId: [String: String] = [:]
   private var observers: [NSObjectProtocol] = []
+  private let observersLock = NSLock()
   private let queue = DispatchQueue(label: "entangle.dock", qos: .utility)
 
   func start() {
     let center = NSWorkspace.shared.notificationCenter
+    observersLock.lock()
+    defer { observersLock.unlock() }
+
+    // Idempotent: drop any prior observers before adding new ones so a
+    // bridge reload (e.g. expo-updates) doesn't leak duplicates or race
+    // with a concurrent stop().
+    for token in observers {
+      center.removeObserver(token)
+    }
+    observers.removeAll()
+
     let names: [Notification.Name] = [
       NSWorkspace.didLaunchApplicationNotification,
       NSWorkspace.didTerminateApplicationNotification
@@ -55,6 +67,8 @@ final class DockEnumerator {
 
   func stop() {
     let center = NSWorkspace.shared.notificationCenter
+    observersLock.lock()
+    defer { observersLock.unlock() }
     for token in observers {
       center.removeObserver(token)
     }

@@ -13,14 +13,14 @@ class AppDelegate: ExpoAppDelegate, NSWindowDelegate {
   private var statusItem: NSStatusItem?
 
   public override func applicationDidFinishLaunching(_ notification: Notification) {
+    setupStatusItem()
+    
     let delegate = ReactNativeDelegate()
     let factory = ExpoReactNativeFactory(delegate: delegate)
     delegate.dependencyProvider = RCTAppDependencyProvider()
 
     reactNativeDelegate = delegate
     reactNativeFactory = factory
-
-    setupStatusItem()
 
     let launchOptions = notification.userInfo
     window = UIWindow(
@@ -29,16 +29,17 @@ class AppDelegate: ExpoAppDelegate, NSWindowDelegate {
       backing: .buffered,
       defer: false
     )
-    factory.startReactNative(
-      withModuleName: "main",
-      in: window,
-      launchOptions: launchOptions)
-
     window?.delegate = self
     window?.isReleasedWhenClosed = false
     window?.collectionBehavior = [.managed, .fullScreenPrimary]
     window?.center()
-    window?.orderOut(nil)
+    NSApp.activate(ignoringOtherApps: true)
+    window?.makeKeyAndOrderFront(nil)
+
+    factory.startReactNative(
+      withModuleName: "main",
+      in: window,
+      launchOptions: launchOptions)
 
     return super.applicationDidFinishLaunching(notification)
   }

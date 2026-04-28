@@ -1,4 +1,18 @@
 {
   "name": "entangle",
-  "displayName": "entangle"
+  "displayName": "entangle",
+  "extra": {
+    "eas": {
+      "projectId": "3f3da99f-5264-4f8e-a26b-e4f757e5ab90"
+    }
+  },
+  "owner": "gabrieldonadel",
+  "runtimeVersion": {
+    "policy": "appVersion"
+  },
+  "updates": {
+    "url": "https://u.expo.dev/3f3da99f-5264-4f8e-a26b-e4f757e5ab90"
+  },
+  "android": {},
+  "ios": {}
 }

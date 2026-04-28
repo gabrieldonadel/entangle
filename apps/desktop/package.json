@@ -12,6 +12,7 @@
     "@entangle/protocol": "link:../../packages/shared",
     "expo": "^55.0.12",
     "expo-modules-core": "^55.0.23",
+    "expo-updates": "~55.0.21",
     "react": "19.2.0",
     "react-native": "0.83.6",
     "react-native-macos": "^0.81.7",

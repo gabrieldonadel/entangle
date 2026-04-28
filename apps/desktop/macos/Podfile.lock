@@ -1,9 +1,13 @@
 PODS:
   - boost (1.84.0)
   - DoubleConversion (1.1.6)
+  - EASClient (55.0.5):
+    - ExpoModulesCore
   - EntangleServer (0.0.1):
     - ExpoModulesCore
   - EXConstants (55.0.15):
+    - ExpoModulesCore
+  - EXManifests (55.0.16):
     - ExpoModulesCore
   - Expo (55.0.18):
     - boost
@@ -81,6 +85,43 @@ PODS:
     - React-Core
     - React-runtimescheduler
     - ReactCommon
+  - EXStructuredHeaders (55.0.2)
+  - EXUpdates (55.0.21):
+    - boost
+    - DoubleConversion
+    - EASClient
+    - EXManifests
+    - ExpoModulesCore
+    - EXStructuredHeaders
+    - EXUpdatesInterface
+    - fast_float
+    - fmt
+    - glog
+    - hermes-engine
+    - RCT-Folly
+    - RCT-Folly/Fabric
+    - RCTRequired
+    - RCTTypeSafety
+    - ReachabilitySwift
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - SocketRocket
+    - Yoga
+  - EXUpdatesInterface (55.1.6):
+    - ExpoModulesCore
   - fast_float (8.0.0)
   - FBLazyVector (0.81.7)
   - fmt (11.0.2)
@@ -113,6 +154,7 @@ PODS:
     - FBLazyVector (= 0.81.7)
     - RCTRequired (= 0.81.7)
     - React-Core (= 0.81.7)
+  - ReachabilitySwift (5.2.4)
   - React (0.81.7):
     - React-Core (= 0.81.7)
     - React-Core/DevSupport (= 0.81.7)
@@ -2427,8 +2469,10 @@ PODS:
 DEPENDENCIES:
   - boost (from `../node_modules/react-native-macos/third-party-podspecs/boost.podspec`)
   - DoubleConversion (from `../node_modules/react-native-macos/third-party-podspecs/DoubleConversion.podspec`)
+  - "EASClient (from `../node_modules/.pnpm/expo-eas-client@55.0.5/node_modules/expo-eas-client/ios`)"
   - EntangleServer (from `../modules/entangle-server/ios`)
   - "EXConstants (from `../node_modules/.pnpm/expo-constants@55.0.15_expo@55.0.18_react-native@0.83.6_@babel+core@7.29.0_@types+react@19.2.14_react@19.2.0_/node_modules/expo-constants/ios`)"
+  - "EXManifests (from `../node_modules/.pnpm/expo-manifests@55.0.16_expo@55.0.18/node_modules/expo-manifests/ios`)"
   - "Expo (from `../node_modules/.pnpm/expo@55.0.18_patch_hash=7d9700d7a25595bbba864ad643271174c1daca8c25ebfab0b69ad92e99d93fe_1ded00eb6ae838a98f0464947e605c92/node_modules/expo`)"
   - "ExpoAsset (from `../node_modules/.pnpm/expo-asset@55.0.16_expo@55.0.18_react-native@0.83.6_@babel+core@7.29.0_@types+react@19._dca3810c9aa981687fb5d5380116e860/node_modules/expo-asset/ios`)"
   - "ExpoFileSystem (from `../node_modules/.pnpm/expo-file-system@55.0.17_expo@55.0.18_react-native@0.83.6_@babel+core@7.29.0_@types+react@19.2.14_react@19.2.0_/node_modules/expo-file-system/ios`)"
@@ -2437,6 +2481,9 @@ DEPENDENCIES:
   - "ExpoLogBox (from `../node_modules/.pnpm/@expo+log-box@55.0.11_@expo+dom-webview@55.0.5_expo@55.0.18_react-native@0.83.6_@babel+_204d282634ded66ef24780fad851b983/node_modules/@expo/log-box`)"
   - "ExpoModulesCore (from `../node_modules/.pnpm/expo-modules-core@55.0.23_patch_hash=29c69776964a3816f63742ce7600dd29957e96935e26db36d6_d33bd1b8c2199e36aeb557a9951ea3dd/node_modules/expo-modules-core`)"
   - "ExpoModulesJSI (from `../node_modules/.pnpm/expo-modules-core@55.0.23_patch_hash=29c69776964a3816f63742ce7600dd29957e96935e26db36d6_d33bd1b8c2199e36aeb557a9951ea3dd/node_modules/expo-modules-core`)"
+  - "EXStructuredHeaders (from `../node_modules/.pnpm/expo-structured-headers@55.0.2/node_modules/expo-structured-headers/ios`)"
+  - "EXUpdates (from `../node_modules/.pnpm/expo-updates@55.0.21_expo@55.0.18_react-native@0.83.6_@babel+core@7.29.0_@types+react@19.2.14_react@19.2.0__react@19.2.0/node_modules/expo-updates/ios`)"
+  - "EXUpdatesInterface (from `../node_modules/.pnpm/expo-updates-interface@55.1.6_expo@55.0.18/node_modules/expo-updates-interface/ios`)"
   - fast_float (from `../node_modules/react-native-macos/third-party-podspecs/fast_float.podspec`)
   - FBLazyVector (from `../node_modules/react-native-macos/Libraries/FBLazyVector`)
   - fmt (from `../node_modules/react-native-macos/third-party-podspecs/fmt.podspec`)
@@ -2512,6 +2559,7 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
+    - ReachabilitySwift
     - SocketRocket
 
 EXTERNAL SOURCES:
@@ -2519,10 +2567,14 @@ EXTERNAL SOURCES:
     :podspec: "../node_modules/react-native-macos/third-party-podspecs/boost.podspec"
   DoubleConversion:
     :podspec: "../node_modules/react-native-macos/third-party-podspecs/DoubleConversion.podspec"
+  EASClient:
+    :path: "../node_modules/.pnpm/expo-eas-client@55.0.5/node_modules/expo-eas-client/ios"
   EntangleServer:
     :path: "../modules/entangle-server/ios"
   EXConstants:
     :path: "../node_modules/.pnpm/expo-constants@55.0.15_expo@55.0.18_react-native@0.83.6_@babel+core@7.29.0_@types+react@19.2.14_react@19.2.0_/node_modules/expo-constants/ios"
+  EXManifests:
+    :path: "../node_modules/.pnpm/expo-manifests@55.0.16_expo@55.0.18/node_modules/expo-manifests/ios"
   Expo:
     :path: "../node_modules/.pnpm/expo@55.0.18_patch_hash=7d9700d7a25595bbba864ad643271174c1daca8c25ebfab0b69ad92e99d93fe_1ded00eb6ae838a98f0464947e605c92/node_modules/expo"
   ExpoAsset:
@@ -2539,6 +2591,12 @@ EXTERNAL SOURCES:
     :path: "../node_modules/.pnpm/expo-modules-core@55.0.23_patch_hash=29c69776964a3816f63742ce7600dd29957e96935e26db36d6_d33bd1b8c2199e36aeb557a9951ea3dd/node_modules/expo-modules-core"
   ExpoModulesJSI:
     :path: "../node_modules/.pnpm/expo-modules-core@55.0.23_patch_hash=29c69776964a3816f63742ce7600dd29957e96935e26db36d6_d33bd1b8c2199e36aeb557a9951ea3dd/node_modules/expo-modules-core"
+  EXStructuredHeaders:
+    :path: "../node_modules/.pnpm/expo-structured-headers@55.0.2/node_modules/expo-structured-headers/ios"
+  EXUpdates:
+    :path: "../node_modules/.pnpm/expo-updates@55.0.21_expo@55.0.18_react-native@0.83.6_@babel+core@7.29.0_@types+react@19.2.14_react@19.2.0__react@19.2.0/node_modules/expo-updates/ios"
+  EXUpdatesInterface:
+    :path: "../node_modules/.pnpm/expo-updates-interface@55.1.6_expo@55.0.18/node_modules/expo-updates-interface/ios"
   fast_float:
     :podspec: "../node_modules/react-native-macos/third-party-podspecs/fast_float.podspec"
   FBLazyVector:
@@ -2684,8 +2742,10 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   boost: cea1d4f90a3a59537f3deb03ff5656489d7133dd
   DoubleConversion: d31b1eb37f6d6f456530c4fd9124b857d6889cab
+  EASClient: 8077eb9af46cc7ad3ad216cec12d2bf5763cca13
   EntangleServer: 365e7b16aa590cc26373f67d273a8329c69a6def
   EXConstants: 5caf448ff399f60be9d1053e77aed32e39411900
+  EXManifests: f4e50a54115948e206f4c2391bdea755a1aa74ec
   Expo: 5c1df9355a2d5b69d4f4e9067c913d7d4d57d53d
   ExpoAsset: f56ed740b6a127da2bfd90832cf688ae309d4410
   ExpoFileSystem: a0e4a5a09c9c4f84338289b273a172609452dec9
@@ -2694,6 +2754,9 @@ SPEC CHECKSUMS:
   ExpoLogBox: 617da77cbc083627692b2ea050a3666808aef2cd
   ExpoModulesCore: ea1e6ae9f489d028f46885ebcd5f1000ec62a4da
   ExpoModulesJSI: 24121c9a2f32d5f6b6ca2f7ff54925be716d5841
+  EXStructuredHeaders: 93ad4f31a2eec124428675e28aca11de243ee1e4
+  EXUpdates: 731fefef76253e5cf404f979409857569c5fb50b
+  EXUpdatesInterface: 4c11f4d1594526258f14d09817dc407acbf24e3b
   fast_float: 20817c22759af6ac8d4d67e6e059b8b499953656
   FBLazyVector: e8ec216d79635ba4c9fb0e9becc30391ca4bff1b
   fmt: 24e7591456deb60b4a77518f83d9a916ac84223f
@@ -2703,6 +2766,7 @@ SPEC CHECKSUMS:
   RCTDeprecation: 32fb5034012098ad1f67eba8a62d73bdd7d082e7
   RCTRequired: 9f51919b547926d0c148032cf2a7271a37655af4
   RCTTypeSafety: 7a8749345a241f79e1a39960cae63a1a3d24bf8d
+  ReachabilitySwift: 32793e867593cfc1177f5d16491e3a197d2fccda
   React: 2e4b3b93f8e991cb7f2b6d2a67a05bd414e24e55
   React-callinvoker: 7e08474aff5f213c0ac49b969d6255e0dc3c66b3
   React-Core: 8f694cc945ccfddce51a62ecb188b084912d32da
