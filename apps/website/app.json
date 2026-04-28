@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "entangle",
+    "slug": "entangle-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "220d921b-e531-4064-8453-3be26e897841"
+      }
+    }
+  }
+}

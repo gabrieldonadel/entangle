@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg-light" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#F5F7FA"></stop>
+      <stop offset="100%" stop-color="#D4DAE6"></stop>
+    </linearGradient>
+    <radialGradient id="orb-light" cx="35%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#9BB6D6"></stop>
+      <stop offset="50%" stop-color="#4E6E95"></stop>
+      <stop offset="100%" stop-color="#1D2C44"></stop>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="232" fill="url(#bg-light)"></rect>
+  <path d="M 61 195 Q 61 41 215 41 L 809 41 Q 963 41 963 195" stroke="#FFFFFF" stroke-width="8" fill="none" opacity="0.85"></path>
+  <path d="M 61 860 Q 61 983 215 983 L 809 983 Q 963 983 963 860" stroke="#000000" stroke-width="5" fill="none" opacity="0.07"></path>
+  <circle cx="328" cy="512" r="113" fill="#3A5E90" opacity="0.06"></circle>
+  <circle cx="696" cy="512" r="92" fill="#3A5E90" opacity="0.06"></circle>
+  <path d="M 328 512 Q 420 384 512 512 T 696 512" stroke="#3A5E90" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.55"></path>
+  <circle cx="328" cy="512" r="87" fill="url(#orb-light)"></circle>
+  <circle cx="696" cy="512" r="72" fill="url(#orb-light)"></circle>
+  <ellipse cx="302" cy="471" rx="26" ry="15" fill="#FFFFFF" opacity="0.70"></ellipse>
+  <ellipse cx="676" cy="486" rx="20" ry="12" fill="#FFFFFF" opacity="0.65"></ellipse>
+</svg>
