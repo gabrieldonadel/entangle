@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -17,6 +17,24 @@ type Props = {
 
 export function ConnectedPhones({ onPairNew }: Props) {
   const clients = useServerStore(useShallow((s) => Object.values(s.clients)));
+  const forgetAllPaired = useServerStore((s) => s.forgetAllPaired);
+
+  const confirmForgetAll = () => {
+    Alert.alert(
+      'Forget all paired devices?',
+      'Connected phones will be disconnected and have to pair again.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Forget all',
+          style: 'destructive',
+          onPress: () => {
+            void forgetAllPaired();
+          },
+        },
+      ]
+    );
+  };
 
   if (clients.length === 0) {
     return <EmptyPhones onShowPairing={onPairNew} />;
@@ -37,7 +55,10 @@ export function ConnectedPhones({ onPairNew }: Props) {
       </View>
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          Devices remembered for 30 days. Forget all to re-pair.
+          Devices remembered for 30 days.{' '}
+          <Text style={styles.footerLink} onPress={confirmForgetAll}>
+            Forget all to re-pair.
+          </Text>
         </Text>
         {onPairNew ? (
           <Pressable onPress={onPairNew} style={styles.pairButton}>
@@ -152,6 +173,9 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     color: tokens.textDim,
     flex: 1,
+  },
+  footerLink: {
+    color: tokens.accent,
   },
   pairButton: {
     paddingVertical: 4,

@@ -78,21 +78,46 @@ final class PairingManager {
     defaults.removeObject(forKey: trustedKey)
   }
 
-  /// Returns whether the new client should be allowed to connect.
-  /// Bootstraps trust on first-ever client (fresh install) so the user is not
-  /// locked out before they can open the pair sheet.
-  func shouldAccept(host: String) -> Bool {
-    let normalized = Self.normalize(host: host)
-    if trustedHosts().contains(normalized) { return true }
-    if isPairing() {
-      trust(host: normalized)
-      return true
+  enum HandshakeOutcome {
+    case trusted
+    case rejected(reason: String)
+  }
+
+  /// Validates the first message a non-trusted connection sent against the
+  /// active pair window. On success, marks the host as trusted.
+  func verifyHandshake(host: String, message text: String) -> HandshakeOutcome {
+    guard let window = currentWindow() else {
+      return .rejected(reason: "pairing not active")
     }
-    if trustedHosts().isEmpty {
-      trust(host: normalized)
-      return true
+    guard let data = text.data(using: .utf8),
+          let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+          let kind = raw["t"] as? String else {
+      return .rejected(reason: "expected pair.request or pair.qr")
     }
-    return false
+    switch kind {
+    case "pair.qr":
+      guard let token = raw["token"] as? String else {
+        return .rejected(reason: "missing token")
+      }
+      guard token == window.token else {
+        return .rejected(reason: "invalid token")
+      }
+    case "pair.request":
+      guard let code = raw["code"] as? String else {
+        return .rejected(reason: "missing code")
+      }
+      guard Self.normalizeCode(code) == Self.normalizeCode(window.code) else {
+        return .rejected(reason: "invalid code")
+      }
+    default:
+      return .rejected(reason: "expected pair.request or pair.qr")
+    }
+    trust(host: host)
+    return .trusted
+  }
+
+  private static func normalizeCode(_ raw: String) -> String {
+    raw.uppercased().filter { $0.isLetter || $0.isNumber }
   }
 
   // MARK: - Helpers

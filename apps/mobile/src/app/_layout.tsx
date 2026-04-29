@@ -13,6 +13,8 @@ export default function RootLayout() {
   useEffect(() => {
     if (phase === 'open') {
       router.replace('/(tabs)');
+    } else if (phase === 'pairing') {
+      router.replace('/pair');
     } else if (phase === 'idle') {
       router.replace('/connect');
     }
@@ -23,6 +25,7 @@ export default function RootLayout() {
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="connect" />
+          <Stack.Screen name="pair" />
           <Stack.Screen name="(tabs)" />
         </Stack>
       </ThemeProvider>

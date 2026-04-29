@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { create } from 'zustand';
 
@@ -19,7 +20,10 @@ export type ConnectionPhase =
   | 'connecting'
   | 'open'
   | 'reconnecting'
-  | 'closed';
+  | 'closed'
+  | 'pairing';
+
+const TRUSTED_TOKENS_KEY = 'entangle.trustedTokens';
 
 export interface ConnectionTarget {
   name: string;
@@ -35,10 +39,13 @@ interface ConnectionState {
   serverCaps: string[];
   lastError: string | null;
   latencyMs: number | null;
+  pairingError: string | null;
+  trustedTokens: Record<string, string>;
   connect: (target: ConnectionTarget) => void;
   disconnect: () => void;
   send: (msg: ClientMessage) => void;
   sendRaw: (raw: string) => void;
+  retryPairing: (code?: string) => void;
 }
 
 let socket: WebSocket | null = null;
@@ -49,6 +56,8 @@ let reconnectAttempt = 0;
 let pingId = 0;
 let pingSentAt = 0;
 let manuallyDisconnected = false;
+let pendingPairCode: string | null = null;
+let pendingPairToken: string | null = null;
 
 export const useConnection = create<ConnectionState>((set, get) => ({
   phase: 'idle',
@@ -58,14 +67,20 @@ export const useConnection = create<ConnectionState>((set, get) => ({
   serverCaps: [],
   lastError: null,
   latencyMs: null,
+  pairingError: null,
+  trustedTokens: {},
   connect: (target) => {
     manuallyDisconnected = false;
     reconnectAttempt = 0;
-    set({ target, lastError: null });
+    pendingPairCode = null;
+    pendingPairToken = get().trustedTokens[target.host] ?? null;
+    set({ target, lastError: null, pairingError: null });
     openSocket();
   },
   disconnect: () => {
     manuallyDisconnected = true;
+    pendingPairCode = null;
+    pendingPairToken = null;
     clearTimers();
     if (socket) {
       try {
@@ -81,6 +96,7 @@ export const useConnection = create<ConnectionState>((set, get) => ({
       serverVersion: null,
       serverCaps: [],
       latencyMs: null,
+      pairingError: null,
     });
   },
   send: (msg) => {
@@ -92,6 +108,18 @@ export const useConnection = create<ConnectionState>((set, get) => ({
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(raw);
     }
+  },
+  retryPairing: (code) => {
+    if (code && code.trim().length > 0) {
+      pendingPairCode = code.trim();
+    } else {
+      pendingPairCode = null;
+    }
+    pendingPairToken = null;
+    reconnectAttempt = 0;
+    manuallyDisconnected = false;
+    set({ pairingError: null });
+    openSocket();
   },
 }));
 
@@ -110,6 +138,11 @@ function openSocket() {
   ws.onopen = () => {
     reconnectAttempt = 0;
     useConnection.setState({ phase: 'open', lastError: null });
+    if (pendingPairToken) {
+      ws.send(encode({ v: PROTOCOL_VERSION, t: 'pair.qr', token: pendingPairToken }));
+    } else if (pendingPairCode) {
+      ws.send(encode({ v: PROTOCOL_VERSION, t: 'pair.request', code: pendingPairCode }));
+    }
     const hello: ClientMessage = {
       v: PROTOCOL_VERSION,
       t: 'hello',
@@ -137,6 +170,7 @@ function openSocket() {
     socket = null;
     clearTimers();
     if (manuallyDisconnected) return;
+    if (useConnection.getState().phase === 'pairing') return;
     scheduleReconnect();
   };
 }
@@ -167,6 +201,41 @@ function handleMessage(msg: Message) {
         useConnection.setState({ latencyMs: Date.now() - pingSentAt });
       }
       return;
+    case 'pair.accepted': {
+      const { target, trustedTokens } = useConnection.getState();
+      if (target && pendingPairToken) {
+        const next = { ...trustedTokens, [target.host]: pendingPairToken };
+        useConnection.setState({ trustedTokens: next });
+        void persistTrustedTokens(next);
+      }
+      pendingPairCode = null;
+      useConnection.setState({ pairingError: null });
+      return;
+    }
+    case 'pair.rejected': {
+      pendingPairCode = null;
+      pendingPairToken = null;
+      const { target, trustedTokens } = useConnection.getState();
+      if (target && trustedTokens[target.host]) {
+        const next = { ...trustedTokens };
+        delete next[target.host];
+        useConnection.setState({ trustedTokens: next });
+        void persistTrustedTokens(next);
+      }
+      reconnectAttempt = 0;
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      useConnection.setState({
+        phase: 'pairing',
+        pairingError: msg.reason || null,
+      });
+      try {
+        socket?.close();
+      } catch {}
+      return;
+    }
     default:
       return;
   }
@@ -234,6 +303,23 @@ export function getSocket(): WebSocket | null {
 export function hasUserDisconnected(): boolean {
   return manuallyDisconnected;
 }
+
+async function persistTrustedTokens(tokens: Record<string, string>): Promise<void> {
+  try {
+    await AsyncStorage.setItem(TRUSTED_TOKENS_KEY, JSON.stringify(tokens));
+  } catch {}
+}
+
+void (async () => {
+  try {
+    const raw = await AsyncStorage.getItem(TRUSTED_TOKENS_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    if (parsed && typeof parsed === 'object') {
+      useConnection.setState({ trustedTokens: parsed });
+    }
+  } catch {}
+})();
 
 NetInfo.addEventListener((state) => {
   if (!state.isConnected) return;

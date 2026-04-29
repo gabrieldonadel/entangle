@@ -83,8 +83,7 @@ public class EntangleServerModule: Module {
 
     AsyncFunction("forgetAllPaired") { () -> Void in
       PairingManager.shared.forgetAll()
-      self.server?.stop()
-      self.server = nil
+      self.server?.disconnectAll()
     }
 
     Function("isPairing") { () -> Bool in
@@ -163,6 +162,19 @@ public class EntangleServerModule: Module {
     do {
       try server.start()
       self.server = server
+      // Fresh installs (no trusted hosts yet) need a pair window to be open
+      // so the first phone has something to talk to. We open one automatically
+      // and emit pairingStarted so the UI can surface the code/QR.
+      if PairingManager.shared.trustedHosts().isEmpty,
+         PairingManager.shared.currentWindow() == nil {
+        let window = PairingManager.shared.startPairing()
+        self.sendEvent("pairingStarted", [
+          "code": window.code,
+          "token": window.token,
+          "expiresAt": window.expiresAt.timeIntervalSince1970 * 1000
+        ])
+        self.schedulePairingExpiry(at: window.expiresAt)
+      }
     } catch {
       promise?.reject("ENTANGLE_START_FAILED", error.localizedDescription)
     }

@@ -23,6 +23,8 @@ const CLIENT_TAGS = new Set<ClientMessage['t']>([
   'd.activate',
   'hello',
   'ping',
+  'pair.request',
+  'pair.qr',
 ]);
 
 const SERVER_TAGS = new Set<ServerMessage['t']>([
@@ -32,6 +34,8 @@ const SERVER_TAGS = new Set<ServerMessage['t']>([
   'd.list',
   'd.update',
   'state.mods',
+  'pair.accepted',
+  'pair.rejected',
 ]);
 
 const ALL_TAGS = new Set<string>([...CLIENT_TAGS, ...SERVER_TAGS]);
