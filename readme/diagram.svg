@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 380" width="1200" height="380" role="img" aria-label="How Entangle works">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0e1014"></stop>
+      <stop offset="100%" stop-color="#0a0c10"></stop>
+    </linearGradient>
+    <radialGradient id="orbD" cx="35%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#d6e4f4"></stop>
+      <stop offset="55%" stop-color="#7393b8"></stop>
+      <stop offset="100%" stop-color="#2c3e58"></stop>
+    </radialGradient>
+    <pattern id="grid2" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#a3bbd6" stroke-width="0.5" opacity="0.06"></path>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="380" fill="url(#bg2)"></rect>
+  <rect width="1200" height="380" fill="url(#grid2)"></rect>
+
+  
+  <g transform="translate(140 70)">
+    <rect x="0" y="0" width="180" height="240" rx="28" fill="#14171d" stroke="#a3bbd6" stroke-opacity="0.18" stroke-width="1.5"></rect>
+    <rect x="14" y="14" width="152" height="212" rx="18" fill="#0a0c10"></rect>
+    <circle cx="90" cy="120" r="34" fill="url(#orbD)"></circle>
+    <ellipse cx="80" cy="108" rx="11" ry="7" fill="#ffffff" opacity="0.78"></ellipse>
+    <rect x="40" y="178" width="100" height="6" rx="3" fill="#a3bbd6" opacity="0.35"></rect>
+    <rect x="56" y="194" width="68" height="4" rx="2" fill="#a3bbd6" opacity="0.20"></rect>
+    <rect x="72" y="232" width="36" height="3" rx="1.5" fill="#a3bbd6" opacity="0.4"></rect>
+    <text x="90" y="334" text-anchor="middle" font-family="&#39;JetBrains Mono&#39;, monospace" font-size="11" font-weight="500" fill="#8a93a6" letter-spacing="2">MOBILE</text>
+  </g>
+
+  
+  <g transform="translate(0 190)">
+    <path d="M 340 0 C 460 -60, 560 60, 600 0 S 740 -60, 860 0" stroke="#a3bbd6" stroke-width="2" fill="none" opacity="0.5"></path>
+    <path d="M 340 0 C 460 -60, 560 60, 600 0 S 740 -60, 860 0" stroke="#d6e4f4" stroke-width="1" fill="none" opacity="0.9" stroke-dasharray="3 8"></path>
+    <circle cx="600" cy="0" r="5" fill="#a3bbd6"></circle>
+    <circle cx="600" cy="0" r="14" fill="none" stroke="#a3bbd6" stroke-width="1" opacity="0.3"></circle>
+    <text x="600" y="-30" text-anchor="middle" font-family="&#39;JetBrains Mono&#39;, monospace" font-size="11" font-weight="500" fill="#a3bbd6" letter-spacing="2">LAN · ENCRYPTED</text>
+  </g>
+
+  
+  <g transform="translate(740 50)">
+    <rect x="0" y="0" width="320" height="200" rx="14" fill="#14171d" stroke="#a3bbd6" stroke-opacity="0.18" stroke-width="1.5"></rect>
+    <rect x="14" y="14" width="292" height="172" rx="8" fill="#0a0c10"></rect>
+    
+    <circle cx="28" cy="28" r="4" fill="#3a3f4a"></circle>
+    <circle cx="42" cy="28" r="4" fill="#3a3f4a"></circle>
+    <circle cx="56" cy="28" r="4" fill="#3a3f4a"></circle>
+    
+    <rect x="30" y="56" width="80" height="6" rx="3" fill="#a3bbd6" opacity="0.30"></rect>
+    <rect x="30" y="72" width="120" height="4" rx="2" fill="#a3bbd6" opacity="0.18"></rect>
+    <rect x="30" y="84" width="100" height="4" rx="2" fill="#a3bbd6" opacity="0.18"></rect>
+    <rect x="30" y="110" width="240" height="60" rx="6" fill="none" stroke="#a3bbd6" stroke-opacity="0.15"></rect>
+    
+    <g transform="translate(206 124)">
+      <path d="M 0 0 L 0 16 L 4 12 L 8 20 L 11 18.5 L 7 11 L 12 11 Z" fill="#f5f7fa" stroke="#0a0c10" stroke-width="0.8"></path>
+    </g>
+    
+    <rect x="140" y="200" width="40" height="14" fill="#14171d"></rect>
+    <rect x="120" y="214" width="80" height="6" rx="2" fill="#14171d"></rect>
+
+    <text x="160" y="262" text-anchor="middle" font-family="&#39;JetBrains Mono&#39;, monospace" font-size="11" font-weight="500" fill="#8a93a6" letter-spacing="2">DESKTOP · macOS</text>
+  </g>
+</svg>

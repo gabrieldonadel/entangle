@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 480" width="1600" height="480" role="img" aria-label="Entangle — your Mac&#39;s pointer, in your pocket">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f5f7fa"></stop>
+      <stop offset="100%" stop-color="#eef1f6"></stop>
+    </linearGradient>
+    <radialGradient id="glowL" cx="22%" cy="40%" r="40%">
+      <stop offset="0%" stop-color="#3a5e90" stop-opacity="0.18"></stop>
+      <stop offset="100%" stop-color="#3a5e90" stop-opacity="0"></stop>
+    </radialGradient>
+    <radialGradient id="glowR" cx="82%" cy="60%" r="40%">
+      <stop offset="0%" stop-color="#3a5e90" stop-opacity="0.14"></stop>
+      <stop offset="100%" stop-color="#3a5e90" stop-opacity="0"></stop>
+    </radialGradient>
+    <radialGradient id="orb" cx="35%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#d6e4f4"></stop>
+      <stop offset="55%" stop-color="#4e6e95"></stop>
+      <stop offset="100%" stop-color="#1d2c44"></stop>
+    </radialGradient>
+    <pattern id="grid" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1d2c44" stroke-width="0.5" opacity="0.06"></path>
+    </pattern>
+  </defs>
+
+  <rect width="1600" height="480" fill="url(#bg)"></rect>
+  <rect width="1600" height="480" fill="url(#grid)"></rect>
+  <rect width="1600" height="480" fill="url(#glowL)"></rect>
+  <rect width="1600" height="480" fill="url(#glowR)"></rect>
+
+  <circle cx="380" cy="240" r="180" fill="none" stroke="#3a5e90" stroke-width="1" opacity="0.10"></circle>
+  <circle cx="380" cy="240" r="240" fill="none" stroke="#3a5e90" stroke-width="1" opacity="0.06"></circle>
+  <circle cx="1220" cy="240" r="140" fill="none" stroke="#3a5e90" stroke-width="1" opacity="0.10"></circle>
+  <circle cx="1220" cy="240" r="200" fill="none" stroke="#3a5e90" stroke-width="1" opacity="0.06"></circle>
+
+  <path d="M 380 240 C 560 100, 720 380, 800 240 S 1040 100, 1220 240" stroke="#3a5e90" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.55"></path>
+  <path d="M 380 240 C 560 100, 720 380, 800 240 S 1040 100, 1220 240" stroke="#1d2c44" stroke-width="1" fill="none" stroke-linecap="round" opacity="0.7" stroke-dasharray="2 8"></path>
+
+  <circle cx="380" cy="240" r="62" fill="url(#orb)"></circle>
+  <ellipse cx="362" cy="218" rx="20" ry="13" fill="#ffffff" opacity="0.78"></ellipse>
+  <circle cx="1220" cy="240" r="48" fill="url(#orb)"></circle>
+  <ellipse cx="1206" cy="224" rx="15" ry="10" fill="#ffffff" opacity="0.72"></ellipse>
+
+  <text x="800" y="216" text-anchor="middle" font-family="&#39;Inter Tight&#39;, -apple-system, system-ui, sans-serif" font-weight="600" font-size="92" letter-spacing="-3" fill="#1d2c44">Entangle</text>
+  <text x="800" y="270" text-anchor="middle" font-family="&#39;Inter&#39;, -apple-system, system-ui, sans-serif" font-weight="400" font-size="22" letter-spacing="0.5" fill="#3a5e90">Your Mac&#39;s pointer, in your pocket.</text>
+
+  <g font-family="&#39;JetBrains Mono&#39;, ui-monospace, monospace" font-size="12" font-weight="500" fill="#6b7588">
+    <g transform="translate(640 320)">
+      <rect x="0" y="0" width="86" height="28" rx="14" fill="none" stroke="#3a5e90" stroke-opacity="0.30"></rect>
+      <text x="43" y="18" text-anchor="middle">macOS</text>
+    </g>
+    <g transform="translate(736 320)">
+      <rect x="0" y="0" width="62" height="28" rx="14" fill="none" stroke="#3a5e90" stroke-opacity="0.30"></rect>
+      <text x="31" y="18" text-anchor="middle">iOS</text>
+    </g>
+    <g transform="translate(808 320)">
+      <rect x="0" y="0" width="92" height="28" rx="14" fill="none" stroke="#3a5e90" stroke-opacity="0.30"></rect>
+      <text x="46" y="18" text-anchor="middle">Android</text>
+    </g>
+    <g transform="translate(910 320)">
+      <rect x="0" y="0" width="118" height="28" rx="14" fill="none" stroke="#3a5e90" stroke-opacity="0.30"></rect>
+      <text x="59" y="18" text-anchor="middle">Open source</text>
+    </g>
+  </g>
+</svg>
