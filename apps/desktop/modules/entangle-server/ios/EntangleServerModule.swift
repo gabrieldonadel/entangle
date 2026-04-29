@@ -8,10 +8,15 @@ public class EntangleServerModule: Module {
   private var accessibilityTimer: DispatchSourceTimer?
   private var lastAccessibilityState: Bool = false
 
+  // swiftlint:disable:next function_body_length
   public func definition() -> ModuleDefinition {
     Name("EntangleServer")
 
-    Events("clientConnected", "clientDisconnected", "message", "error", "serverReady", "accessibilityChanged")
+    Events(
+      "clientConnected", "clientDisconnected", "message", "error", "serverReady",
+      "accessibilityChanged", "pairingExpired", "pairingStarted", "pairingStopped",
+      "preferencesChanged", "pairRejected"
+    )
 
     OnCreate {
       self.lastAccessibilityState = AccessibilityCheck.isTrusted()
@@ -55,21 +60,101 @@ public class EntangleServerModule: Module {
     AsyncFunction("promptAccessibility") { () -> Bool in
       return AccessibilityCheck.promptIfNeeded()
     }
+
+    // MARK: - Pairing
+
+    AsyncFunction("startPairing") { () -> [String: Any] in
+      let window = PairingManager.shared.startPairing()
+      let payload: [String: Any] = [
+        "code": window.code,
+        "token": window.token,
+        "expiresAt": window.expiresAt.timeIntervalSince1970 * 1000
+      ]
+      self.sendEvent("pairingStarted", payload)
+      self.schedulePairingExpiry(at: window.expiresAt)
+      return payload
+    }
+
+    AsyncFunction("stopPairing") { () -> Void in
+      PairingManager.shared.stopPairing()
+      self.cancelPairingExpiry()
+      self.sendEvent("pairingStopped", [:])
+    }
+
+    AsyncFunction("forgetAllPaired") { () -> Void in
+      PairingManager.shared.forgetAll()
+      self.server?.stop()
+      self.server = nil
+    }
+
+    Function("isPairing") { () -> Bool in
+      PairingManager.shared.isPairing()
+    }
+
+    // MARK: - Preferences
+
+    Function("getPreferences") { () -> [String: Any] in
+      PreferencesStore.shared.snapshot()
+    }
+
+    AsyncFunction("setPreferences") { (patch: [String: Any]) -> [String: Any] in
+      let before = PreferencesStore.shared.snapshot()
+      PreferencesStore.shared.apply(patch)
+      let after = PreferencesStore.shared.snapshot()
+      self.sendEvent("preferencesChanged", after)
+      let needsRestart =
+        ((before["port"] as? Int) != (after["port"] as? Int)) ||
+        ((before["serverName"] as? String) != (after["serverName"] as? String)) ||
+        ((before["discoverable"] as? Bool) != (after["discoverable"] as? Bool))
+      if needsRestart, self.server != nil {
+        self.server?.stop()
+        self.server = nil
+        self.serverPort = 0
+        self.startServer(promise: nil)
+      }
+      return after
+    }
+  }
+
+  private var pairingExpiryWorkItem: DispatchWorkItem?
+
+  private func schedulePairingExpiry(at date: Date) {
+    cancelPairingExpiry()
+    let work = DispatchWorkItem { [weak self] in
+      guard let self = self else { return }
+      if PairingManager.shared.isPairing() == false {
+        self.sendEvent("pairingExpired", [:])
+      }
+    }
+    pairingExpiryWorkItem = work
+    let interval = max(0, date.timeIntervalSinceNow)
+    DispatchQueue.main.asyncAfter(deadline: .now() + interval, execute: work)
+  }
+
+  private func cancelPairingExpiry() {
+    pairingExpiryWorkItem?.cancel()
+    pairingExpiryWorkItem = nil
   }
 
   // MARK: - Server lifecycle
 
-  private func startServer(promise: Promise) {
+  private func startServer(promise: Promise?) {
     if self.server != nil {
-      promise.resolve([
+      promise?.resolve([
         "port": Int(self.serverPort),
         "serviceName": self.serviceName
       ])
       return
     }
 
-    let name = Host.current().localizedName ?? ProcessInfo.processInfo.hostName
-    let server = WebSocketServer(serviceType: "_entangle._tcp.", serviceName: name)
+    let prefs = PreferencesStore.shared
+    let name = prefs.serverName
+    let server = WebSocketServer(
+      serviceType: "_entangle._tcp.",
+      serviceName: name,
+      preferredPort: prefs.port,
+      advertiseService: prefs.discoverable
+    )
     self.serviceName = name
 
     wireServerEvents(server, name: name, promise: promise)
@@ -79,18 +164,18 @@ public class EntangleServerModule: Module {
       try server.start()
       self.server = server
     } catch {
-      promise.reject("ENTANGLE_START_FAILED", error.localizedDescription)
+      promise?.reject("ENTANGLE_START_FAILED", error.localizedDescription)
     }
   }
 
   // MARK: - Wiring helpers
 
-  private func wireServerEvents(_ server: WebSocketServer, name: String, promise: Promise) {
+  private func wireServerEvents(_ server: WebSocketServer, name: String, promise: Promise?) {
     server.onReady = { [weak self] port in
       guard let self = self else { return }
       self.serverPort = port
       self.sendEvent("serverReady", ["port": Int(port), "serviceName": name])
-      promise.resolve([
+      promise?.resolve([
         "port": Int(port),
         "serviceName": name
       ])
@@ -113,6 +198,9 @@ public class EntangleServerModule: Module {
     }
     server.onError = { [weak self] message in
       self?.sendEvent("error", ["message": message])
+    }
+    server.onPairRejected = { [weak self] id, host in
+      self?.sendEvent("pairRejected", ["id": id, "host": host])
     }
   }
 

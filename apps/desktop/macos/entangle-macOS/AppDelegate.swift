@@ -13,8 +13,16 @@ class AppDelegate: ExpoAppDelegate, NSWindowDelegate {
   private var statusItem: NSStatusItem?
 
   public override func applicationDidFinishLaunching(_ notification: Notification) {
+    applyDockPolicy()
     setupStatusItem()
-    
+
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(preferencesDidChange),
+      name: Preferences.didChangeNotification,
+      object: nil
+    )
+
     let delegate = ReactNativeDelegate()
     let factory = ExpoReactNativeFactory(delegate: delegate)
     delegate.dependencyProvider = RCTAppDependencyProvider()
@@ -32,6 +40,10 @@ class AppDelegate: ExpoAppDelegate, NSWindowDelegate {
     window?.delegate = self
     window?.isReleasedWhenClosed = false
     window?.collectionBehavior = [.managed, .fullScreenPrimary]
+    window?.appearance = NSAppearance(named: .darkAqua)
+    window?.titlebarAppearsTransparent = true
+    window?.titleVisibility = .hidden
+    window?.backgroundColor = NSColor(red: 10/255, green: 12/255, blue: 16/255, alpha: 1)
     window?.center()
     NSApp.activate(ignoringOtherApps: true)
     window?.makeKeyAndOrderFront(nil)
@@ -47,6 +59,7 @@ class AppDelegate: ExpoAppDelegate, NSWindowDelegate {
   // MARK: - Menu bar
 
   private func setupStatusItem() {
+    guard Preferences.showMenuBarIcon else { return }
     let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     if let button = item.button {
       let image = NSImage(named: "menubar")
@@ -57,6 +70,29 @@ class AppDelegate: ExpoAppDelegate, NSWindowDelegate {
       button.sendAction(on: [.leftMouseUp, .rightMouseUp])
     }
     statusItem = item
+  }
+
+  private func teardownStatusItem() {
+    if let item = statusItem {
+      NSStatusBar.system.removeStatusItem(item)
+      statusItem = nil
+    }
+  }
+
+  private func applyDockPolicy() {
+    NSApp.setActivationPolicy(Preferences.hideDockIcon ? .accessory : .regular)
+  }
+
+  @objc private func preferencesDidChange() {
+    DispatchQueue.main.async {
+      self.applyDockPolicy()
+      let wantsItem = Preferences.showMenuBarIcon
+      if wantsItem && self.statusItem == nil {
+        self.setupStatusItem()
+      } else if !wantsItem && self.statusItem != nil {
+        self.teardownStatusItem()
+      }
+    }
   }
 
   @objc private func statusItemClicked(_ sender: NSStatusBarButton) {

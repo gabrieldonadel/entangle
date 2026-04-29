@@ -1,15 +1,23 @@
-import React, { useEffect } from 'react';
-import { ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ScrollView, StatusBar, StyleSheet } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { AccessibilityGate } from './src/components/AccessibilityGate';
-import { ConnectedClients } from './src/components/ConnectedClients';
-import { ServerStatus } from './src/components/ServerStatus';
+import { ConnectedPhones } from './src/components/ConnectedPhones';
+import { Header } from './src/components/Header';
+import { PairingSheet } from './src/components/PairingSheet';
+import { PreferencesSheet } from './src/components/PreferencesSheet';
+import { ServerCard } from './src/components/ServerCard';
+import { Halos } from './src/components/atoms/Halos';
+import { InfoNotice } from './src/components/atoms/InfoNotice';
 import { useServerStore } from './src/server-state';
+import { tokens } from './src/theme';
 
 function App(): React.JSX.Element {
   const start = useServerStore((s) => s.start);
   const phase = useServerStore((s) => s.phase);
+  const [pairingOpen, setPairingOpen] = useState(false);
+  const [preferencesOpen, setPreferencesOpen] = useState(false);
 
   useEffect(() => {
     if (phase === 'idle') {
@@ -21,18 +29,16 @@ function App(): React.JSX.Element {
     <SafeAreaProvider>
       <StatusBar barStyle="light-content" />
       <SafeAreaView style={styles.root}>
+        <Halos />
         <AccessibilityGate>
           <ScrollView contentContainerStyle={styles.content}>
-            <Text style={styles.heading}>Entangle</Text>
-            <Text style={styles.subheading}>Remote mouse for macOS</Text>
-            <ServerStatus />
-            <ConnectedClients />
-            <View style={styles.footerCard}>
-              <Text style={styles.footerText}>
-                This Mac is advertising on your local network. Any device on the same Wi-Fi can connect without pairing.
-              </Text>
-            </View>
+            <Header />
+            <ServerCard />
+            <ConnectedPhones onPairNew={() => setPairingOpen(true)} />
+            <InfoNotice onConfigure={() => setPreferencesOpen(true)} />
           </ScrollView>
+          <PairingSheet visible={pairingOpen} onClose={() => setPairingOpen(false)} />
+          <PreferencesSheet visible={preferencesOpen} onClose={() => setPreferencesOpen(false)} />
         </AccessibilityGate>
       </SafeAreaView>
     </SafeAreaProvider>
@@ -42,31 +48,11 @@ function App(): React.JSX.Element {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: tokens.bg0,
   },
   content: {
-    padding: 24,
-  },
-  heading: {
-    color: '#fff',
-    fontSize: 32,
-    fontWeight: '700',
-  },
-  subheading: {
-    color: '#8e8e93',
-    fontSize: 16,
-    marginBottom: 24,
-  },
-  footerCard: {
-    marginTop: 12,
-    padding: 16,
-    borderRadius: 8,
-    backgroundColor: '#1c1c1e',
-  },
-  footerText: {
-    color: '#ff9f0a',
-    fontSize: 13,
-    lineHeight: 18,
+    paddingHorizontal: 22,
+    paddingBottom: 22,
   },
 });
 

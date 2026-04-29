@@ -14,8 +14,11 @@ final class ScrollController {
   }
 
   func scroll(dx: Int32, dy: Int32, phase: ScrollPhase) {
+    let invert = !PreferencesStore.shared.naturalScroll
+    let appliedDx: Int32 = invert ? -dx : dx
+    let appliedDy: Int32 = invert ? -dy : dy
     queue.async {
-      self.postScroll(dx: dx, dy: dy, phase: phase)
+      self.postScroll(dx: appliedDx, dy: appliedDy, phase: phase)
     }
   }
 

@@ -116,6 +116,18 @@ export interface PingMessage {
   id: number;
 }
 
+export interface PairRequestMessage {
+  v: 1;
+  t: 'pair.request';
+  code: string;
+}
+
+export interface PairQRMessage {
+  v: 1;
+  t: 'pair.qr';
+  token: string;
+}
+
 export type ClientMessage =
   | PointerMoveMessage
   | PointerClickMessage
@@ -128,7 +140,9 @@ export type ClientMessage =
   | DockListRequestMessage
   | DockActivateMessage
   | HelloMessage
-  | PingMessage;
+  | PingMessage
+  | PairRequestMessage
+  | PairQRMessage;
 
 export interface DockApp {
   bundleId: string;
@@ -179,12 +193,25 @@ export interface ModStateMessage {
   mods: ModMask;
 }
 
+export interface PairAcceptedMessage {
+  v: 1;
+  t: 'pair.accepted';
+}
+
+export interface PairRejectedMessage {
+  v: 1;
+  t: 'pair.rejected';
+  reason: string;
+}
+
 export type ServerMessage =
   | WelcomeMessage
   | PongMessage
   | ErrorMessage
   | DockListResponseMessage
   | DockUpdateMessage
-  | ModStateMessage;
+  | ModStateMessage
+  | PairAcceptedMessage
+  | PairRejectedMessage;
 
 export type Message = ClientMessage | ServerMessage;

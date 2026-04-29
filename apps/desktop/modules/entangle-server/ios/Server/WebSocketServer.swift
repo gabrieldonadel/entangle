@@ -14,16 +14,26 @@ final class WebSocketServer {
   private var clients: [UUID: Client] = [:]
   private let serviceType: String
   private let serviceName: String
+  private let preferredPort: UInt16
+  private let advertiseService: Bool
 
   var onClientConnected: ((UUID, String) -> Void)?
   var onClientDisconnected: ((UUID) -> Void)?
   var onMessage: ((UUID, String) -> Void)?
   var onError: ((String) -> Void)?
   var onReady: ((UInt16) -> Void)?
+  var onPairRejected: ((String, String) -> Void)?
 
-  init(serviceType: String, serviceName: String) {
+  init(
+    serviceType: String,
+    serviceName: String,
+    preferredPort: UInt16 = 0,
+    advertiseService: Bool = true
+  ) {
     self.serviceType = serviceType
     self.serviceName = serviceName
+    self.preferredPort = preferredPort
+    self.advertiseService = advertiseService
   }
 
   func start() throws {
@@ -35,13 +45,21 @@ final class WebSocketServer {
     wsOptions.autoReplyPing = true
     params.defaultProtocolStack.applicationProtocols.insert(wsOptions, at: 0)
 
-    let listener = try NWListener(using: params, on: .any)
-    listener.service = NWListener.Service(
-      name: serviceName,
-      type: serviceType,
-      domain: nil,
-      txtRecord: buildTxtRecord()
-    )
+    let endpoint: NWEndpoint.Port
+    if preferredPort > 0, let p = NWEndpoint.Port(rawValue: preferredPort) {
+      endpoint = p
+    } else {
+      endpoint = .any
+    }
+    let listener = try NWListener(using: params, on: endpoint)
+    if advertiseService {
+      listener.service = NWListener.Service(
+        name: serviceName,
+        type: serviceType,
+        domain: nil,
+        txtRecord: buildTxtRecord()
+      )
+    }
 
     listener.stateUpdateHandler = { [weak self] state in
       guard let self = self else { return }
@@ -112,6 +130,21 @@ final class WebSocketServer {
   private func accept(_ connection: NWConnection) {
     let id = UUID()
     let host = Self.describeEndpoint(connection.endpoint)
+
+    if !PairingManager.shared.shouldAccept(host: host) {
+      connection.stateUpdateHandler = { [weak self] state in
+        if case .ready = state {
+          self?.send("{\"v\":1,\"t\":\"pair.rejected\",\"reason\":\"untrusted\"}", to: connection)
+          self?.onPairRejected?(id.uuidString, host)
+          DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
+            connection.cancel()
+          }
+        }
+      }
+      connection.start(queue: queue)
+      return
+    }
+
     let client = Client(id: id, connection: connection, remoteHost: host, lastSeen: Date())
     clients[id] = client
 

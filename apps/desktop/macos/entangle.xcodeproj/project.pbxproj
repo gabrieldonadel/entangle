@@ -12,6 +12,7 @@
 		514201552437B4B40078DB4F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 514201532437B4B40078DB4F /* Main.storyboard */; };
 		62704498B7B2522E341F3079 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 5C3726A11DC11A854E1C3E7E /* PrivacyInfo.xcprivacy */; };
 		C024676A2E0C76C800F9B72D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C02467692E0C76C800F9B72D /* AppDelegate.swift */; };
+		C0B8A1E12E8E0001000A0001 /* Preferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0B8A1E02E8E0001000A0001 /* Preferences.swift */; };
 		D4972D624A9FB344C1B1E8A0 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6961BC1391A5BF7B0498BB7A /* ExpoModulesProvider.swift */; };
 /* End PBXBuildFile section */
 
@@ -26,6 +27,7 @@
 		6961BC1391A5BF7B0498BB7A /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-entangle-macOS/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		6964FE65E3AE993DCAEC06EF /* Pods-entangle-macOS.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-entangle-macOS.release.xcconfig"; path = "Target Support Files/Pods-entangle-macOS/Pods-entangle-macOS.release.xcconfig"; sourceTree = "<group>"; };
 		C02467692E0C76C800F9B72D /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		C0B8A1E02E8E0001000A0001 /* Preferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Preferences.swift; sourceTree = "<group>"; };
 		CD0187D64CE364892F23EB51 /* libPods-entangle-macOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-entangle-macOS.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
@@ -86,6 +88,7 @@
 			isa = PBXGroup;
 			children = (
 				C02467692E0C76C800F9B72D /* AppDelegate.swift */,
+				C0B8A1E02E8E0001000A0001 /* Preferences.swift */,
 				514201512437B4B40078DB4F /* Assets.xcassets */,
 				514201532437B4B40078DB4F /* Main.storyboard */,
 				514201562437B4B40078DB4F /* Info.plist */,
@@ -278,6 +281,7 @@
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXUpdates/EXUpdates.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoFileSystem/ExpoFileSystem_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/RCT-Folly/RCT-Folly_privacy.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/RNSVG/RNSVGFilters.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/ReachabilitySwift/ReachabilitySwift.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/React-Core/React-Core_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/React-cxxreact/React-cxxreact_privacy.bundle",
@@ -291,6 +295,7 @@
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXUpdates.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoFileSystem_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RCT-Folly_privacy.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNSVGFilters.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ReachabilitySwift.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-Core_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-cxxreact_privacy.bundle",
@@ -333,6 +338,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C024676A2E0C76C800F9B72D /* AppDelegate.swift in Sources */,
+				C0B8A1E12E8E0001000A0001 /* Preferences.swift in Sources */,
 				D4972D624A9FB344C1B1E8A0 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

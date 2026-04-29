@@ -14,9 +14,10 @@ final class CursorController {
   }
 
   func move(dx: CGFloat, dy: CGFloat) {
+    let scale = CGFloat(PreferencesStore.shared.sensitivity)
     queue.async {
       let current = self.currentMouseLocation()
-      let target = self.clampToScreens(CGPoint(x: current.x + dx, y: current.y + dy))
+      let target = self.clampToScreens(CGPoint(x: current.x + dx * scale, y: current.y + dy * scale))
       self.postMove(to: target, dragging: self.isDragging)
     }
   }
@@ -29,6 +30,9 @@ final class CursorController {
       case .up:
         self.postButton(button, isDown: false)
       case .tap:
+        // Tap-to-click is treated as an explicit user gesture; the
+        // preference covers physical surface taps from the phone trackpad.
+        guard PreferencesStore.shared.tapToClick else { return }
         self.postButton(button, isDown: true)
         self.postButton(button, isDown: false)
       }

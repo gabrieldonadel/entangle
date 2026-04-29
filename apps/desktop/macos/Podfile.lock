@@ -48,6 +48,8 @@ PODS:
     - ExpoModulesCore
   - ExpoKeepAwake (55.0.6):
     - ExpoModulesCore
+  - ExpoLinearGradient (15.0.8):
+    - ExpoModulesCore
   - ExpoLogBox (55.0.11):
     - React-Core
   - ExpoModulesCore (55.0.23):
@@ -2463,6 +2465,63 @@ PODS:
     - React-perflogger (= 0.81.7)
     - React-utils (= 0.81.7)
     - SocketRocket
+  - RNSVG (15.15.4):
+    - boost
+    - DoubleConversion
+    - fast_float
+    - fmt
+    - glog
+    - hermes-engine
+    - RCT-Folly
+    - RCT-Folly/Fabric
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - RNSVG/common (= 15.15.4)
+    - SocketRocket
+    - Yoga
+  - RNSVG/common (15.15.4):
+    - boost
+    - DoubleConversion
+    - fast_float
+    - fmt
+    - glog
+    - hermes-engine
+    - RCT-Folly
+    - RCT-Folly/Fabric
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - SocketRocket
+    - Yoga
   - SocketRocket (0.7.1)
   - Yoga (0.0.0)
 
@@ -2478,6 +2537,7 @@ DEPENDENCIES:
   - "ExpoFileSystem (from `../node_modules/.pnpm/expo-file-system@55.0.17_expo@55.0.18_react-native@0.83.6_@babel+core@7.29.0_@types+react@19.2.14_react@19.2.0_/node_modules/expo-file-system/ios`)"
   - "ExpoFont (from `../node_modules/.pnpm/expo-font@55.0.6_expo@55.0.18_react-native@0.83.6_@babel+core@7.29.0_@types+react@19.2.14_react@19.2.0__react@19.2.0/node_modules/expo-font/ios`)"
   - "ExpoKeepAwake (from `../node_modules/.pnpm/expo-keep-awake@55.0.6_expo@55.0.18_react@19.2.0/node_modules/expo-keep-awake/ios`)"
+  - "ExpoLinearGradient (from `../node_modules/.pnpm/expo-linear-gradient@15.0.8_patch_hash=b0d3df5d86c818b37559de41c7f07fe59867d7e0fe2d298e_7fcabe1fd3572cdf9472d90742a0d560/node_modules/expo-linear-gradient/ios`)"
   - "ExpoLogBox (from `../node_modules/.pnpm/@expo+log-box@55.0.11_@expo+dom-webview@55.0.5_expo@55.0.18_react-native@0.83.6_@babel+_204d282634ded66ef24780fad851b983/node_modules/@expo/log-box`)"
   - "ExpoModulesCore (from `../node_modules/.pnpm/expo-modules-core@55.0.23_patch_hash=29c69776964a3816f63742ce7600dd29957e96935e26db36d6_d33bd1b8c2199e36aeb557a9951ea3dd/node_modules/expo-modules-core`)"
   - "ExpoModulesJSI (from `../node_modules/.pnpm/expo-modules-core@55.0.23_patch_hash=29c69776964a3816f63742ce7600dd29957e96935e26db36d6_d33bd1b8c2199e36aeb557a9951ea3dd/node_modules/expo-modules-core`)"
@@ -2554,6 +2614,7 @@ DEPENDENCIES:
   - ReactAppDependencyProvider (from `build/generated/ios`)
   - ReactCodegen (from `build/generated/ios`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native-macos/ReactCommon`)
+  - "RNSVG (from `../node_modules/.pnpm/react-native-svg@15.15.4_patch_hash=88a137c3b794a6422739c968651af9101db3902150154c1ece4_314b197b53ecf8af34bb411b66858c5d/node_modules/react-native-svg`)"
   - SocketRocket (~> 0.7.1)
   - Yoga (from `../node_modules/react-native-macos/ReactCommon/yoga`)
 
@@ -2585,6 +2646,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/.pnpm/expo-font@55.0.6_expo@55.0.18_react-native@0.83.6_@babel+core@7.29.0_@types+react@19.2.14_react@19.2.0__react@19.2.0/node_modules/expo-font/ios"
   ExpoKeepAwake:
     :path: "../node_modules/.pnpm/expo-keep-awake@55.0.6_expo@55.0.18_react@19.2.0/node_modules/expo-keep-awake/ios"
+  ExpoLinearGradient:
+    :path: "../node_modules/.pnpm/expo-linear-gradient@15.0.8_patch_hash=b0d3df5d86c818b37559de41c7f07fe59867d7e0fe2d298e_7fcabe1fd3572cdf9472d90742a0d560/node_modules/expo-linear-gradient/ios"
   ExpoLogBox:
     :path: "../node_modules/.pnpm/@expo+log-box@55.0.11_@expo+dom-webview@55.0.5_expo@55.0.18_react-native@0.83.6_@babel+_204d282634ded66ef24780fad851b983/node_modules/@expo/log-box"
   ExpoModulesCore:
@@ -2736,6 +2799,8 @@ EXTERNAL SOURCES:
     :path: build/generated/ios
   ReactCommon:
     :path: "../node_modules/react-native-macos/ReactCommon"
+  RNSVG:
+    :path: "../node_modules/.pnpm/react-native-svg@15.15.4_patch_hash=88a137c3b794a6422739c968651af9101db3902150154c1ece4_314b197b53ecf8af34bb411b66858c5d/node_modules/react-native-svg"
   Yoga:
     :path: "../node_modules/react-native-macos/ReactCommon/yoga"
 
@@ -2751,6 +2816,7 @@ SPEC CHECKSUMS:
   ExpoFileSystem: a0e4a5a09c9c4f84338289b273a172609452dec9
   ExpoFont: cdd7a1d574a376fa003c713eff49e0a4df8672c7
   ExpoKeepAwake: a1baf9810a2dee1905aa9bdd336852598f7220e9
+  ExpoLinearGradient: e17af5698cc3917f932d72b9b32959aec1b1420d
   ExpoLogBox: 617da77cbc083627692b2ea050a3666808aef2cd
   ExpoModulesCore: ea1e6ae9f489d028f46885ebcd5f1000ec62a4da
   ExpoModulesJSI: 24121c9a2f32d5f6b6ca2f7ff54925be716d5841
@@ -2827,6 +2893,7 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: 17d150a60ad301142905427154168f58641e38c4
   ReactCodegen: 202d9a000a4a754b0946dbdf9c22eafc419c8869
   ReactCommon: b2b6ff304cf01e1b67d8e9646e34d58320be0964
+  RNSVG: 3405336c4507ee0bafb02b08058d57216daa2c50
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: 8a0df683a71bee13fe0b9d8b653d1a062ff65b2e
 
