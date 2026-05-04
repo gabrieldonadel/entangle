@@ -1,0 +1,92 @@
+name: release / prepare PR
+
+# Tag-driven release prepare. Pushing `vX.Y.Z-{mobile,desktop}` opens a PR that
+# bumps version files for that app. Merging that PR triggers the matching
+# publish workflow (release-desktop-publish.yml here, or the mobile EAS Workflow
+# at apps/mobile/.eas/workflows/release-publish.yml).
+
+on:
+  push:
+    tags:
+      - 'v*-mobile'
+      - 'v*-desktop'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Parse tag
+        id: parse
+        run: node scripts/parse-release-tag.mjs
+
+      - name: Configure git identity
+        run: |
+          git config user.name "entangle-release-bot"
+          git config user.email "release-bot@users.noreply.github.com"
+
+      - name: Create release branch
+        env:
+          APP: ${{ steps.parse.outputs.app }}
+          VERSION: ${{ steps.parse.outputs.version }}
+        run: git checkout -b "release/${APP}-${VERSION}"
+
+      - name: Bump version files
+        env:
+          APP: ${{ steps.parse.outputs.app }}
+          VERSION: ${{ steps.parse.outputs.version }}
+        run: node scripts/bump-version.mjs "$APP" "$VERSION"
+
+      - name: Commit + push branch
+        env:
+          APP: ${{ steps.parse.outputs.app }}
+          VERSION: ${{ steps.parse.outputs.version }}
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No version changes to commit — does package.json/app.json/Info.plist already match?"
+            exit 1
+          fi
+          git commit -m "release(${APP}): v${VERSION}"
+          # Force push so a leftover branch from a previous failed run of this
+          # same tag doesn't block us. The branch is automation-owned.
+          git push -fu origin "release/${APP}-${VERSION}"
+
+      - name: Open PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APP: ${{ steps.parse.outputs.app }}
+          VERSION: ${{ steps.parse.outputs.version }}
+        run: |
+          if [ "$APP" = "mobile" ]; then
+            TARGETS="TestFlight + Play Console (via EAS Submit)"
+          else
+            TARGETS="a notarized .dmg attached to GitHub Release v${VERSION}-${APP}"
+          fi
+          # If a PR already exists for this branch (e.g. earlier failed run of
+          # the same tag pushed an updated commit via force push), just print
+          # its URL instead of failing.
+          existing=$(gh pr list --head "release/${APP}-${VERSION}" --state open --json url --jq '.[0].url')
+          if [ -n "$existing" ]; then
+            echo "PR already exists: $existing"
+            exit 0
+          fi
+          BODY_FILE=$(mktemp)
+          {
+            echo "Merging this PR will publish **${APP} v${VERSION}** to ${TARGETS}."
+            echo
+            echo "The tag \`v${VERSION}-${APP}\` will be force-moved onto the merge commit by the publish workflow."
+          } > "$BODY_FILE"
+          gh pr create \
+            --base main \
+            --head "release/${APP}-${VERSION}" \
+            --title "release(${APP}): v${VERSION}" \
+            --body-file "$BODY_FILE"
