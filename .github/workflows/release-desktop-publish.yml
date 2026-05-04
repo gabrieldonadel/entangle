@@ -108,7 +108,7 @@ jobs:
 
       - name: Install Pods
         working-directory: apps/desktop/macos
-        run: bundle exec pod install
+        run: bundle exec pod install --verbose
 
       - name: Import signing certificate
         env:
@@ -130,6 +130,9 @@ jobs:
           rm /tmp/cert.p12
 
       - name: xcodebuild archive
+        # Signing config (Developer ID identity, hardened runtime, timestamp,
+        # team) lives in entangle.xcodeproj/project.pbxproj Release config so
+        # local archives match CI. Nothing to override here.
         run: |
           xcodebuild \
             -workspace "$WORKSPACE" \
@@ -137,9 +140,7 @@ jobs:
             -configuration Release \
             -archivePath "$ARCHIVE_PATH" \
             -destination 'generic/platform=macOS' \
-            CODE_SIGN_STYLE=Manual \
-            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
-            archive | xcpretty && exit ${PIPESTATUS[0]}
+            archive
 
       - name: xcodebuild exportArchive
         run: |
@@ -147,7 +148,7 @@ jobs:
             -exportArchive \
             -archivePath "$ARCHIVE_PATH" \
             -exportPath "$EXPORT_PATH" \
-            -exportOptionsPlist "$EXPORT_OPTIONS" | xcpretty && exit ${PIPESTATUS[0]}
+            -exportOptionsPlist "$EXPORT_OPTIONS"
 
       - name: Notarize
         env:
@@ -158,11 +159,31 @@ jobs:
           APP_PATH="$EXPORT_PATH/$APP_NAME.app"
           ZIP_PATH="$EXPORT_PATH/$APP_NAME.zip"
           ditto -c -k --keepParent "$APP_PATH" "$ZIP_PATH"
-          xcrun notarytool submit "$ZIP_PATH" \
+
+          JSON=$(xcrun notarytool submit "$ZIP_PATH" \
             --apple-id "$APPLE_ID" \
             --password "$APPLE_APP_PASSWORD" \
             --team-id "$APPLE_TEAM_ID" \
-            --wait
+            --output-format json \
+            --wait)
+          echo "$JSON"
+          ID=$(echo "$JSON" | jq -r .id)
+          STATUS=$(echo "$JSON" | jq -r .status)
+
+          # Always fetch the log — even Accepted submissions can have warnings
+          # worth seeing, and on Invalid the log is the only useful signal.
+          echo "::group::notarytool log ($ID)"
+          xcrun notarytool log "$ID" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" || true
+          echo "::endgroup::"
+
+          if [ "$STATUS" != "Accepted" ]; then
+            echo "Notarization status: $STATUS — see the log group above for details." >&2
+            exit 1
+          fi
+
           xcrun stapler staple "$APP_PATH"
 
       - name: Build DMG

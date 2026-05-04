@@ -49,7 +49,7 @@ Repo Settings → Secrets and variables → Actions → New repository secret:
 | `MACOS_CERT_PASSWORD`   | password for the `.p12`                                                                                         |
 | `APPLE_ID`              | Apple ID email used for notarization                                                                            |
 | `APPLE_APP_PASSWORD`    | app-specific password from [appleid.apple.com](https://appleid.apple.com/account/manage)                        |
-| `APPLE_TEAM_ID`         | `KN3BH83GQ4`                                                                                                    |
+| `APPLE_TEAM_ID`         | `3VRHBFMBRL` (the team that issued your Developer ID Application certificate)                                   |
 
 `GITHUB_TOKEN` is provided automatically by GitHub Actions.
 
