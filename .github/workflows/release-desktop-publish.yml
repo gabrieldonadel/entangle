@@ -1,0 +1,181 @@
+name: release / desktop publish
+
+# Triggered when a desktop release-prepare PR is merged. The merge commit's
+# message begins with "release(desktop): vX.Y.Z" — that's how we filter.
+#
+# Order: assert secrets → import signing identity → install JS deps + Pods →
+# stamp CFBundleVersion → xcodebuild archive + export → notarize + staple →
+# create-dmg → move tag onto merge commit → create GitHub Release with .dmg.
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    # `contains` (not `startsWith`) so this fires regardless of merge strategy:
+    # default merge commits put the PR title in the body, while squash/rebase
+    # put it on the first line.
+    if: "${{ contains(github.event.head_commit.message, 'release(desktop): v') }}"
+    runs-on: macos-14
+    timeout-minutes: 60
+
+    env:
+      APP_NAME: entangle
+      SCHEME: entangle-macOS
+      WORKSPACE: apps/desktop/macos/entangle.xcworkspace
+      ARCHIVE_PATH: build/entangle.xcarchive
+      EXPORT_PATH: build/export
+      EXPORT_OPTIONS: apps/desktop/macos/ExportOptions.plist
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Parse version from commit message
+        id: parse
+        run: |
+          MSG=$(printf '%s' "${{ github.event.head_commit.message }}" | head -n1)
+          VERSION=$(printf '%s' "$MSG" | sed -nE 's/^release\(desktop\): v([0-9]+\.[0-9]+\.[0-9]+).*/\1/p')
+          if [ -z "$VERSION" ]; then
+            echo "Could not parse version from: $MSG" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Assert required secrets
+        env:
+          MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          missing=()
+          for s in MACOS_CERT_P12_BASE64 MACOS_CERT_PASSWORD APPLE_ID APPLE_APP_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!s}" ]; then missing+=("$s"); fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "Missing required repo secrets: ${missing[*]}" >&2
+            echo "See RELEASING.md for how to set them up." >&2
+            exit 1
+          fi
+
+      - name: Setup Node + pnpm
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: corepack enable && corepack prepare pnpm@10.33.0 --activate
+
+      - name: Install JS deps
+        working-directory: apps/desktop
+        run: pnpm install --ignore-workspace --frozen-lockfile
+
+      - name: Setup Ruby + Bundler
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+          working-directory: apps/desktop
+
+      - name: Install Pods
+        working-directory: apps/desktop/macos
+        run: bundle exec pod install
+
+      - name: Import signing certificate
+        env:
+          MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+        run: |
+          KEYCHAIN=build.keychain
+          KEYCHAIN_PWD=$(uuidgen)
+
+          echo "$MACOS_CERT_P12_BASE64" | base64 --decode > /tmp/cert.p12
+          security create-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN"
+          security import /tmp/cert.p12 -k "$KEYCHAIN" -P "$MACOS_CERT_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/productbuild -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PWD" "$KEYCHAIN" >/dev/null
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          rm /tmp/cert.p12
+
+      - name: xcodebuild archive
+        run: |
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -archivePath "$ARCHIVE_PATH" \
+            -destination 'generic/platform=macOS' \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            archive | xcpretty && exit ${PIPESTATUS[0]}
+
+      - name: xcodebuild exportArchive
+        run: |
+          xcodebuild \
+            -exportArchive \
+            -archivePath "$ARCHIVE_PATH" \
+            -exportPath "$EXPORT_PATH" \
+            -exportOptionsPlist "$EXPORT_OPTIONS" | xcpretty && exit ${PIPESTATUS[0]}
+
+      - name: Notarize
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          APP_PATH="$EXPORT_PATH/$APP_NAME.app"
+          ZIP_PATH="$EXPORT_PATH/$APP_NAME.zip"
+          ditto -c -k --keepParent "$APP_PATH" "$ZIP_PATH"
+          xcrun notarytool submit "$ZIP_PATH" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+          xcrun stapler staple "$APP_PATH"
+
+      - name: Build DMG
+        env:
+          VERSION: ${{ steps.parse.outputs.version }}
+        run: |
+          brew install create-dmg
+          DMG_PATH="$EXPORT_PATH/${APP_NAME}-${VERSION}.dmg"
+          create-dmg \
+            --volname "${APP_NAME} ${VERSION}" \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --app-drop-link 450 200 \
+            "$DMG_PATH" \
+            "$EXPORT_PATH/${APP_NAME}.app"
+          # Re-staple the DMG itself for offline Gatekeeper checks.
+          xcrun stapler staple "$DMG_PATH" || true
+          echo "DMG=$DMG_PATH" >> "$GITHUB_ENV"
+
+      - name: Move tag onto merge commit
+        env:
+          VERSION: ${{ steps.parse.outputs.version }}
+        # The original tag pointed at the developer's pre-bump commit; we move
+        # it so the GitHub Release reflects the actually-released tree.
+        run: |
+          git config user.name "entangle-release-bot"
+          git config user.email "release-bot@users.noreply.github.com"
+          git tag -f "v${VERSION}-desktop"
+          git push -f origin "v${VERSION}-desktop"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.parse.outputs.version }}
+        run: |
+          gh release create "v${VERSION}-desktop" "$DMG" \
+            --title "Desktop v${VERSION}" \
+            --generate-notes \
+            --verify-tag

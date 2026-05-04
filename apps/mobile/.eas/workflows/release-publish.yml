@@ -1,0 +1,129 @@
+name: Mobile release publish
+
+# Triggered when a release-prepare PR is merged. The merge commit's message
+# begins with "release(mobile): vX.Y.Z" — that's how we filter pushes to main.
+#
+# Order: assert secrets → move tag onto merge commit → build ios+android (in
+# parallel) → submit each → create GitHub Release.
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  guard:
+    name: Guard (verify release commit + secrets)
+    # `contains` (not `startsWith`) so this fires regardless of merge strategy:
+    # default merge commits put the PR title in the body, while squash/rebase
+    # put it on the first line.
+    if: "${{ contains(github.event.head_commit.message, 'release(mobile): v') }}"
+    runs_on: linux-medium
+    outputs:
+      version: ${{ steps.parse.outputs.version }}
+    steps:
+      - id: parse
+        name: Parse version from commit message
+        # head_commit.message starts with "release(mobile): v0.1.2" possibly
+        # followed by a body. Extract just the x.y.z out of the first line.
+        run: |
+          MSG=$(printf '%s' '${{ github.event.head_commit.message }}' | head -n1)
+          VERSION=$(printf '%s' "$MSG" | sed -nE 's/^release\(mobile\): v([0-9]+\.[0-9]+\.[0-9]+).*/\1/p')
+          if [ -z "$VERSION" ]; then
+            echo "Could not parse version from: $MSG" >&2
+            exit 1
+          fi
+          echo "Version: $VERSION"
+          set-output version "$VERSION"
+
+      - name: Assert RELEASE_GH_TOKEN is set
+        run: |
+          if [ -z "${{ env.RELEASE_GH_TOKEN }}" ]; then
+            echo "EAS project secret RELEASE_GH_TOKEN is missing." >&2
+            echo "Add a GitHub PAT (contents:write, pull-requests:read) under EAS → project → environment variables." >&2
+            exit 1
+          fi
+
+  move_tag:
+    name: Move tag onto merge commit
+    needs: [guard]
+    runs_on: linux-medium
+    env:
+      VERSION: ${{ needs.guard.outputs.version }}
+      RELEASE_GH_TOKEN: ${{ env.RELEASE_GH_TOKEN }}
+    steps:
+      - uses: eas/checkout
+
+      - name: Force-move v${{ needs.guard.outputs.version }}-mobile onto HEAD
+        # The original tag pointed at the developer's pre-bump commit; we move
+        # it to the merge commit so the GitHub Release is built from the
+        # actually-released tree.
+        run: |
+          git config user.name "entangle-release-bot"
+          git config user.email "release-bot@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${RELEASE_GH_TOKEN}@github.com/${{ github.repository }}.git"
+          git tag -f "v${VERSION}-mobile"
+          git push -f origin "v${VERSION}-mobile"
+
+  build_ios:
+    name: Build iOS (production)
+    needs: [move_tag]
+    type: build
+    params:
+      platform: ios
+      profile: production
+      message: 'Mobile v${{ needs.guard.outputs.version }}'
+
+  build_android:
+    name: Build Android (production)
+    needs: [move_tag]
+    type: build
+    params:
+      platform: android
+      profile: production
+      message: 'Mobile v${{ needs.guard.outputs.version }}'
+
+  submit_ios:
+    name: Submit iOS to App Store Connect
+    needs: [build_ios]
+    type: submit
+    params:
+      build_id: ${{ needs.build_ios.outputs.build_id }}
+      profile: production
+
+  submit_android:
+    name: Submit Android to Play Console
+    needs: [build_android]
+    type: submit
+    params:
+      build_id: ${{ needs.build_android.outputs.build_id }}
+      profile: production
+
+  github_release:
+    name: Create GitHub Release
+    needs: [guard, submit_ios, submit_android]
+    runs_on: linux-medium
+    env:
+      VERSION: ${{ needs.guard.outputs.version }}
+      GH_TOKEN: ${{ env.RELEASE_GH_TOKEN }}
+    steps:
+      - uses: eas/checkout
+
+      - name: Install gh CLI
+        run: |
+          if ! command -v gh >/dev/null 2>&1; then
+            (type -p wget >/dev/null || sudo apt-get install -y wget) \
+              && sudo mkdir -p -m 755 /etc/apt/keyrings \
+              && wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null \
+              && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null \
+              && sudo apt-get update \
+              && sudo apt-get install -y gh
+          fi
+
+      - name: Create release
+        run: |
+          gh release create "v${VERSION}-mobile" \
+            --repo "${{ github.repository }}" \
+            --title "Mobile v${VERSION}" \
+            --generate-notes \
+            --verify-tag
