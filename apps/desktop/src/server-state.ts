@@ -24,7 +24,7 @@ export type ClientInfo = {
   messageRate: number;
 };
 
-type ServerPhase = 'idle' | 'starting' | 'running' | 'error';
+type ServerPhase = 'idle' | 'starting' | 'running' | 'paused' | 'error';
 
 const SPARKLINE_LENGTH = 16;
 
@@ -100,7 +100,7 @@ export const useServerStore = create<ServerState>((set, get) => ({
       rateTimer = null;
     }
     set({
-      phase: 'idle',
+      phase: 'paused',
       port: null,
       serviceName: null,
       clients: {},

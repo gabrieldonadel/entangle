@@ -19,14 +19,37 @@ type Props = {
 export function PairingSheet({ visible, onClose }: Props) {
   const pairing = useServerStore((s) => s.pairing);
   const port = useServerStore((s) => s.port);
+  const clientCount = useServerStore((s) => Object.keys(s.clients).length);
   const startPairing = useServerStore((s) => s.startPairing);
   const stopPairing = useServerStore((s) => s.stopPairing);
+
+  const baselineCountRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (visible && !pairing) {
       void startPairing();
     }
   }, [visible, pairing, startPairing]);
+
+  useEffect(() => {
+    if (visible) {
+      if (baselineCountRef.current === null) {
+        baselineCountRef.current = clientCount;
+      } else if (clientCount > baselineCountRef.current) {
+        // A device successfully paired while this sheet was open.
+        void stopPairing();
+        baselineCountRef.current = null;
+        onClose();
+      }
+    } else {
+      baselineCountRef.current = null;
+    }
+  }, [visible, clientCount, onClose, stopPairing]);
+
+  const dismiss = () => {
+    void stopPairing();
+    onClose();
+  };
 
   if (!visible) return null;
 
@@ -36,7 +59,7 @@ export function PairingSheet({ visible, onClose }: Props) {
 
   return (
     <View style={styles.overlay} pointerEvents="auto">
-      <Pressable style={styles.dismissCatcher} onPress={onClose} />
+      <Pressable style={styles.dismissCatcher} onPress={dismiss} />
       <View style={styles.backdrop} pointerEvents="box-none">
         <View style={styles.sheet}>
           <View style={styles.qrColumn}>
@@ -55,12 +78,7 @@ export function PairingSheet({ visible, onClose }: Props) {
             </View>
             <Listening port={port} />
             <View style={styles.actions}>
-              <Pressable
-                style={styles.primary}
-                onPress={() => {
-                  void stopPairing();
-                  onClose();
-                }}>
+              <Pressable style={styles.primary} onPress={dismiss}>
                 <Text style={styles.primaryLabel}>Done</Text>
               </Pressable>
               <Pressable

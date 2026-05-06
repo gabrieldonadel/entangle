@@ -14,7 +14,7 @@ export function Header() {
   const phase = useServerStore((s) => s.phase);
   const start = useServerStore((s) => s.start);
   const stop = useServerStore((s) => s.stop);
-  const paused = phase === 'idle' || phase === 'error';
+  const paused = phase === 'paused' || phase === 'error';
   const running = phase === 'running';
 
   return (
