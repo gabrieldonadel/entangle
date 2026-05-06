@@ -26,8 +26,19 @@ final class KeyController {
       case .up:
         self.postKey(virtualKey, keyDown: false, flags: flags)
       case .tap:
+        // Press the modifier keys explicitly so the WindowServer's modifier
+        // state matches the synthesized event sequence — without these, Ctrl
+        // (and friends) would stay latched after the tap and bleed into
+        // subsequent clicks (e.g. registering as a right-click).
+        let modifierKeys = Self.modifierVirtualKeys(for: mods)
+        for modKey in modifierKeys {
+          self.postModifier(modKey, keyDown: true, flags: flags)
+        }
         self.postKey(virtualKey, keyDown: true, flags: flags)
         self.postKey(virtualKey, keyDown: false, flags: flags)
+        for modKey in modifierKeys.reversed() {
+          self.postModifier(modKey, keyDown: false, flags: [])
+        }
       }
     }
   }
@@ -62,6 +73,32 @@ final class KeyController {
     }
     event.flags = combinedFlags
     event.post(tap: .cghidEventTap)
+  }
+
+  /// Posts a modifier-key transition (Control, Shift, etc.). The event must
+  /// not carry `.maskSecondaryFn` even though it is technically a key press —
+  /// that flag is reserved for arrow / nav / F-keys.
+  private func postModifier(_ virtualKey: CGKeyCode, keyDown: Bool, flags: CGEventFlags) {
+    guard let event = CGEvent(
+      keyboardEventSource: eventSource,
+      virtualKey: virtualKey,
+      keyDown: keyDown
+    ) else { return }
+    event.flags = flags
+    event.post(tap: .cghidEventTap)
+  }
+
+  /// Maps a `ModFlag` bitmask to the virtual key codes for the corresponding
+  /// modifier keys, ordered as a real typist would press them so we can
+  /// release them in reverse.
+  private static func modifierVirtualKeys(for mask: UInt32) -> [CGKeyCode] {
+    var keys: [CGKeyCode] = []
+    if mask & ModFlag.command.rawValue != 0 { keys.append(0x37) } // left command
+    if mask & ModFlag.shift.rawValue   != 0 { keys.append(0x38) } // left shift
+    if mask & ModFlag.option.rawValue  != 0 { keys.append(0x3A) } // left option
+    if mask & ModFlag.control.rawValue != 0 { keys.append(0x3B) } // left control
+    if mask & ModFlag.fn.rawValue      != 0 { keys.append(0x3F) } // fn
+    return keys
   }
 
   /// Arrow keys, navigation keys and F-keys carry `kCGEventFlagMaskSecondaryFn`
