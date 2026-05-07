@@ -71,7 +71,22 @@ function accumulateScroll(dx: number, dy: number) {
 
 // Gesture composition --------------------------------------------------------
 
+// Drag-stationarity threshold. activateAfterLongPress fires after the
+// duration regardless of distance traveled, so we re-check at onStart how
+// far the finger actually moved to decide whether the user meant to hold
+// (arm a drag) or was just slow-swiping (normal cursor pan).
+const DRAG_TRAVEL_TOLERANCE = 8;
+
+// Drag state lives in a single-element object held by closure. RNGH builds
+// gesture callbacks via Reanimated's worklet pipeline; even with
+// `runOnJS(true)`, plain `let` bindings get captured by *value* at gesture
+// build time, so writes inside `onStart` were invisible to `onEnd`. An
+// object reference is captured stably and `.value` is always read live.
+type DragState = { value: boolean };
+
 export function createTrackpadGestures() {
+  const dragState: DragState = { value: false };
+  // Single-finger pan: just moves the cursor. No haptic on swipe.
   const pan = Gesture.Pan()
     .minPointers(1)
     .maxPointers(1)
@@ -84,20 +99,37 @@ export function createTrackpadGestures() {
     })
     .runOnJS(true);
 
+  // Long-press to arm a drag (e.g. text selection on macOS). When the user
+  // holds the finger reasonably still for 450 ms, this gesture wins the race
+  // ahead of `pan` and we send `p.drag begin` + a medium haptic. From that
+  // point on `onChange` keeps streaming p.move events, which the Mac
+  // interprets as drag motion since the left button is now down.
+  //
+  // If the user instead slow-swipes for 450 ms (movement that's too small to
+  // trigger `pan` immediately), this gesture also wins — but the `onStart`
+  // distance check below means we treat it as a regular pan: no haptic, no
+  // drag-begin. Either way `onEnd` releases the drag cleanly if it was armed.
   const dragPan = Gesture.Pan()
     .minPointers(1)
     .maxPointers(1)
-    .activateAfterLongPress(400)
-    .onStart(() => {
-      sendMessage({ v: PROTOCOL_VERSION, t: "p.drag", phase: "begin" });
-      void Haptics.impactAsync();
+    .activateAfterLongPress(450)
+    .onStart((event) => {
+      const traveled = Math.hypot(event.translationX, event.translationY);
+      if (traveled <= DRAG_TRAVEL_TOLERANCE) {
+        sendMessage({ v: PROTOCOL_VERSION, t: "p.drag", phase: "begin" });
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        dragState.value = true;
+      }
     })
     .onChange((event) => {
       accumulateMove(event.changeX, event.changeY);
     })
     .onEnd(() => {
       flushMove();
-      sendMessage({ v: PROTOCOL_VERSION, t: "p.drag", phase: "end" });
+      if (dragState.value) {
+        sendMessage({ v: PROTOCOL_VERSION, t: "p.drag", phase: "end" });
+        dragState.value = false;
+      }
     })
     .runOnJS(true);
 
@@ -141,6 +173,7 @@ export function createTrackpadGestures() {
         button: "right",
         phase: "tap",
       });
+      void Haptics.selectionAsync();
     })
     .runOnJS(true);
 
@@ -155,8 +188,56 @@ export function createTrackpadGestures() {
         button: "left",
         phase: "tap",
       });
+      void Haptics.selectionAsync();
     })
     .runOnJS(true);
 
-  return Gesture.Race(twoFingerDoubleTap, tap, scrollPan, dragPan, pan);
+  // Three-finger swipe — left/right to switch spaces, up to invoke Mission
+  // Control. Same conventions as the macOS trackpad. We fire once per
+  // swipe gesture (tracked via `swipeFired`) so a single sweep doesn't
+  // step through multiple spaces.
+  const swipeState = { fired: false };
+  const SWIPE_THRESHOLD_X = 50;
+  const SWIPE_THRESHOLD_Y = 60;
+
+  const threeFingerSwipe = Gesture.Pan()
+    .minPointers(3)
+    .maxPointers(3)
+    .onChange((event) => {
+      if (swipeState.fired) return;
+      const ax = Math.abs(event.translationX);
+      const ay = Math.abs(event.translationY);
+      if (ax > SWIPE_THRESHOLD_X && ax > ay) {
+        // macOS convention: fingers sliding LEFT advance to the next
+        // (right-hand) space, fingers sliding RIGHT go back to the
+        // previous one — the on-screen desktops follow the fingers.
+        sendMessage({
+          v: PROTOCOL_VERSION,
+          t: "g.space",
+          dir: event.translationX > 0 ? "left" : "right",
+        });
+        void Haptics.selectionAsync();
+        swipeState.fired = true;
+      } else if (event.translationY < -SWIPE_THRESHOLD_Y && ay > ax) {
+        sendMessage({ v: PROTOCOL_VERSION, t: "g.mission" });
+        void Haptics.selectionAsync();
+        swipeState.fired = true;
+      }
+    })
+    .onEnd(() => {
+      swipeState.fired = false;
+    })
+    .onFinalize(() => {
+      swipeState.fired = false;
+    })
+    .runOnJS(true);
+
+  return Gesture.Race(
+    twoFingerDoubleTap,
+    tap,
+    threeFingerSwipe,
+    scrollPan,
+    dragPan,
+    pan
+  );
 }
