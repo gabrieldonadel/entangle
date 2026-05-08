@@ -61,6 +61,10 @@ public class EntangleServerModule: Module {
       return AccessibilityCheck.promptIfNeeded()
     }
 
+    Function("getLanHost") { () -> String? in
+      NetworkInterfaces.primaryIPv4()
+    }
+
     // MARK: - Pairing
 
     AsyncFunction("startPairing") { () -> [String: Any] in
@@ -186,11 +190,11 @@ public class EntangleServerModule: Module {
     server.onReady = { [weak self] port in
       guard let self = self else { return }
       self.serverPort = port
-      self.sendEvent("serverReady", ["port": Int(port), "serviceName": name])
-      promise?.resolve([
-        "port": Int(port),
-        "serviceName": name
-      ])
+      let host = NetworkInterfaces.primaryIPv4()
+      var payload: [String: Any] = ["port": Int(port), "serviceName": name]
+      if let host = host { payload["lanHost"] = host }
+      self.sendEvent("serverReady", payload)
+      promise?.resolve(payload)
     }
     server.onClientConnected = { [weak self] id, host in
       self?.sendEvent("clientConnected", ["id": id.uuidString, "host": host])

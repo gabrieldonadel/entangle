@@ -16,9 +16,12 @@ type Props = {
   onClose: () => void;
 };
 
+const PAIR_LINK_BASE = 'https://entangle.donadel.dev/pair';
+
 export function PairingSheet({ visible, onClose }: Props) {
   const pairing = useServerStore((s) => s.pairing);
   const port = useServerStore((s) => s.port);
+  const lanHost = useServerStore((s) => s.lanHost);
   const clientCount = useServerStore((s) => Object.keys(s.clients).length);
   const startPairing = useServerStore((s) => s.startPairing);
   const stopPairing = useServerStore((s) => s.stopPairing);
@@ -53,9 +56,19 @@ export function PairingSheet({ visible, onClose }: Props) {
 
   if (!visible) return null;
 
+  // Universal link: opens the iPhone app via associatedDomains when
+  // installed, otherwise lands on the website's /pair page (App Store
+  // CTA + manual `entangle://` fallback button).
   const qrPayload = pairing
-    ? `entangle://pair?port=${port ?? 0}&token=${pairing.token}`
-    : 'entangle://pair';
+    ? `${PAIR_LINK_BASE}?` +
+      [
+        lanHost ? `host=${encodeURIComponent(lanHost)}` : null,
+        port != null ? `port=${port}` : null,
+        `token=${encodeURIComponent(pairing.token)}`,
+      ]
+        .filter(Boolean)
+        .join('&')
+    : PAIR_LINK_BASE;
 
   return (
     <View style={styles.overlay} pointerEvents="auto">

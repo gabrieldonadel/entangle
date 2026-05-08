@@ -1,0 +1,19 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["3VRHBFMBRL.com.gabrieldonadel.entangle-mobile"],
+        "components": [
+          {
+            "/": "/pair",
+            "comment": "Pairing handoff from the Mac's QR code"
+          },
+          {
+            "/": "/pair/*",
+            "comment": "Future pair sub-routes"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,5 +1,6 @@
 import { Stack, router } from '@/lib/router';
-import { useEffect, useState } from 'react';
+import { useLocalSearchParams } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -14,20 +15,50 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useConnection } from '@/state/connection';
 
 export default function PairScreen() {
+  const params = useLocalSearchParams<{
+    host?: string;
+    port?: string;
+    token?: string;
+  }>();
   const phase = useConnection((s) => s.phase);
   const target = useConnection((s) => s.target);
   const pairingError = useConnection((s) => s.pairingError);
   const retryPairing = useConnection((s) => s.retryPairing);
+  const connectWithToken = useConnection((s) => s.connectWithToken);
   const disconnect = useConnection((s) => s.disconnect);
   const [code, setCode] = useState('');
+
+  // Universal-link auto-pair: when this screen is opened with `host`, `port`
+  // and `token` query params (e.g. iOS Camera scanned the QR code), skip the
+  // manual code-entry UI and connect directly. Run only once per param set.
+  const dispatchedTokenRef = useRef<string | null>(null);
+  useEffect(() => {
+    const portNum = params.port ? parseInt(params.port, 10) : NaN;
+    if (
+      params.host &&
+      Number.isFinite(portNum) &&
+      params.token &&
+      dispatchedTokenRef.current !== params.token
+    ) {
+      dispatchedTokenRef.current = params.token;
+      connectWithToken({
+        host: params.host,
+        port: portNum,
+        token: params.token,
+      });
+    }
+  }, [params.host, params.port, params.token, connectWithToken]);
+
+  const hasDeepLinkParams =
+    Boolean(params.host) && Boolean(params.port) && Boolean(params.token);
 
   useEffect(() => {
     if (phase === 'open') {
       router.replace('/(tabs)');
-    } else if (phase === 'idle') {
+    } else if (phase === 'idle' && !hasDeepLinkParams) {
       router.replace('/connect');
     }
-  }, [phase]);
+  }, [phase, hasDeepLinkParams]);
 
   const submitting = phase === 'connecting' || phase === 'reconnecting';
 

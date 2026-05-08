@@ -32,6 +32,7 @@ interface ServerState {
   phase: ServerPhase;
   port: number | null;
   serviceName: string | null;
+  lanHost: string | null;
   clients: Record<string, ClientInfo>;
   lastError: string | null;
   messageRate: number;
@@ -55,6 +56,7 @@ export const useServerStore = create<ServerState>((set, get) => ({
   phase: 'idle',
   port: null,
   serviceName: null,
+  lanHost: EntangleServer.getLanHost(),
   clients: {},
   lastError: null,
   messageRate: 0,
@@ -84,8 +86,14 @@ export const useServerStore = create<ServerState>((set, get) => ({
     if (get().phase === 'starting' || get().phase === 'running') return;
     set({ phase: 'starting', lastError: null });
     try {
-      const { port, serviceName } = await EntangleServer.startServer();
-      set({ phase: 'running', port, serviceName, startedAt: Date.now() });
+      const { port, serviceName, lanHost } = await EntangleServer.startServer();
+      set({
+        phase: 'running',
+        port,
+        serviceName,
+        lanHost: lanHost ?? EntangleServer.getLanHost(),
+        startedAt: Date.now(),
+      });
       if (!rateTimer) {
         rateTimer = setInterval(tickStats, 1000);
       }
@@ -200,6 +208,7 @@ eventEmitter.addListener('serverReady', (event: ServerReadyEvent) => {
   useServerStore.setState((state) => ({
     port: event.port,
     serviceName: event.serviceName,
+    lanHost: event.lanHost ?? state.lanHost,
     phase: 'running',
     startedAt: state.startedAt ?? Date.now(),
   }));

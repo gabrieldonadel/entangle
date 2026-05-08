@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "entangle",
-    "slug": "entangle-mobile",
+    "slug": "entangle",
     "version": "0.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -14,7 +14,9 @@
         "NSBonjourServices": ["_entangle._tcp.", "_entangle._tcp."],
         "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "com.gabrieldonadel.entangle-mobile"
+      "bundleIdentifier": "com.gabrieldonadel.entangle-mobile",
+      "appleTeamId": "3VRHBFMBRL",
+      "associatedDomains": ["applinks:entangle.donadel.dev"]
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +25,21 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "entangle.donadel.dev",
+              "pathPrefix": "/pair"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "output": "static",

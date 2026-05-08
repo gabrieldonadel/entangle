@@ -19,12 +19,13 @@ export type PairingWindow = {
 };
 
 type NativeModuleType = {
-  startServer(): Promise<{ port: number; serviceName: string }>;
+  startServer(): Promise<{ port: number; serviceName: string; lanHost?: string }>;
   stopServer(): Promise<void>;
   sendToClient(clientId: string, text: string): Promise<void>;
   broadcast(text: string): Promise<void>;
   isAccessibilityTrusted(): boolean;
   promptAccessibility(): Promise<boolean>;
+  getLanHost(): string | null;
   startPairing(): Promise<PairingWindow>;
   stopPairing(): Promise<void>;
   forgetAllPaired(): Promise<void>;
@@ -41,7 +42,7 @@ export type ClientConnectedEvent = { id: string; host: string };
 export type ClientDisconnectedEvent = { id: string };
 export type ServerMessageEvent = { id: string; text: string; handledNatively: boolean };
 export type ServerErrorEvent = { message: string };
-export type ServerReadyEvent = { port: number; serviceName: string };
+export type ServerReadyEvent = { port: number; serviceName: string; lanHost?: string };
 export type AccessibilityChangedEvent = { trusted: boolean };
 export type PairingStartedEvent = PairingWindow;
 export type PairRejectedEvent = { id: string; host: string };
@@ -87,6 +88,10 @@ export function promptAccessibility() {
   return nativeModule.promptAccessibility();
 }
 
+export function getLanHost(): string | null {
+  return nativeModule.getLanHost();
+}
+
 export function startPairing() {
   return nativeModule.startPairing();
 }
@@ -118,6 +123,7 @@ export default {
   broadcast,
   isAccessibilityTrusted,
   promptAccessibility,
+  getLanHost,
   startPairing,
   stopPairing,
   forgetAllPaired,

@@ -42,6 +42,12 @@ interface ConnectionState {
   pairingError: string | null;
   trustedTokens: Record<string, string>;
   connect: (target: ConnectionTarget) => void;
+  connectWithToken: (input: {
+    name?: string;
+    host: string;
+    port: number;
+    token: string;
+  }) => void;
   disconnect: () => void;
   send: (msg: ClientMessage) => void;
   sendRaw: (raw: string) => void;
@@ -74,6 +80,18 @@ export const useConnection = create<ConnectionState>((set, get) => ({
     reconnectAttempt = 0;
     pendingPairCode = null;
     pendingPairToken = get().trustedTokens[target.host] ?? null;
+    set({ target, lastError: null, pairingError: null });
+    openSocket();
+  },
+  connectWithToken: ({ name, host, port, token }) => {
+    manuallyDisconnected = false;
+    reconnectAttempt = 0;
+    pendingPairCode = null;
+    pendingPairToken = token;
+    const target: ConnectionTarget = { name: name ?? host, host, port };
+    AsyncStorage.setItem('entangle.lastHost', JSON.stringify(target)).catch(
+      () => undefined,
+    );
     set({ target, lastError: null, pairingError: null });
     openSocket();
   },
