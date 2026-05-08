@@ -74,8 +74,34 @@ final class PairingManager {
     defaults.set(Array(current), forKey: trustedKey)
   }
 
+  func untrust(host: String) {
+    var current = trustedHosts()
+    current.remove(Self.normalize(host: host))
+    defaults.set(Array(current), forKey: trustedKey)
+  }
+
   func forgetAll() {
     defaults.removeObject(forKey: trustedKey)
+    defaults.removeObject(forKey: namesKey)
+  }
+
+  // MARK: - Per-device names
+
+  private let namesKey = "entangle.clientNames"
+
+  func clientNames() -> [String: String] {
+    defaults.dictionary(forKey: namesKey) as? [String: String] ?? [:]
+  }
+
+  func setName(host: String, name: String?) {
+    var current = clientNames()
+    let normalized = Self.normalize(host: host)
+    if let name = name, !name.isEmpty {
+      current[normalized] = name
+    } else {
+      current.removeValue(forKey: normalized)
+    }
+    defaults.set(current, forKey: namesKey)
   }
 
   enum HandshakeOutcome {

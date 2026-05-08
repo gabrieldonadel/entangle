@@ -68,7 +68,7 @@ export function PairingSheet({ visible, onClose }: Props) {
       ]
         .filter(Boolean)
         .join('&')
-    : PAIR_LINK_BASE;
+    : null;
 
   return (
     <View style={styles.overlay} pointerEvents="auto">
@@ -76,7 +76,11 @@ export function PairingSheet({ visible, onClose }: Props) {
       <View style={styles.backdrop} pointerEvents="box-none">
         <View style={styles.sheet}>
           <View style={styles.qrColumn}>
-            <QRCode value={qrPayload} size={188} />
+            {qrPayload ? (
+              <QRCode value={qrPayload} size={188} />
+            ) : (
+              <View style={styles.qrPlaceholder} />
+            )}
             <ExpiresPill expiresAt={pairing?.expiresAt ?? null} />
           </View>
           <View style={styles.copyColumn}>
@@ -194,6 +198,14 @@ const styles = StyleSheet.create({
   },
   qrColumn: {
     alignItems: 'center',
+  },
+  qrPlaceholder: {
+    width: 188 + 24,
+    height: 188 + 24,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
   },
   copyColumn: {
     flex: 1,

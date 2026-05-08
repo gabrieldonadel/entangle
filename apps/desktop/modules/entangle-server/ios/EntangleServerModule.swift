@@ -90,6 +90,27 @@ public class EntangleServerModule: Module {
       self.server?.disconnectAll()
     }
 
+    AsyncFunction("disconnectClient") { (clientId: String) -> Void in
+      guard let uuid = UUID(uuidString: clientId) else { return }
+      _ = self.server?.disconnect(id: uuid)
+    }
+
+    AsyncFunction("forgetClient") { (clientId: String) -> Void in
+      guard let uuid = UUID(uuidString: clientId) else { return }
+      let host = self.server?.disconnect(id: uuid)
+      if let host = host {
+        PairingManager.shared.untrust(host: host)
+      }
+    }
+
+    Function("getClientNames") { () -> [String: String] in
+      PairingManager.shared.clientNames()
+    }
+
+    AsyncFunction("setClientName") { (host: String, name: String?) -> Void in
+      PairingManager.shared.setName(host: host, name: name)
+    }
+
     Function("isPairing") { () -> Bool in
       PairingManager.shared.isPairing()
     }

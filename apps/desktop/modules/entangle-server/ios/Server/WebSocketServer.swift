@@ -264,6 +264,26 @@ final class WebSocketServer {
     }
   }
 
+  /// Returns the disconnected client's host, if it existed.
+  func disconnect(id: UUID) -> String? {
+    var host: String?
+    queue.sync {
+      if let client = self.clients[id] {
+        host = client.remoteHost
+        client.connection.cancel()
+      }
+    }
+    return host
+  }
+
+  func clientHost(id: UUID) -> String? {
+    var host: String?
+    queue.sync {
+      host = self.clients[id]?.remoteHost
+    }
+    return host
+  }
+
   private func receive(on connection: NWConnection, id: UUID) {
     connection.receiveMessage { [weak self] data, context, _, error in
       guard let self = self else { return }

@@ -29,6 +29,10 @@ type NativeModuleType = {
   startPairing(): Promise<PairingWindow>;
   stopPairing(): Promise<void>;
   forgetAllPaired(): Promise<void>;
+  disconnectClient(id: string): Promise<void>;
+  forgetClient(id: string): Promise<void>;
+  getClientNames(): Record<string, string>;
+  setClientName(host: string, name: string | null): Promise<void>;
   isPairing(): boolean;
   getPreferences(): Preferences;
   setPreferences(patch: Partial<Preferences>): Promise<Preferences>;
@@ -104,6 +108,22 @@ export function forgetAllPaired() {
   return nativeModule.forgetAllPaired();
 }
 
+export function disconnectClient(id: string) {
+  return nativeModule.disconnectClient(id);
+}
+
+export function forgetClient(id: string) {
+  return nativeModule.forgetClient(id);
+}
+
+export function getClientNames(): Record<string, string> {
+  return nativeModule.getClientNames();
+}
+
+export function setClientName(host: string, name: string | null) {
+  return nativeModule.setClientName(host, name);
+}
+
 export function isPairing() {
   return nativeModule.isPairing();
 }
@@ -127,6 +147,10 @@ export default {
   startPairing,
   stopPairing,
   forgetAllPaired,
+  disconnectClient,
+  forgetClient,
+  getClientNames,
+  setClientName,
   isPairing,
   getPreferences,
   setPreferences,

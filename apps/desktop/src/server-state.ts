@@ -41,12 +41,17 @@ interface ServerState {
   uptimeSeconds: number;
   accessibilityTrusted: boolean;
   pairing: PairingWindow | null;
+  /** Persisted user-given names keyed by remote host (IP). */
+  clientNames: Record<string, string>;
   start: () => Promise<void>;
   stop: () => Promise<void>;
   requestAccessibility: () => Promise<boolean>;
   startPairing: () => Promise<void>;
   stopPairing: () => Promise<void>;
   forgetAllPaired: () => Promise<void>;
+  disconnectClient: (id: string) => Promise<void>;
+  forgetClient: (id: string) => Promise<void>;
+  renameClient: (id: string, name: string | null) => Promise<void>;
 }
 
 let inboundSinceTick = 0;
@@ -65,6 +70,7 @@ export const useServerStore = create<ServerState>((set, get) => ({
   uptimeSeconds: 0,
   accessibilityTrusted: EntangleServer.isAccessibilityTrusted(),
   pairing: null,
+  clientNames: EntangleServer.getClientNames(),
   requestAccessibility: async () => {
     const trusted = await EntangleServer.promptAccessibility();
     set({ accessibilityTrusted: trusted });
@@ -80,7 +86,31 @@ export const useServerStore = create<ServerState>((set, get) => ({
   },
   forgetAllPaired: async () => {
     await EntangleServer.forgetAllPaired();
-    set({ clients: {} });
+    set({ clients: {}, clientNames: {} });
+  },
+  disconnectClient: async (id: string) => {
+    await EntangleServer.disconnectClient(id);
+    // The native module emits clientDisconnected which prunes the entry.
+  },
+  forgetClient: async (id: string) => {
+    const host = get().clients[id]?.host;
+    await EntangleServer.forgetClient(id);
+    if (host) {
+      const next = { ...get().clientNames };
+      delete next[normalizeHost(host)];
+      set({ clientNames: next });
+    }
+  },
+  renameClient: async (id: string, name: string | null) => {
+    const host = get().clients[id]?.host;
+    if (!host) return;
+    const trimmed = name?.trim() || null;
+    await EntangleServer.setClientName(host, trimmed);
+    const key = normalizeHost(host);
+    const next = { ...get().clientNames };
+    if (trimmed) next[key] = trimmed;
+    else delete next[key];
+    set({ clientNames: next });
   },
   start: async () => {
     if (get().phase === 'starting' || get().phase === 'running') return;
@@ -137,6 +167,13 @@ function tickStats() {
     }
     return { messageRate: tick, rateHistory: history, uptimeSeconds, clients };
   });
+}
+
+/** Strip the trailing `:port` so we key by IP/hostname only — must match
+ * `PairingManager.normalize(host:)` on the Swift side. */
+export function normalizeHost(host: string): string {
+  const colon = host.lastIndexOf(':');
+  return colon >= 0 ? host.slice(0, colon) : host;
 }
 
 export function formatUptime(seconds: number): string {

@@ -4,7 +4,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { useShallow } from 'zustand/react/shallow';
 
 import type { ClientInfo } from '../server-state';
-import { useServerStore } from '../server-state';
+import { normalizeHost, useServerStore } from '../server-state';
 import { fonts, tokens } from '../theme';
 import { EntCard } from './atoms/EntCard';
 import { Heading } from './atoms/Heading';
@@ -13,10 +13,12 @@ import { EmptyPhones } from './EmptyPhones';
 
 type Props = {
   onPairNew?: () => void;
+  onOpenDeviceMenu?: (clientId: string) => void;
 };
 
-export function ConnectedPhones({ onPairNew }: Props) {
+export function ConnectedPhones({ onPairNew, onOpenDeviceMenu }: Props) {
   const clients = useServerStore(useShallow((s) => Object.values(s.clients)));
+  const clientNames = useServerStore((s) => s.clientNames);
   const forgetAllPaired = useServerStore((s) => s.forgetAllPaired);
 
   const confirmForgetAll = () => {
@@ -50,7 +52,13 @@ export function ConnectedPhones({ onPairNew }: Props) {
       />
       <View>
         {clients.map((c, i) => (
-          <DeviceRow key={c.id} client={c} last={i === clients.length - 1} />
+          <DeviceRow
+            key={c.id}
+            client={c}
+            last={i === clients.length - 1}
+            displayName={clientNames[normalizeHost(c.host)]}
+            onOpenMenu={() => onOpenDeviceMenu?.(c.id)}
+          />
         ))}
       </View>
       <View style={styles.footer}>
@@ -70,13 +78,24 @@ export function ConnectedPhones({ onPairNew }: Props) {
   );
 }
 
-function DeviceRow({ client, last }: { client: ClientInfo; last: boolean }) {
+function DeviceRow({
+  client,
+  last,
+  displayName,
+  onOpenMenu,
+}: {
+  client: ClientInfo;
+  last: boolean;
+  displayName?: string;
+  onOpenMenu: () => void;
+}) {
+  const primary = displayName?.trim() || client.host || 'unknown phone';
   return (
     <View style={[styles.deviceRow, !last && styles.deviceBorder]}>
       <MiniPhone size={28} />
       <View style={styles.identity}>
         <Text style={styles.name} numberOfLines={1}>
-          {client.host || 'unknown phone'}
+          {primary}
         </Text>
         <Text style={styles.meta} numberOfLines={1}>
           {`id ${client.id.slice(0, 8)} · ${
@@ -86,7 +105,10 @@ function DeviceRow({ client, last }: { client: ClientInfo; last: boolean }) {
       </View>
       <Stat label="latency" value="—" />
       <Stat label="events" value={`${client.messageRate}/s`} />
-      <Pressable style={styles.kebab} accessibilityLabel="More actions for this device">
+      <Pressable
+        style={styles.kebab}
+        onPress={onOpenMenu}
+        accessibilityLabel="More actions for this device">
         <Svg width={12} height={12} viewBox="0 0 24 24">
           <Circle cx={5} cy={12} r={2} fill={tokens.textMuted} />
           <Circle cx={12} cy={12} r={2} fill={tokens.textMuted} />
