@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Logo } from '@/components/Logo';
 import { useConnection } from '@/state/connection';
 
 export default function PairScreen() {
@@ -69,6 +70,9 @@ export default function PairScreen() {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.body}>
+          <View style={styles.brand}>
+            <Logo size={44} />
+          </View>
           <Text style={styles.eyebrow}>PAIRING REQUIRED</Text>
           <Text style={styles.title}>
             {target?.name ?? 'This Mac'} needs your permission.
@@ -132,6 +136,10 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 24,
     justifyContent: 'center',
+  },
+  brand: {
+    marginBottom: 20,
+    alignItems: 'flex-start',
   },
   eyebrow: {
     color: '#a3bbd6',

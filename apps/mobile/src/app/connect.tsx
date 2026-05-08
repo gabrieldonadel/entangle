@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Logo } from "@/components/Logo";
 import { useDiscovery } from "@/net/discovery";
 import { hasUserDisconnected, useConnection } from "@/state/connection";
 import type { ConnectionTarget } from "@/state/connection";
@@ -46,6 +47,9 @@ export default function ConnectScreen() {
   return (
     <SafeAreaView style={styles.root}>
       <Stack.Screen options={{ title: "Connect" }} />
+      <View style={styles.brand}>
+        <Logo size={48} />
+      </View>
       <Text style={styles.title}>Find your Mac</Text>
       <Text style={styles.subtitle}>
         Make sure Entangle is running on your Mac and you&apos;re on the same
@@ -105,6 +109,11 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 24,
     backgroundColor: "#000",
+  },
+  brand: {
+    marginTop: 8,
+    marginBottom: 4,
+    alignItems: "flex-start",
   },
   title: {
     color: "#fff",
