@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy Policy — Entangle</title>
+    <meta
+      name="description"
+      content="Entangle does not collect, store, or transmit any personal data. All communication is local-network only between your iPhone and your Mac."
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="icon" href="/icon-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="/icon-light.svg" type="image/svg+xml" media="(prefers-color-scheme: light)" />
+
+    <style>
+      :root {
+        --font-display: "Inter Tight", -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
+        --font-body: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+        --bg-0: #0a0c10;
+        --bg-1: #0e1014;
+        --border-strong: rgba(255, 255, 255, 0.14);
+        --text: #f5f7fa;
+        --text-muted: #8a93a6;
+        --accent: #a3bbd6;
+        --accent-glow: rgba(163, 187, 214, 0.18);
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background:
+          radial-gradient(1200px 600px at 12% -10%, var(--accent-glow), transparent 60%),
+          radial-gradient(900px 500px at 100% 30%, var(--accent-glow), transparent 65%),
+          linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 30%, var(--bg-1) 70%, var(--bg-0) 100%);
+        color: var(--text);
+        font-family: var(--font-body);
+        font-size: 16px;
+        line-height: 1.6;
+        min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 80px 24px 120px;
+      }
+      h1 {
+        font-family: var(--font-display);
+        font-size: clamp(34px, 5vw, 52px);
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        line-height: 1.05;
+        margin: 0 0 8px;
+      }
+      h2 {
+        font-family: var(--font-display);
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        margin: 40px 0 12px;
+      }
+      p, li { color: var(--text); }
+      p { margin: 0 0 14px; }
+      ul { padding-left: 20px; margin: 0 0 14px; }
+      li { margin-bottom: 6px; }
+      .meta { color: var(--text-muted); font-size: 14px; margin-bottom: 32px; }
+      a { color: var(--accent); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .back {
+        display: inline-block;
+        margin-bottom: 32px;
+        font-size: 14px;
+        color: var(--text-muted);
+      }
+      .back:hover { color: var(--text); text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back" href="/">← Back to Entangle</a>
+      <h1>Privacy Policy</h1>
+      <p class="meta">Effective May 9, 2026</p>
+
+      <p>
+        Entangle is built to be private by design. The app does not collect,
+        store, or transmit any personal data, and there are no accounts, no
+        servers we operate, and no analytics or tracking SDKs.
+      </p>
+
+      <h2>What the app does</h2>
+      <p>
+        Entangle turns your iPhone into a wireless trackpad and keyboard for a
+        Mac that is running the Entangle desktop app on the same local network.
+        All communication happens directly between your phone and your Mac over
+        your Wi-Fi LAN.
+      </p>
+
+      <h2>Information we collect</h2>
+      <p>
+        <strong>None.</strong> Entangle does not collect, log, or transmit any
+        personally identifiable information, usage analytics, crash reports, or
+        device identifiers to us or to any third party.
+      </p>
+
+      <h2>Local network access</h2>
+      <p>
+        The app requests Local Network permission on iOS. This is used solely to:
+      </p>
+      <ul>
+        <li>Discover the Entangle desktop app on your Wi-Fi network using Bonjour (<code>_entangle._tcp.</code>).</li>
+        <li>Open a direct WebSocket connection to your Mac to send pointer, scroll, gesture, keyboard, and Dock messages.</li>
+      </ul>
+      <p>
+        These messages travel only between your iPhone and your Mac. They never
+        leave your local network and are not routed through any third-party
+        service.
+      </p>
+
+      <h2>Third-party services</h2>
+      <p>
+        Entangle does not integrate any third-party advertising, analytics, or
+        tracking SDKs.
+      </p>
+
+      <h2>Children's privacy</h2>
+      <p>
+        Entangle is not directed at children and does not knowingly collect any
+        information from anyone, including children under 13.
+      </p>
+
+      <h2>Changes to this policy</h2>
+      <p>
+        If this policy ever changes, the updated version will be posted at this
+        URL with a new effective date.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        Questions about this policy can be sent to
+        <a href="mailto:gabriel@expo.dev">gabriel@expo.dev</a>.
+      </p>
+    </main>
+  </body>
+</html>
