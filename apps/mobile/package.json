@@ -1,5 +1,5 @@
 {
-  "name": "entangle-mobile",
+  "name": "entangle",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {

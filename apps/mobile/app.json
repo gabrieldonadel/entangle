@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "entangle",
-    "slug": "entangle",
+    "slug": "entangle-mobile",
     "version": "0.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -52,7 +52,7 @@
         {
           "backgroundColor": "#0E1014",
           "image": "./assets/images/splash.png",
-          "resizeMode": "cover"
+          "enableFullScreenImage_legacy": true
         }
       ]
     ],
