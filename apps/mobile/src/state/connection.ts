@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
+import { Platform } from 'react-native';
 import { create } from 'zustand';
 
 import {
@@ -166,7 +167,7 @@ function openSocket() {
       t: 'hello',
       client: {
         name: 'phone',
-        platform: 'ios',
+        platform: Platform.OS as 'ios' | 'android',
         version: '0.0.1',
       },
     };
