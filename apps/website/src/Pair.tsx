@@ -1,7 +1,7 @@
 import React from "react";
+import { TESTFLIGHT_URL } from "./constants";
 
-// TODO: swap in the App Store URL once the iOS app is published.
-const APP_STORE_URL: string | null = null;
+const APP_STORE_URL: string | null = TESTFLIGHT_URL;
 
 export default function Pair() {
   const params = new URLSearchParams(window.location.search);
@@ -65,6 +65,7 @@ export default function Pair() {
     </main>
   );
 }
+
 
 const styles: Record<string, React.CSSProperties> = {
   root: {

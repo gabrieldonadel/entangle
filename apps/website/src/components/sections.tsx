@@ -14,8 +14,7 @@ import {
   formatStarsLong,
 } from "../hooks/useGitHubStars";
 import type { AppView, CursorPos, Theme, TrackpadDragHandler } from "../types";
-
-const GITHUB_URL = "https://github.com/gabrieldonadel/entangle";
+import { GITHUB_URL, TESTFLIGHT_URL } from "../constants";
 
 type NavProps = { theme: Theme; setTheme: (t: Theme) => void };
 
@@ -456,7 +455,12 @@ export const Hero = ({ cursorPos, onTrackpadDrag, latencyMs }: HeroProps) => (
           marginBottom: 12,
         }}
       >
-        <a className="btn btn-primary" href="#">
+        <a
+          className="btn btn-primary"
+          href={TESTFLIGHT_URL}
+          target="_blank"
+          rel="noreferrer"
+        >
           <AppleIcon /> Download for iPhone
         </a>
         <a className="btn btn-ghost" href="#">
