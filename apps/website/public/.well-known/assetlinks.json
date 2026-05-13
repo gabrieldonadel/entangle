@@ -3,9 +3,9 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.gabrieldonadel.entanglemobile",
+      "package_name": "com.gabrieldonadel.entangle",
       "sha256_cert_fingerprints": [
-        "TODO_REPLACE_WITH_REAL_SHA256_FINGERPRINT_FROM_eas_credentials"
+        "45:32:AE:B7:5A:B8:A3:63:B9:15:1D:6E:AF:66:69:30:C1:82:98:B2:38:96:48:9C:64:0C:B0:77:25:0E:8E:A9"
       ]
     }
   }

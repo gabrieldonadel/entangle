@@ -11,9 +11,6 @@ patchedDependencies:
   expo-modules-core:
     hash: 29c69776964a3816f63742ce7600dd29957e96935e26db36d61902685ec3a99f
     path: patches/expo-modules-core.patch
-  react-native-svg:
-    hash: 88a137c3b794a6422739c968651af9101db3902150154c1ece46bd3d55b42246
-    path: patches/react-native-svg.patch
 
 importers:
 
@@ -26,8 +23,8 @@ importers:
         specifier: ^55.0.12
         version: 55.0.18(patch_hash=7d9700d7a25595bbba864ad643271174c1daca8c25ebfab0b69ad92e99d93fe7)(@babel/core@7.29.0)(@expo/dom-webview@55.0.5)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)(typescript@5.9.3)
       expo-linear-gradient:
-        specifier: ~15.0.7
-        version: 15.0.8(expo@55.0.18)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)
+        specifier: ~55.0.14
+        version: 55.0.14(expo@55.0.18)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)
       expo-modules-core:
         specifier: ^55.0.23
         version: 55.0.23(patch_hash=29c69776964a3816f63742ce7600dd29957e96935e26db36d61902685ec3a99f)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)
@@ -50,8 +47,8 @@ importers:
         specifier: ^5.6.2
         version: 5.6.2(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)
       react-native-svg:
-        specifier: ^15.8.0
-        version: 15.15.4(patch_hash=88a137c3b794a6422739c968651af9101db3902150154c1ece46bd3d55b42246)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)
+        specifier: ^15.15.5
+        version: 15.15.5(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)
       zustand:
         specifier: ^5.0.2
         version: 5.0.12(@types/react@19.2.14)(react@19.1.4)
@@ -2173,8 +2170,8 @@ packages:
       expo: '*'
       react: '*'
 
-  expo-linear-gradient@15.0.8:
-    resolution: {integrity: sha512-V2d8Wjn0VzhPHO+rrSBtcl+Fo+jUUccdlmQ6OoL9/XQB7Qk3d9lYrqKDJyccwDxmQT10JdST3Tmf2K52NLc3kw==}
+  expo-linear-gradient@55.0.14:
+    resolution: {integrity: sha512-n01A9P0ZebRo8Rm4QHYEjMR8z4Y6MBc8uVnT8NB9cOJislvEmz2o2WQJoK6RD7FjoeFEW8KkRtggK7fQ3h7KIg==}
     peerDependencies:
       expo: '*'
       react: '*'
@@ -3438,8 +3435,8 @@ packages:
       react: '*'
       react-native: '*'
 
-  react-native-svg@15.15.4:
-    resolution: {integrity: sha512-boT/vIRgj6zZKBpfTPJJiYWMbZE9duBMOwPK6kCSTgxsS947IFMOq9OgIFkpWZTB7t229H24pDRkh3W9ZK/J1A==}
+  react-native-svg@15.15.5:
+    resolution: {integrity: sha512-L4go5jA+GWutdJ/JucuN20cjAbMg1HmMtAP+wZ+3JLCf6Jd0bhXQHxciRP/AQm/FlrIEZwkMcHNZP+FXAiic0w==}
     peerDependencies:
       react: '*'
       react-native: '*'
@@ -3932,9 +3929,6 @@ packages:
 
   walker@1.0.8:
     resolution: {integrity: sha512-ts/8E8l5b7kY0vlWLewOkDXMmPdLcVV4GmOQLyxuSswIJsweeFZtAsMF7k1Nszz+TYBQrlYRmzOnr398y1JemQ==}
-
-  warn-once@0.1.1:
-    resolution: {integrity: sha512-VkQZJbO8zVImzYFteBXvBOZEl1qL175WH8VmZcxF2fZAoudNhNDvHi+doCaAEdU2l2vtcIwa2zn0QK5+I1HQ3Q==}
 
   wcwidth@1.0.1:
     resolution: {integrity: sha512-XHPEwS0q6TaxcvG85+8EYkbiCux2XtWG2mkc47Ng2A77BQu9+DqIOJldST4HgPkuea7dvKSj5VgX3P1d4rW8Tg==}
@@ -6935,7 +6929,7 @@ snapshots:
       expo: 55.0.18(patch_hash=7d9700d7a25595bbba864ad643271174c1daca8c25ebfab0b69ad92e99d93fe7)(@babel/core@7.29.0)(@expo/dom-webview@55.0.5)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)(typescript@5.9.3)
       react: 19.1.4
 
-  expo-linear-gradient@15.0.8(expo@55.0.18)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4):
+  expo-linear-gradient@55.0.14(expo@55.0.18)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4):
     dependencies:
       expo: 55.0.18(patch_hash=7d9700d7a25595bbba864ad643271174c1daca8c25ebfab0b69ad92e99d93fe7)(@babel/core@7.29.0)(@expo/dom-webview@55.0.5)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)(typescript@5.9.3)
       react: 19.1.4
@@ -8516,13 +8510,12 @@ snapshots:
       react: 19.1.4
       react-native: 0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4)
 
-  react-native-svg@15.15.4(patch_hash=88a137c3b794a6422739c968651af9101db3902150154c1ece46bd3d55b42246)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4):
+  react-native-svg@15.15.5(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4):
     dependencies:
       css-select: 5.2.2
       css-tree: 1.1.3
       react: 19.1.4
       react-native: 0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4)
-      warn-once: 0.1.1
 
   react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4):
     dependencies:
@@ -9082,8 +9075,6 @@ snapshots:
   walker@1.0.8:
     dependencies:
       makeerror: 1.0.12
-
-  warn-once@0.1.1: {}
 
   wcwidth@1.0.1:
     dependencies:
