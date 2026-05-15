@@ -14,136 +14,146 @@ import {
   formatStarsLong,
 } from "../hooks/useGitHubStars";
 import type { AppView, CursorPos, Theme, TrackpadDragHandler } from "../types";
-import { GITHUB_URL, TESTFLIGHT_URL } from "../constants";
+import { DESKTOP_RELEASES_URL, GITHUB_URL, TESTFLIGHT_URL } from "../constants";
 
 type NavProps = { theme: Theme; setTheme: (t: Theme) => void };
 
 export const Nav = ({ theme, setTheme }: NavProps) => {
   const stars = useGitHubStars();
   return (
-  <header
-    style={{
-      position: "sticky",
-      top: 0,
-      zIndex: 50,
-      backdropFilter: "blur(20px) saturate(140%)",
-      WebkitBackdropFilter: "blur(20px) saturate(140%)",
-      background: "color-mix(in srgb, var(--bg-1) 70%, transparent)",
-      borderBottom: "1px solid var(--border)",
-    }}
-  >
-    <div
-      className="container"
+    <header
       style={{
-        height: 64,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
+        position: "sticky",
+        top: 0,
+        zIndex: 50,
+        backdropFilter: "blur(20px) saturate(140%)",
+        WebkitBackdropFilter: "blur(20px) saturate(140%)",
+        background: "color-mix(in srgb, var(--bg-1) 70%, transparent)",
+        borderBottom: "1px solid var(--border)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <Logo size={28} />
-        <span
-          style={{
-            fontFamily: "var(--font-display)",
-            fontWeight: 600,
-            fontSize: 18,
-            letterSpacing: "-0.02em",
-          }}
-        >
-          Entangle
-        </span>
-        <span
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: 10,
-            color: "var(--text-muted)",
-            marginLeft: 6,
-            padding: "2px 7px",
-            border: "1px solid var(--border)",
-            borderRadius: 6,
-            letterSpacing: "0.06em",
-          }}
-        >
-          v1.0 · OSS
-        </span>
-      </div>
-      <nav style={{ display: "flex", alignItems: "center", gap: 28 }}>
-        <a
-          href="#how"
-          className="nav-link"
-          style={{ fontSize: 14, color: "var(--text-muted)" }}
-        >
-          How it works
-        </a>
-        <a
-          href="#screens"
-          className="nav-link"
-          style={{ fontSize: 14, color: "var(--text-muted)" }}
-        >
-          Screens
-        </a>
-        <a
-          href="#oss"
-          className="nav-link"
-          style={{ fontSize: 14, color: "var(--text-muted)" }}
-        >
-          Open source
-        </a>
-        <button
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: "50%",
-            border: "1px solid var(--border)",
-            display: "grid",
-            placeItems: "center",
-            color: "var(--text-muted)",
-          }}
-          aria-label="Toggle theme"
-        >
-          {theme === "dark" ? (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M21.64 13a9 9 0 1 1-10.63-10.6 1 1 0 0 1 1.05 1.14A7 7 0 0 0 20.5 11.94a1 1 0 0 1 1.14 1.06z" />
-            </svg>
-          ) : (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="12" cy="12" r="4" />
-              <path
-                d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-          )}
-        </button>
-        <a
-          href={GITHUB_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="btn btn-ghost"
-          style={{ padding: "8px 14px", fontSize: 13 }}
-        >
-          <GitHubIcon size={15} /> Star
+      <div
+        className="container"
+        style={{
+          height: 64,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Logo size={28} />
+          <span
+            style={{
+              fontFamily: "var(--font-display)",
+              fontWeight: 600,
+              fontSize: 18,
+              letterSpacing: "-0.02em",
+            }}
+          >
+            Entangle
+          </span>
           <span
             style={{
               fontFamily: "var(--font-mono)",
-              fontSize: 11,
-              padding: "1px 7px",
-              borderRadius: 999,
-              background: "var(--accent-glow)",
-              color: "var(--accent)",
-              marginLeft: 2,
+              fontSize: 10,
+              color: "var(--text-muted)",
+              marginLeft: 6,
+              padding: "2px 7px",
+              border: "1px solid var(--border)",
+              borderRadius: 6,
+              letterSpacing: "0.06em",
             }}
           >
-            {formatStarsCompact(stars)}
+            v1.0 · OSS
           </span>
-        </a>
-      </nav>
-    </div>
-  </header>
+        </div>
+        <nav style={{ display: "flex", alignItems: "center", gap: 28 }}>
+          <a
+            href="#how"
+            className="nav-link"
+            style={{ fontSize: 14, color: "var(--text-muted)" }}
+          >
+            How it works
+          </a>
+          <a
+            href="#screens"
+            className="nav-link"
+            style={{ fontSize: 14, color: "var(--text-muted)" }}
+          >
+            Screens
+          </a>
+          <a
+            href="#oss"
+            className="nav-link"
+            style={{ fontSize: 14, color: "var(--text-muted)" }}
+          >
+            Open source
+          </a>
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: "50%",
+              border: "1px solid var(--border)",
+              display: "grid",
+              placeItems: "center",
+              color: "var(--text-muted)",
+            }}
+            aria-label="Toggle theme"
+          >
+            {theme === "dark" ? (
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M21.64 13a9 9 0 1 1-10.63-10.6 1 1 0 0 1 1.05 1.14A7 7 0 0 0 20.5 11.94a1 1 0 0 1 1.14 1.06z" />
+              </svg>
+            ) : (
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <circle cx="12" cy="12" r="4" />
+                <path
+                  d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            )}
+          </button>
+          <a
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="btn btn-ghost"
+            style={{ padding: "8px 14px", fontSize: 13 }}
+          >
+            <GitHubIcon size={15} /> Star
+            <span
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 11,
+                padding: "1px 7px",
+                borderRadius: 999,
+                background: "var(--accent-glow)",
+                color: "var(--accent)",
+                marginLeft: 2,
+              }}
+            >
+              {formatStarsCompact(stars)}
+            </span>
+          </a>
+        </nav>
+      </div>
+    </header>
   );
 };
 
@@ -153,7 +163,11 @@ type HeroStageProps = {
   latencyMs: number;
 };
 
-const HeroStage = ({ cursorPos, onTrackpadDrag, latencyMs }: HeroStageProps) => {
+const HeroStage = ({
+  cursorPos,
+  onTrackpadDrag,
+  latencyMs,
+}: HeroStageProps) => {
   const stageRef = React.useRef<HTMLDivElement>(null);
   const [scale, setScale] = React.useState(1);
 
@@ -231,9 +245,30 @@ const HeroStage = ({ cursorPos, onTrackpadDrag, latencyMs }: HeroStageProps) => 
                   borderBottom: "1px solid rgba(255,255,255,0.05)",
                 }}
               >
-                <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#FF5F57" }} />
-                <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#FEBC2E" }} />
-                <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#28C840" }} />
+                <div
+                  style={{
+                    width: 11,
+                    height: 11,
+                    borderRadius: "50%",
+                    background: "#FF5F57",
+                  }}
+                />
+                <div
+                  style={{
+                    width: 11,
+                    height: 11,
+                    borderRadius: "50%",
+                    background: "#FEBC2E",
+                  }}
+                />
+                <div
+                  style={{
+                    width: 11,
+                    height: 11,
+                    borderRadius: "50%",
+                    background: "#28C840",
+                  }}
+                />
                 <div
                   style={{
                     flex: 1,
@@ -283,7 +318,12 @@ const HeroStage = ({ cursorPos, onTrackpadDrag, latencyMs }: HeroStageProps) => 
                   }}
                 >
                   <div
-                    style={{ width: "37%", height: "100%", background: "#fff", borderRadius: 2 }}
+                    style={{
+                      width: "37%",
+                      height: "100%",
+                      background: "#fff",
+                      borderRadius: 2,
+                    }}
                   />
                 </div>
               </div>
@@ -426,11 +466,16 @@ export const Hero = ({ cursorPos, onTrackpadDrag, latencyMs }: HeroProps) => (
         Free · Open source · Built with Expo
       </div>
 
-      <h1 className="h1" style={{ marginBottom: 22, maxWidth: 920, marginInline: "auto" }}>
-        Your Mac's pointer,<br />
+      <h1
+        className="h1"
+        style={{ marginBottom: 22, maxWidth: 920, marginInline: "auto" }}
+      >
+        Your Mac's pointer,
+        <br />
         <span
           style={{
-            background: "linear-gradient(135deg, var(--orb-stop-0), var(--orb-stop-1))",
+            background:
+              "linear-gradient(135deg, var(--orb-stop-0), var(--orb-stop-1))",
             WebkitBackgroundClip: "text",
             backgroundClip: "text",
             WebkitTextFillColor: "transparent",
@@ -441,9 +486,9 @@ export const Hero = ({ cursorPos, onTrackpadDrag, latencyMs }: HeroProps) => (
         with your phone.
       </h1>
       <p className="lede" style={{ marginInline: "auto", marginBottom: 36 }}>
-        Entangle is a free, open-source remote that turns your iPhone into a pocket
-        trackpad for any Mac on your network. Pause your bike, control your video.
-        No accounts, no cloud.
+        Entangle is a free, open-source remote that turns your iPhone into a
+        pocket trackpad for any Mac on your network. Pause your bike, control
+        your video. No accounts, no cloud.
       </p>
 
       <div
@@ -463,7 +508,12 @@ export const Hero = ({ cursorPos, onTrackpadDrag, latencyMs }: HeroProps) => (
         >
           <AppleIcon /> Download for iPhone
         </a>
-        <a className="btn btn-ghost" href="#">
+        <a
+          className="btn btn-ghost"
+          href={DESKTOP_RELEASES_URL}
+          target="_blank"
+          rel="noreferrer"
+        >
           <AppleIcon /> Mac App · DMG
         </a>
         <a
@@ -476,7 +526,10 @@ export const Hero = ({ cursorPos, onTrackpadDrag, latencyMs }: HeroProps) => (
           <ArrowRight />
         </a>
       </div>
-      <div className="eyebrow" style={{ fontSize: 10, color: "var(--text-dim)" }}>
+      <div
+        className="eyebrow"
+        style={{ fontSize: 10, color: "var(--text-dim)" }}
+      >
         Requires iOS 15.1+ · macOS 14+ · Wi-Fi or Bluetooth
       </div>
     </div>
@@ -524,7 +577,9 @@ export const HowItWorks = () => {
             How it works
           </div>
           <h2 className="h2">
-            Three steps. No accounts.<br />No cloud. No noise.
+            Three steps. No accounts.
+            <br />
+            No cloud. No noise.
           </h2>
         </div>
 
@@ -561,7 +616,13 @@ export const HowItWorks = () => {
               <h3 className="h3" style={{ marginBottom: 8 }}>
                 {s.title}
               </h3>
-              <p style={{ color: "var(--text-muted)", fontSize: 14.5, marginBottom: 18 }}>
+              <p
+                style={{
+                  color: "var(--text-muted)",
+                  fontSize: 14.5,
+                  marginBottom: 18,
+                }}
+              >
                 {s.body}
               </p>
               <div style={{ flex: 1 }} />
@@ -650,8 +711,8 @@ export const Screens = () => {
             </h2>
           </div>
           <p className="lede" style={{ maxWidth: 380 }}>
-            No badges, no popovers, no upgrade prompts. Just a tool that does one
-            thing and gets out of your way.
+            No badges, no popovers, no upgrade prompts. Just a tool that does
+            one thing and gets out of your way.
           </p>
         </div>
 
@@ -691,7 +752,10 @@ export const Screens = () => {
               >
                 {s.tag}
               </div>
-              <h3 className="h3" style={{ marginBottom: 8, textAlign: "center" }}>
+              <h3
+                className="h3"
+                style={{ marginBottom: 8, textAlign: "center" }}
+              >
                 {s.title}
               </h3>
               <p
@@ -735,100 +799,116 @@ const Row = ({
 export const OpenSource = () => {
   const stars = useGitHubStars();
   return (
-  <section id="oss">
-    <div className="container">
-      <div
-        className="glass"
-        style={{
-          padding: "56px 48px",
-          position: "relative",
-          overflow: "hidden",
-          display: "grid",
-          gridTemplateColumns: "1.2fr 1fr",
-          gap: 48,
-          alignItems: "center",
-        }}
-      >
+    <section id="oss">
+      <div className="container">
         <div
+          className="glass"
           style={{
-            position: "absolute",
-            inset: 0,
-            opacity: 0.5,
-            pointerEvents: "none",
-            background:
-              "radial-gradient(circle at 90% 10%, var(--accent-glow), transparent 50%)",
+            padding: "56px 48px",
+            position: "relative",
+            overflow: "hidden",
+            display: "grid",
+            gridTemplateColumns: "1.2fr 1fr",
+            gap: 48,
+            alignItems: "center",
           }}
-        />
-        <div style={{ position: "relative" }}>
-          <div className="eyebrow" style={{ marginBottom: 14 }}>
-            MIT-licensed
-          </div>
-          <h2 className="h2" style={{ marginBottom: 14 }}>
-            Free forever. Built in the open.
-          </h2>
-          <p className="lede" style={{ marginBottom: 24 }}>
-            No accounts, no telemetry, no upsell. Inspect every line, file an issue,
-            ship a PR. Built with Expo on iOS and macOS — one codebase, two native
-            targets.
-          </p>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <a
-              className="btn btn-primary"
-              href={GITHUB_URL}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <GitHubIcon /> github.com/gabrieldonadel/entangle
-            </a>
-            <a
-              className="btn btn-ghost"
-              href={`${GITHUB_URL}/stargazers`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <StarIcon /> Star · {formatStarsLong(stars)}
-            </a>
-          </div>
-        </div>
-
-        <div style={{ position: "relative" }}>
+        >
           <div
             style={{
-              background: "var(--bg-2)",
-              border: "1px solid var(--border)",
-              borderRadius: 14,
-              padding: 18,
-              fontFamily: "var(--font-mono)",
-              fontSize: 12.5,
-              lineHeight: 1.7,
-              boxShadow: "0 30px 60px -25px rgba(0,0,0,0.4)",
+              position: "absolute",
+              inset: 0,
+              opacity: 0.5,
+              pointerEvents: "none",
+              background:
+                "radial-gradient(circle at 90% 10%, var(--accent-glow), transparent 50%)",
             }}
-          >
-            <div style={{ display: "flex", gap: 5, marginBottom: 14 }}>
-              <div
-                style={{ width: 9, height: 9, borderRadius: "50%", background: "#FF5F57" }}
-              />
-              <div
-                style={{ width: 9, height: 9, borderRadius: "50%", background: "#FEBC2E" }}
-              />
-              <div
-                style={{ width: 9, height: 9, borderRadius: "50%", background: "#28C840" }}
-              />
+          />
+          <div style={{ position: "relative" }}>
+            <div className="eyebrow" style={{ marginBottom: 14 }}>
+              MIT-licensed
             </div>
-            <div style={{ color: "var(--text-dim)" }}>
-              <span style={{ color: "var(--accent)" }}>$</span> entangle --about
+            <h2 className="h2" style={{ marginBottom: 14 }}>
+              Free forever. Built in the open.
+            </h2>
+            <p className="lede" style={{ marginBottom: 24 }}>
+              No accounts, no telemetry, no upsell. Inspect every line, file an
+              issue, ship a PR. Built with Expo on iOS and macOS — one codebase,
+              two native targets.
+            </p>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <a
+                className="btn btn-primary"
+                href={GITHUB_URL}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <GitHubIcon /> github.com/gabrieldonadel/entangle
+              </a>
+              <a
+                className="btn btn-ghost"
+                href={`${GITHUB_URL}/stargazers`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <StarIcon /> Star · {formatStarsLong(stars)}
+              </a>
             </div>
-            <Row k="license" v="MIT" />
-            <Row k="stack" v="Expo · React Native · Swift" />
-            <Row k="protocol" v="Bonjour + WebSocket (LAN-only)" />
-            <Row k="telemetry" v="none" valueColor="var(--accent)" />
-            <Row k="cloud" v="never" valueColor="var(--accent)" />
-            <Row k="contributors" v="38" />
+          </div>
+
+          <div style={{ position: "relative" }}>
+            <div
+              style={{
+                background: "var(--bg-2)",
+                border: "1px solid var(--border)",
+                borderRadius: 14,
+                padding: 18,
+                fontFamily: "var(--font-mono)",
+                fontSize: 12.5,
+                lineHeight: 1.7,
+                boxShadow: "0 30px 60px -25px rgba(0,0,0,0.4)",
+              }}
+            >
+              <div style={{ display: "flex", gap: 5, marginBottom: 14 }}>
+                <div
+                  style={{
+                    width: 9,
+                    height: 9,
+                    borderRadius: "50%",
+                    background: "#FF5F57",
+                  }}
+                />
+                <div
+                  style={{
+                    width: 9,
+                    height: 9,
+                    borderRadius: "50%",
+                    background: "#FEBC2E",
+                  }}
+                />
+                <div
+                  style={{
+                    width: 9,
+                    height: 9,
+                    borderRadius: "50%",
+                    background: "#28C840",
+                  }}
+                />
+              </div>
+              <div style={{ color: "var(--text-dim)" }}>
+                <span style={{ color: "var(--accent)" }}>$</span> entangle
+                --about
+              </div>
+              <Row k="license" v="MIT" />
+              <Row k="stack" v="Expo · React Native · Swift" />
+              <Row k="protocol" v="Bonjour + WebSocket (LAN-only)" />
+              <Row k="telemetry" v="none" valueColor="var(--accent)" />
+              <Row k="cloud" v="never" valueColor="var(--accent)" />
+              <Row k="contributors" v="38" />
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
   );
 };
 
@@ -853,7 +933,11 @@ export const Footer = () => (
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <Logo size={22} />
         <span
-          style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 15 }}
+          style={{
+            fontFamily: "var(--font-display)",
+            fontWeight: 600,
+            fontSize: 15,
+          }}
         >
           Entangle
         </span>
