@@ -2,10 +2,13 @@ import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 
-import { createTrackpadGestures } from './gestures';
+import { createDefaultTrackpadHandlers, createTrackpadGestures } from './gestures';
 
 export function TrackpadSurface() {
-  const gesture = useMemo(() => createTrackpadGestures(), []);
+  const gesture = useMemo(
+    () => createTrackpadGestures(createDefaultTrackpadHandlers()),
+    [],
+  );
 
   return (
     <GestureDetector gesture={gesture}>

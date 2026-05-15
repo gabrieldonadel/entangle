@@ -1,5 +1,5 @@
-import { Image } from 'expo-image';
-import { useEffect, useRef, useState } from 'react';
+import { Image } from "expo-image";
+import { useEffect, useRef, useState } from "react";
 import {
   InputAccessoryView,
   Keyboard,
@@ -9,17 +9,18 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { HiddenInput } from '@/features/keyboard/HiddenInput';
-import { ModifierBar } from '@/features/keyboard/ModifierBar';
-import { SpecialKeys } from '@/features/keyboard/SpecialKeys';
-import { TrackpadSurface } from '@/features/trackpad/TrackpadSurface';
-import { useConnection } from '@/state/connection';
-import { useModifiers } from '@/state/modifiers';
+import { HiddenInput } from "@/features/keyboard/HiddenInput";
+import { ModifierBar } from "@/features/keyboard/ModifierBar";
+import { SpecialKeys } from "@/features/keyboard/SpecialKeys";
+import { TrackpadSurface } from "@/features/trackpad/TrackpadSurface";
+import { useConnection } from "@/state/connection";
+import { useModifiers } from "@/state/modifiers";
+import { C } from "@/features/onboarding/atoms";
 
-const KEYBOARD_BAR_ID = 'entangle.keyboardBar';
+const KEYBOARD_BAR_ID = "entangle.keyboardBar";
 
 export default function TrackpadScreen() {
   const serverName = useConnection((s) => s.serverName);
@@ -59,20 +60,21 @@ export default function TrackpadScreen() {
         <View style={styles.headerInfo}>
           <Text style={styles.connected}>Connected to</Text>
           <Text style={styles.serverName} numberOfLines={1}>
-            {serverName ?? '…'}
+            {serverName ?? "…"}
           </Text>
           <Text style={styles.meta}>
             {phase}
-            {latency != null ? ` · ${latency}ms` : ''}
+            {latency != null ? ` · ${latency}ms` : ""}
           </Text>
         </View>
         <Pressable
-          accessibilityLabel={focused ? 'Hide keyboard' : 'Show keyboard'}
+          accessibilityLabel={focused ? "Hide keyboard" : "Show keyboard"}
           style={[styles.kbButton, focused && styles.kbButtonActive]}
-          onPress={toggleKeyboard}>
+          onPress={toggleKeyboard}
+        >
           <Image
             source="sf:keyboard"
-            tintColor={focused ? '#fff' : '#d1d1d6'}
+            tintColor={focused ? "#fff" : "#d1d1d6"}
             style={styles.kbIcon}
           />
         </Pressable>
@@ -83,11 +85,15 @@ export default function TrackpadScreen() {
       <HiddenInput
         ref={inputRef}
         onFocusChange={setFocused}
-        inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_BAR_ID : undefined}
+        inputAccessoryViewID={
+          Platform.OS === "ios" ? KEYBOARD_BAR_ID : undefined
+        }
       />
 
-      {Platform.OS === 'ios' ? (
-        <InputAccessoryView nativeID={KEYBOARD_BAR_ID}>{accessoryBar}</InputAccessoryView>
+      {Platform.OS === "ios" ? (
+        <InputAccessoryView nativeID={KEYBOARD_BAR_ID}>
+          {accessoryBar}
+        </InputAccessoryView>
       ) : null}
     </SafeAreaView>
   );
@@ -96,31 +102,31 @@ export default function TrackpadScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: C.bg,
     padding: 16,
   },
   header: {
     paddingVertical: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: 12,
   },
   headerInfo: {
     flexShrink: 1,
   },
   connected: {
-    color: '#8e8e93',
+    color: "#8e8e93",
     fontSize: 13,
   },
   serverName: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
     marginTop: 2,
   },
   meta: {
-    color: '#8e8e93',
+    color: "#8e8e93",
     fontSize: 12,
     marginTop: 4,
   },
@@ -128,12 +134,12 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#1c1c1e',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#1c1c1e",
+    alignItems: "center",
+    justifyContent: "center",
   },
   kbButtonActive: {
-    backgroundColor: '#0a84ff',
+    backgroundColor: "#0a84ff",
   },
   kbIcon: {
     width: 22,
@@ -142,9 +148,9 @@ const styles = StyleSheet.create({
   bar: {
     padding: 12,
     gap: 8,
-    backgroundColor: '#0a0a0b',
+    backgroundColor: "#0a0a0b",
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#2c2c2e',
+    borderTopColor: "#2c2c2e",
   },
   specialKeys: {
     marginHorizontal: -4,

@@ -22,6 +22,12 @@
         "buildType": "apk"
       }
     },
+    "production-apk": {
+      "channel": "production",
+      "android": {
+        "buildType": "apk"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "channel": "production",

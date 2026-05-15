@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { PROTOCOL_VERSION } from '@entangle/protocol';
 
+import { C } from '@/features/onboarding/atoms';
 import { useConnection } from '@/state/connection';
 import { useSettings } from '@/state/settings';
 
@@ -125,7 +126,7 @@ function ShortcutRow({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#000' },
+  root: { flex: 1, backgroundColor: C.bg },
   content: { padding: 16, paddingBottom: 32 },
   card: {
     backgroundColor: '#1c1c1e',

@@ -10,15 +10,20 @@ const config = getDefaultConfig(__dirname);
 config.watchFolders = [workspaceRoot];
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (
-    platform === 'macos' &&
-    (moduleName === 'react-native' || moduleName.startsWith('react-native/'))
-  ) {
-    const newModuleName = moduleName.replace(
-      'react-native',
-      'react-native-macos',
-    );
-    return context.resolveRequest(context, newModuleName, platform);
+  if (platform === 'macos') {
+    if (
+      moduleName === 'react-native' ||
+      moduleName.startsWith('react-native/')
+    ) {
+      const newModuleName = moduleName.replace(
+        'react-native',
+        'react-native-macos',
+      );
+      return context.resolveRequest(context, newModuleName, platform);
+    }
+    try {
+      return context.resolveRequest(context, moduleName, 'ios');
+    } catch {}
   }
   return context.resolveRequest(context, moduleName, platform);
 };

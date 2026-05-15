@@ -2,6 +2,7 @@ import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { useColorScheme } from "react-native";
 
 import { Colors } from "@/constants/theme";
+import { C } from "@/features/onboarding/atoms";
 
 export default function TabsLayout() {
   const scheme = useColorScheme();
@@ -10,7 +11,7 @@ export default function TabsLayout() {
 
   return (
     <NativeTabs
-      backgroundColor={colors.background}
+      backgroundColor={C.bg}
       indicatorColor={colors.backgroundElement}
       labelStyle={{ selected: { color: colors.text } }}
     >

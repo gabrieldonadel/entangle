@@ -3,6 +3,7 @@ import { SafeAreaView } from 'react-native-screens/experimental';
 
 import { DockGrid } from '@/features/dock/DockGrid';
 import { SpacesBar } from '@/features/dock/SpacesBar';
+import { C } from '@/features/onboarding/atoms';
 
 export default function DockScreen() {
   return (
@@ -22,7 +23,7 @@ export default function DockScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#000' },
+  root: { flex: 1, backgroundColor: C.bg },
   safe: { flex: 1 },
   header: {
     paddingHorizontal: 16,
