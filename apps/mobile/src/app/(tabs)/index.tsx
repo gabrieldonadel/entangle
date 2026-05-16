@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   InputAccessoryView,
   Keyboard,
@@ -12,30 +12,83 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { MiniMac } from "@/features/demo/MiniMac";
+import { PracticeBanner } from "@/features/demo/PracticeBanner";
 import { HiddenInput } from "@/features/keyboard/HiddenInput";
 import { ModifierBar } from "@/features/keyboard/ModifierBar";
 import { SpecialKeys } from "@/features/keyboard/SpecialKeys";
 import { TrackpadSurface } from "@/features/trackpad/TrackpadSurface";
+import type { LocalGestureEvent } from "@/features/trackpad/TrackpadSurface";
 import { useConnection } from "@/state/connection";
 import { useModifiers } from "@/state/modifiers";
 import { C } from "@/features/onboarding/atoms";
 
 const KEYBOARD_BAR_ID = "entangle.keyboardBar";
+const CURSOR_W = 14;
+const CURSOR_H = 20;
 
 export default function TrackpadScreen() {
   const serverName = useConnection((s) => s.serverName);
   const phase = useConnection((s) => s.phase);
   const latency = useConnection((s) => s.latencyMs);
+  const demo = useConnection((s) => s.demo);
   const clearModifiers = useModifiers((s) => s.clear);
 
   const inputRef = useRef<TextInput>(null);
   const [focused, setFocused] = useState(false);
+
+  const [macSize, setMacSize] = useState<{ width: number; height: number }>({
+    width: 0,
+    height: 0,
+  });
+  const [cursor, setCursor] = useState({ x: 60, y: 50 });
+  const [ripple, setRipple] = useState<{
+    key: number;
+    x: number;
+    y: number;
+  } | null>(null);
+  const cursorRef = useRef(cursor);
+  cursorRef.current = cursor;
+  const macSizeRef = useRef(macSize);
+  macSizeRef.current = macSize;
 
   useEffect(() => {
     return () => {
       clearModifiers();
     };
   }, [clearModifiers]);
+
+  // Recenter the cursor when the mini-mac is first measured.
+  useEffect(() => {
+    if (macSize.width > 0 && macSize.height > 0) {
+      setCursor((prev) =>
+        prev.x === 60 && prev.y === 50
+          ? { x: macSize.width * 0.45, y: macSize.height * 0.55 }
+          : prev,
+      );
+    }
+  }, [macSize.width, macSize.height]);
+
+  const handleLocalGesture = useCallback((event: LocalGestureEvent) => {
+    const size = macSizeRef.current;
+    if (size.width <= 0) return;
+    const scaleFactor = 0.45;
+    if (event.type === "move") {
+      setCursor((prev) => ({
+        x: clamp(prev.x + event.dx * scaleFactor, 0, size.width - CURSOR_W),
+        y: clamp(prev.y + event.dy * scaleFactor, 0, size.height - CURSOR_H),
+      }));
+    } else if (event.type === "scroll") {
+      setCursor((prev) => ({
+        x: prev.x,
+        y: clamp(prev.y + event.dy * 0.35, 0, size.height - CURSOR_H),
+      }));
+    } else if (event.type === "tap" || event.type === "rightClick") {
+      const c = cursorRef.current;
+      setRipple({ key: Date.now(), x: c.x + 4, y: c.y + 8 });
+      setTimeout(() => setRipple(null), 500);
+    }
+  }, []);
 
   const toggleKeyboard = () => {
     if (focused) {
@@ -56,15 +109,24 @@ export default function TrackpadScreen() {
 
   return (
     <SafeAreaView style={styles.root}>
+      {demo ? (
+        <View style={styles.bannerWrap}>
+          <PracticeBanner />
+        </View>
+      ) : null}
+
       <View style={styles.header}>
         <View style={styles.headerInfo}>
-          <Text style={styles.connected}>Connected to</Text>
+          <Text style={styles.connected}>
+            {demo ? "Practice mode" : "Connected to"}
+          </Text>
           <Text style={styles.serverName} numberOfLines={1}>
             {serverName ?? "…"}
           </Text>
           <Text style={styles.meta}>
-            {phase}
-            {latency != null ? ` · ${latency}ms` : ""}
+            {demo
+              ? "not a real connection"
+              : `${phase}${latency != null ? ` · ${latency}ms` : ""}`}
           </Text>
         </View>
         <Pressable
@@ -80,7 +142,13 @@ export default function TrackpadScreen() {
         </Pressable>
       </View>
 
-      <TrackpadSurface />
+      {demo ? (
+        <View style={styles.miniMacWrap}>
+          <MiniMac cursor={cursor} ripple={ripple} onLayoutSize={setMacSize} />
+        </View>
+      ) : null}
+
+      <TrackpadSurface onLocalGesture={demo ? handleLocalGesture : undefined} />
 
       <HiddenInput
         ref={inputRef}
@@ -97,6 +165,10 @@ export default function TrackpadScreen() {
       ) : null}
     </SafeAreaView>
   );
+}
+
+function clamp(n: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, n));
 }
 
 const styles = StyleSheet.create({
@@ -154,5 +226,13 @@ const styles = StyleSheet.create({
   },
   specialKeys: {
     marginHorizontal: -4,
+  },
+  bannerWrap: {
+    marginHorizontal: -16,
+    marginTop: -8,
+    marginBottom: 4,
+  },
+  miniMacWrap: {
+    marginBottom: 12,
   },
 });

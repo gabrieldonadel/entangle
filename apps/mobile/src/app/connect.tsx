@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack } from "@/lib/router";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 
 import { ScreenBg } from "@/features/onboarding/atoms";
 import {
@@ -9,9 +9,11 @@ import {
 } from "@/features/discovery/FindMacScreen";
 import { hasUserDisconnected, useConnection } from "@/state/connection";
 import type { ConnectionTarget } from "@/state/connection";
+import { useOnboarding } from "@/state/onboarding";
 
 export default function ConnectScreen() {
   const connect = useConnection((s) => s.connect);
+  const enterDemo = useConnection((s) => s.enterDemo);
 
   // Restore the last-paired host on mount, unless the user explicitly
   // disconnected (in which case they're back here on purpose).
@@ -26,10 +28,15 @@ export default function ConnectScreen() {
     });
   }, [connect]);
 
+  const handleTryDemo = useCallback(() => {
+    void useOnboarding.getState().markComplete();
+    enterDemo();
+  }, [enterDemo]);
+
   return (
     <ScreenBg>
       <Stack.Screen options={{ title: "Connect" }} />
-      <FindMacScreen />
+      <FindMacScreen onTryDemo={handleTryDemo} />
     </ScreenBg>
   );
 }

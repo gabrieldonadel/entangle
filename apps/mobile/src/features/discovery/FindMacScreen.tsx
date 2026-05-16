@@ -25,9 +25,16 @@ export interface FindMacScreenProps {
    * target to AsyncStorage and call `connect()` after this resolves.
    */
   onBeforeConnect?: (target: ConnectionTarget) => void | Promise<void>;
+  /**
+   * Optional handler for the "Try without a Mac" demo tile. When provided,
+   * the tile is rendered below the Rescan row. Required for App Store
+   * 4.2.3(i): the app must do something meaningful without the Mac
+   * companion installed.
+   */
+  onTryDemo?: () => void;
 }
 
-export function FindMacScreen({ onBeforeConnect }: FindMacScreenProps) {
+export function FindMacScreen({ onBeforeConnect, onTryDemo }: FindMacScreenProps) {
   const { services, scanning, rescan } = useDiscovery();
   const phase = useConnection((s) => s.phase);
   const connect = useConnection((s) => s.connect);
@@ -99,6 +106,58 @@ export function FindMacScreen({ onBeforeConnect }: FindMacScreenProps) {
             {scanning ? "Scanning" : "Rescan"}
           </Text>
         </Pressable>
+
+        {onTryDemo ? (
+          <>
+            <View style={styles.orRow}>
+              <View style={styles.orLine} />
+              <Text style={styles.orText}>or</Text>
+              <View style={styles.orLine} />
+            </View>
+            <Pressable
+              onPress={onTryDemo}
+              accessibilityLabel="Try without a Mac"
+              style={styles.demoTile}
+            >
+              <View style={styles.demoIconBox}>
+                <Svg width={18} height={18} viewBox="0 0 24 24">
+                  <Path
+                    d="M14 4l4 4-9 9H5v-4z"
+                    stroke={C.accent}
+                    strokeWidth={1.6}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="none"
+                  />
+                  <Path
+                    d="M13 5l4 4"
+                    stroke={C.accent}
+                    strokeWidth={1.6}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="none"
+                  />
+                </Svg>
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.demoTitle}>Try without a Mac</Text>
+                <Text style={styles.demoSubtitle}>
+                  Explore the app in demo mode
+                </Text>
+              </View>
+              <Svg width={14} height={14} viewBox="0 0 24 24">
+                <Path
+                  d="M9 6l6 6-6 6"
+                  stroke={C.muted}
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  fill="none"
+                />
+              </Svg>
+            </Pressable>
+          </>
+        ) : null}
 
         <View style={{ flex: 1 }} />
 
@@ -250,6 +309,60 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     fontFamily: F.body,
+  },
+  orRow: {
+    marginTop: 28,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  orLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: C.border,
+  },
+  orText: {
+    color: C.dim,
+    fontSize: 10,
+    fontFamily: F.mono,
+    fontWeight: "500",
+    letterSpacing: 1.8,
+    textTransform: "uppercase",
+  },
+  demoTile: {
+    marginTop: 22,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    backgroundColor: "rgba(163,187,214,0.06)",
+    borderWidth: 1,
+    borderColor: C.borderStrong,
+    borderStyle: "dashed",
+    borderRadius: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  demoIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "rgba(163,187,214,0.10)",
+    borderWidth: 1,
+    borderColor: C.borderStrong,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  demoTitle: {
+    color: C.text,
+    fontSize: 14,
+    fontWeight: "600",
+    fontFamily: F.body,
+  },
+  demoSubtitle: {
+    color: C.muted,
+    fontSize: 12,
+    fontFamily: F.body,
+    marginTop: 2,
   },
 });
 

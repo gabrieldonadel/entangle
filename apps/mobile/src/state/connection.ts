@@ -15,6 +15,7 @@ import {
 import type { ClientMessage, DockApp, Message } from '@entangle/protocol';
 
 import { useDock } from './dock';
+import { DEMO_DOCK_APPS } from './demo';
 
 export type ConnectionPhase =
   | 'idle'
@@ -42,6 +43,7 @@ interface ConnectionState {
   latencyMs: number | null;
   pairingError: string | null;
   trustedTokens: Record<string, string>;
+  demo: boolean;
   connect: (target: ConnectionTarget) => void;
   connectWithToken: (input: {
     name?: string;
@@ -50,6 +52,7 @@ interface ConnectionState {
     token: string;
   }) => void;
   disconnect: () => void;
+  enterDemo: () => void;
   send: (msg: ClientMessage) => void;
   sendRaw: (raw: string) => void;
   retryPairing: (code?: string) => void;
@@ -76,7 +79,9 @@ export const useConnection = create<ConnectionState>((set, get) => ({
   latencyMs: null,
   pairingError: null,
   trustedTokens: {},
+  demo: false,
   connect: (target) => {
+    if (get().demo) return;
     manuallyDisconnected = false;
     reconnectAttempt = 0;
     pendingPairCode = null;
@@ -85,6 +90,7 @@ export const useConnection = create<ConnectionState>((set, get) => ({
     openSocket();
   },
   connectWithToken: ({ name, host, port, token }) => {
+    if (get().demo) return;
     manuallyDisconnected = false;
     reconnectAttempt = 0;
     pendingPairCode = null;
@@ -116,6 +122,32 @@ export const useConnection = create<ConnectionState>((set, get) => ({
       serverCaps: [],
       latencyMs: null,
       pairingError: null,
+      demo: false,
+    });
+  },
+  enterDemo: () => {
+    manuallyDisconnected = false;
+    reconnectAttempt = 0;
+    pendingPairCode = null;
+    pendingPairToken = null;
+    clearTimers();
+    if (socket) {
+      try {
+        socket.close();
+      } catch {}
+      socket = null;
+    }
+    useDock.getState().setApps(DEMO_DOCK_APPS);
+    set({
+      phase: 'open',
+      target: { name: 'Demo Mac', host: '0.0.0.0', port: 0 },
+      serverName: 'Demo Mac',
+      serverVersion: 'demo',
+      serverCaps: [],
+      lastError: null,
+      latencyMs: null,
+      pairingError: null,
+      demo: true,
     });
   },
   send: (msg) => {
@@ -143,7 +175,9 @@ export const useConnection = create<ConnectionState>((set, get) => ({
 }));
 
 function openSocket() {
-  const { target } = useConnection.getState();
+  const state = useConnection.getState();
+  if (state.demo) return;
+  const { target } = state;
   if (!target) return;
   clearTimers();
 

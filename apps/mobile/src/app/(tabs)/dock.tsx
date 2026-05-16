@@ -1,14 +1,22 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-screens/experimental';
 
+import { PracticeBanner } from '@/features/demo/PracticeBanner';
 import { DockGrid } from '@/features/dock/DockGrid';
 import { SpacesBar } from '@/features/dock/SpacesBar';
 import { C } from '@/features/onboarding/atoms';
+import { useConnection } from '@/state/connection';
 
 export default function DockScreen() {
+  const demo = useConnection((s) => s.demo);
   return (
     <View style={styles.root}>
       <SafeAreaView edges={{ top: true, bottom: true }} style={styles.safe}>
+        {demo ? (
+          <View style={styles.bannerWrap}>
+            <PracticeBanner />
+          </View>
+        ) : null}
         <View style={styles.header}>
           <Text style={styles.title}>Dock</Text>
           <Text style={styles.subtitle}>Tap an app to bring it to the front.</Text>
@@ -42,5 +50,9 @@ const styles = StyleSheet.create({
   },
   grid: {
     flex: 1,
+  },
+  bannerWrap: {
+    paddingTop: 8,
+    paddingBottom: 4,
   },
 });
