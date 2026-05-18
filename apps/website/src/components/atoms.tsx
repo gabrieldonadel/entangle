@@ -46,6 +46,12 @@ export const StarIcon = ({ size = 16 }: IconProps) => (
   </svg>
 );
 
+export const HeartIcon = ({ size = 16 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 21s-7.5-4.6-9.5-9.2C1.2 8.6 3 5 6.5 5c2 0 3.5 1.1 4.5 2.6C12 6.1 13.5 5 15.5 5 19 5 20.8 8.6 21.5 11.8 19.5 16.4 12 21 12 21z" />
+  </svg>
+);
+
 export const ArrowRight = ({ size = 14 }: IconProps) => (
   <svg
     width={size}

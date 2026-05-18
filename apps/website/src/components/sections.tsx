@@ -4,6 +4,7 @@ import {
   GitHubIcon,
   AppleIcon,
   StarIcon,
+  HeartIcon,
   ArrowRight,
   ConnectingWave,
 } from "./atoms";
@@ -13,8 +14,14 @@ import {
   formatStarsCompact,
   formatStarsLong,
 } from "../hooks/useGitHubStars";
+import { useGitHubContributors } from "../hooks/useGitHubContributors";
 import type { AppView, CursorPos, Theme, TrackpadDragHandler } from "../types";
-import { DESKTOP_RELEASES_URL, GITHUB_URL, TESTFLIGHT_URL } from "../constants";
+import {
+  DESKTOP_RELEASES_URL,
+  GITHUB_URL,
+  SPONSOR_URL,
+  TESTFLIGHT_URL,
+} from "../constants";
 
 type NavProps = { theme: Theme; setTheme: (t: Theme) => void };
 
@@ -54,6 +61,7 @@ export const Nav = ({ theme, setTheme }: NavProps) => {
             Entangle
           </span>
           <span
+            className="nav-version-pill"
             style={{
               fontFamily: "var(--font-mono)",
               fontSize: 10,
@@ -68,24 +76,24 @@ export const Nav = ({ theme, setTheme }: NavProps) => {
             v1.0 · OSS
           </span>
         </div>
-        <nav style={{ display: "flex", alignItems: "center", gap: 28 }}>
+        <nav className="nav-links-desktop">
           <a
             href="#how"
-            className="nav-link"
+            className="nav-link nav-link-hide-mobile"
             style={{ fontSize: 14, color: "var(--text-muted)" }}
           >
             How it works
           </a>
           <a
             href="#screens"
-            className="nav-link"
+            className="nav-link nav-link-hide-mobile"
             style={{ fontSize: 14, color: "var(--text-muted)" }}
           >
             Screens
           </a>
           <a
             href="#oss"
-            className="nav-link"
+            className="nav-link nav-link-hide-mobile"
             style={{ fontSize: 14, color: "var(--text-muted)" }}
           >
             Open source
@@ -170,10 +178,12 @@ const HeroStage = ({
 }: HeroStageProps) => {
   const stageRef = React.useRef<HTMLDivElement>(null);
   const [scale, setScale] = React.useState(1);
+  const [isMobile, setIsMobile] = React.useState(false);
 
   React.useEffect(() => {
     const update = () => {
       const w = stageRef.current?.offsetWidth || 1180;
+      setIsMobile(w < 720);
       const s = Math.min(1, w / 1100);
       setScale(s);
     };
@@ -181,6 +191,195 @@ const HeroStage = ({
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
   }, []);
+
+  if (isMobile) {
+    return (
+      <div
+        ref={stageRef}
+        style={{
+          position: "relative",
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 24,
+          paddingTop: 8,
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 380,
+            position: "relative",
+            zIndex: 1,
+          }}
+        >
+          <MacFrame width={380} height={232} cursorPos={cursorPos}>
+            <div
+              style={{
+                position: "absolute",
+                top: 20,
+                left: 24,
+                right: 24,
+                bottom: 26,
+                background: "rgba(30,38,52,0.9)",
+                borderRadius: 8,
+                border: "1px solid rgba(255,255,255,0.12)",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  height: 22,
+                  display: "flex",
+                  alignItems: "center",
+                  padding: "0 10px",
+                  gap: 5,
+                  borderBottom: "1px solid rgba(255,255,255,0.05)",
+                }}
+              >
+                <div
+                  style={{
+                    width: 9,
+                    height: 9,
+                    borderRadius: "50%",
+                    background: "#FF5F57",
+                  }}
+                />
+                <div
+                  style={{
+                    width: 9,
+                    height: 9,
+                    borderRadius: "50%",
+                    background: "#FEBC2E",
+                  }}
+                />
+                <div
+                  style={{
+                    width: 9,
+                    height: 9,
+                    borderRadius: "50%",
+                    background: "#28C840",
+                  }}
+                />
+                <div
+                  style={{
+                    flex: 1,
+                    textAlign: "center",
+                    fontSize: 10,
+                    color: "rgba(255,255,255,0.5)",
+                    fontFamily: "var(--font-display)",
+                  }}
+                >
+                  Cycling.mp4
+                </div>
+              </div>
+              <div
+                style={{
+                  height: "calc(100% - 22px)",
+                  background: "linear-gradient(135deg, #2c3e58, #1d2c44)",
+                  display: "grid",
+                  placeItems: "center",
+                  position: "relative",
+                }}
+              >
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: "50%",
+                    background: "rgba(255,255,255,0.15)",
+                    display: "grid",
+                    placeItems: "center",
+                    border: "1px solid rgba(255,255,255,0.25)",
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </div>
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: 10,
+                    left: 12,
+                    right: 12,
+                    height: 2,
+                    background: "rgba(255,255,255,0.2)",
+                    borderRadius: 2,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "37%",
+                      height: "100%",
+                      background: "#fff",
+                      borderRadius: 2,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          </MacFrame>
+        </div>
+
+        <div
+          style={{
+            position: "relative",
+            width: 2,
+            height: 56,
+            background:
+              "linear-gradient(180deg, transparent, var(--accent), transparent)",
+            opacity: 0.5,
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "4px 10px",
+              borderRadius: 999,
+              background: "var(--surface)",
+              border: "1px solid var(--border-strong)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              fontFamily: "var(--font-mono)",
+              fontSize: 10,
+              color: "var(--text)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <span
+              style={{
+                width: 5,
+                height: 5,
+                borderRadius: "50%",
+                background: "var(--accent)",
+                boxShadow: "0 0 6px var(--accent)",
+              }}
+            />
+            {latencyMs}ms · LAN
+          </div>
+        </div>
+
+        <div style={{ position: "relative", zIndex: 4 }}>
+          <PhoneFrame scale={0.78}>
+            <EntangleAppScreen
+              scale={0.78}
+              onTrackpadDrag={onTrackpadDrag}
+              cursorPos={cursorPos}
+              latencyMs={latencyMs}
+            />
+          </PhoneFrame>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -492,6 +691,7 @@ export const Hero = ({ cursorPos, onTrackpadDrag, latencyMs }: HeroProps) => (
       </p>
 
       <div
+        className="hero-buttons"
         style={{
           display: "flex",
           gap: 12,
@@ -553,7 +753,7 @@ export const HowItWorks = () => {
       n: "01",
       title: "Install on both",
       body: "Grab Entangle for Mac and iPhone. Both apps are free, signed, and notarized.",
-      mono: "brew install --cask entangle",
+      mono: "TestFlight + signed DMG",
     },
     {
       n: "02",
@@ -583,13 +783,7 @@ export const HowItWorks = () => {
           </h2>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 20,
-          }}
-        >
+        <div className="responsive-grid-3">
           {steps.map((s, i) => (
             <div
               key={s.n}
@@ -645,6 +839,7 @@ export const HowItWorks = () => {
 
               {i < steps.length - 1 && (
                 <div
+                  className="step-connector"
                   style={{
                     position: "absolute",
                     right: -14,
@@ -692,16 +887,7 @@ export const Screens = () => {
   return (
     <section id="screens">
       <div className="container">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-end",
-            marginBottom: 48,
-            gap: 24,
-            flexWrap: "wrap",
-          }}
-        >
+        <div className="screens-header" style={{ marginBottom: 48 }}>
           <div>
             <div className="eyebrow" style={{ marginBottom: 14 }}>
               What's inside
@@ -716,13 +902,7 @@ export const Screens = () => {
           </p>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 24,
-          }}
-        >
+        <div className="responsive-grid-3" style={{ gap: 24 }}>
           {screens.map((s) => (
             <div
               key={s.tag}
@@ -798,19 +978,16 @@ const Row = ({
 
 export const OpenSource = () => {
   const stars = useGitHubStars();
+  const contributors = useGitHubContributors();
   return (
     <section id="oss">
       <div className="container">
         <div
-          className="glass"
+          className="glass oss-card responsive-grid-2"
           style={{
             padding: "56px 48px",
             position: "relative",
             overflow: "hidden",
-            display: "grid",
-            gridTemplateColumns: "1.2fr 1fr",
-            gap: 48,
-            alignItems: "center",
           }}
         >
           <div
@@ -838,11 +1015,16 @@ export const OpenSource = () => {
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <a
                 className="btn btn-primary"
-                href={GITHUB_URL}
+                href={SPONSOR_URL}
                 target="_blank"
                 rel="noreferrer"
+                style={{
+                  background: "#DB61A2",
+                  color: "#fff",
+                  borderColor: "transparent",
+                }}
               >
-                <GitHubIcon /> github.com/gabrieldonadel/entangle
+                <HeartIcon size={15} /> Sponsor @gabrieldonadel
               </a>
               <a
                 className="btn btn-ghost"
@@ -903,7 +1085,10 @@ export const OpenSource = () => {
               <Row k="protocol" v="Bonjour + WebSocket (LAN-only)" />
               <Row k="telemetry" v="none" valueColor="var(--accent)" />
               <Row k="cloud" v="never" valueColor="var(--accent)" />
-              <Row k="contributors" v="38" />
+              <Row
+                k="contributors"
+                v={contributors == null ? "—" : String(contributors)}
+              />
             </div>
           </div>
         </div>
@@ -921,7 +1106,7 @@ export const Footer = () => (
     }}
   >
     <div
-      className="container"
+      className="container footer-row"
       style={{
         display: "flex",
         justifyContent: "space-between",
