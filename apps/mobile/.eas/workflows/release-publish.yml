@@ -19,13 +19,14 @@ jobs:
     # put it on the first line.
     if: "${{ contains(github.event.head_commit.message, 'release(mobile): v') }}"
     runs_on: linux-medium
+    # Job-level env: step-level `env:` does not interpolate ${{ }} expressions.
+    env:
+      COMMIT_MSG: ${{ github.event.head_commit.message }}
     outputs:
       version: ${{ steps.parse.outputs.version }}
     steps:
       - id: parse
         name: Parse version from commit message
-        env:
-          COMMIT_MSG: ${{ github.event.head_commit.message }}
         # Default merge commits put the PR title on a body line, not the first
         # line — so scan the whole message for the release marker.
         run: |
