@@ -19,13 +19,14 @@ jobs:
     # put it on the first line.
     if: "${{ contains(github.event.head_commit.message, 'release(mobile): v') }}"
     runs_on: linux-medium
+    # Job-level env: step-level `env:` does not interpolate ${{ }} expressions.
+    env:
+      COMMIT_MSG: ${{ github.event.head_commit.message }}
     outputs:
       version: ${{ steps.parse.outputs.version }}
     steps:
       - id: parse
         name: Parse version from commit message
-        env:
-          COMMIT_MSG: ${{ github.event.head_commit.message }}
         # Default merge commits put the PR title on a body line, not the first
         # line — so scan the whole message for the release marker.
         run: |
@@ -56,16 +57,20 @@ jobs:
     steps:
       - uses: eas/checkout
 
-      - name: Force-move v${{ needs.guard.outputs.version }}-mobile onto HEAD
+      - name: Force-move tag onto HEAD
         # The original tag pointed at the developer's pre-bump commit; we move
         # it to the merge commit so the GitHub Release is built from the
         # actually-released tree.
+        #
+        # eas/checkout already set up origin; we inject the token via an
+        # Authorization header instead of rewriting the remote URL, which would
+        # require knowing owner/repo (${{ github.repository }} is unavailable here).
         run: |
           git config user.name "entangle-release-bot"
           git config user.email "release-bot@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${RELEASE_GH_TOKEN}@github.com/${{ github.repository }}.git"
+          AUTH_HEADER="Authorization: Basic $(printf 'x-access-token:%s' "$RELEASE_GH_TOKEN" | base64 -w0)"
           git tag -f "v${VERSION}-mobile"
-          git push -f origin "v${VERSION}-mobile"
+          git -c "http.extraheader=${AUTH_HEADER}" push -f origin "v${VERSION}-mobile"
 
   build_ios:
     name: Build iOS (production)
@@ -103,7 +108,11 @@ jobs:
 
   github_release:
     name: Create GitHub Release
-    needs: [guard, submit_ios, submit_android]
+    # `needs` for guard (must succeed — we read its `version` output); `after` for
+    # the submit jobs so the GitHub Release still gets published even if a store
+    # submission flakes (the binaries are already built and can be resubmitted).
+    needs: [guard]
+    after: [submit_ios, submit_android]
     runs_on: linux-medium
     env:
       VERSION: ${{ needs.guard.outputs.version }}
@@ -123,9 +132,10 @@ jobs:
           fi
 
       - name: Create release
+        # gh infers --repo from the local git remote that eas/checkout configures,
+        # which avoids depending on ${{ github.repository }} (unavailable here).
         run: |
           gh release create "v${VERSION}-mobile" \
-            --repo "${{ github.repository }}" \
             --title "Mobile v${VERSION}" \
             --generate-notes \
             --verify-tag
