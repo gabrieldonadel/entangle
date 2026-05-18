@@ -4,7 +4,6 @@
     "slug": "entangle-mobile",
     "version": "0.0.1",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
     "scheme": "entangle",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -19,13 +18,8 @@
       "associatedDomains": ["applinks:entangle.donadel.dev"]
     },
     "android": {
+      "icon": "./assets/images/icon.png",
       "package": "com.gabrieldonadel.entangle",
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
-      },
       "permissions": [
         "android.permission.CHANGE_WIFI_MULTICAST_STATE",
         "android.permission.ACCESS_NETWORK_STATE",
@@ -58,7 +52,11 @@
         {
           "backgroundColor": "#0E1014",
           "image": "./assets/images/splash.png",
-          "enableFullScreenImage_legacy": true
+          "enableFullScreenImage_legacy": true,
+          "android": {
+            "image": "./assets/images/icon.png",
+            "resizeMode": "cover"
+          }
         }
       ],
       [
