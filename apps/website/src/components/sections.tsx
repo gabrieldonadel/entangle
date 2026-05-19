@@ -721,7 +721,12 @@ export const Hero = ({ cursorPos, onTrackpadDrag, latencyMs }: HeroProps) => (
         >
           <AppleIcon /> Mac App · DMG
         </a>
-        <a className="btn btn-ghost" href={ANDROID_URL} aria-disabled="true">
+        <a
+          className="btn btn-ghost"
+          href={ANDROID_URL}
+          target="_blank"
+          rel="noreferrer"
+        >
           <AndroidIcon /> Download for Android
         </a>
       </div>
