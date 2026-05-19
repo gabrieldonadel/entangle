@@ -3,9 +3,9 @@ import {
   Logo,
   GitHubIcon,
   AppleIcon,
+  AndroidIcon,
   StarIcon,
   HeartIcon,
-  ArrowRight,
   ConnectingWave,
 } from "./atoms";
 import { PhoneFrame, MacFrame, EntangleAppScreen } from "./devices";
@@ -21,6 +21,7 @@ import {
   GITHUB_URL,
   SPONSOR_URL,
   TESTFLIGHT_URL,
+  ANDROID_URL,
 } from "../constants";
 
 type NavProps = { theme: Theme; setTheme: (t: Theme) => void };
@@ -662,7 +663,7 @@ export const Hero = ({ cursorPos, onTrackpadDrag, latencyMs }: HeroProps) => (
             boxShadow: "0 0 8px var(--accent)",
           }}
         />
-        Free · Open source · Built with Expo
+        Free · Open source · No ads, ever
       </div>
 
       <h1
@@ -687,7 +688,11 @@ export const Hero = ({ cursorPos, onTrackpadDrag, latencyMs }: HeroProps) => (
       <p className="lede" style={{ marginInline: "auto", marginBottom: 36 }}>
         Entangle is a free, open-source remote that turns your iPhone into a
         pocket trackpad for any Mac on your network. Pause your bike, control
-        your video. No accounts, no cloud.
+        your video.
+        <strong style={{ color: "var(--text)", fontWeight: 500 }}>
+          {" "}
+          No accounts, no cloud, no ads.
+        </strong>
       </p>
 
       <div
@@ -716,14 +721,8 @@ export const Hero = ({ cursorPos, onTrackpadDrag, latencyMs }: HeroProps) => (
         >
           <AppleIcon /> Mac App · DMG
         </a>
-        <a
-          className="btn btn-ghost"
-          href={GITHUB_URL}
-          target="_blank"
-          rel="noreferrer"
-        >
-          <GitHubIcon /> Star on GitHub
-          <ArrowRight />
+        <a className="btn btn-ghost" href={ANDROID_URL} aria-disabled="true">
+          <AndroidIcon /> Download for Android
         </a>
       </div>
       <div
@@ -908,7 +907,7 @@ export const Screens = () => {
               key={s.tag}
               className="glass"
               style={{
-                padding: "32px 24px 24px",
+                padding: "32px 24px 0",
                 overflow: "hidden",
                 display: "flex",
                 flexDirection: "column",
@@ -949,9 +948,11 @@ export const Screens = () => {
               >
                 {s.body}
               </p>
-              <PhoneFrame scale={0.62} glow={false}>
-                <EntangleAppScreen scale={0.62} latencyMs={2} view={s.view} />
-              </PhoneFrame>
+              <div style={{ transform: "translateY(20px)" }}>
+                <PhoneFrame scale={0.62} glow={false}>
+                  <EntangleAppScreen scale={0.62} latencyMs={2} view={s.view} />
+                </PhoneFrame>
+              </div>
             </div>
           ))}
         </div>
@@ -1008,9 +1009,9 @@ export const OpenSource = () => {
               Free forever. Built in the open.
             </h2>
             <p className="lede" style={{ marginBottom: 24 }}>
-              No accounts, no telemetry, no upsell. Inspect every line, file an
-              issue, ship a PR. Built with Expo on iOS and macOS — one codebase,
-              two native targets.
+              No accounts, no telemetry, no ads, no upsell. Inspect every line,
+              file an issue, ship a PR. Built with Expo on iOS, Android, and
+              macOS — one codebase, three native targets.
             </p>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <a
@@ -1084,6 +1085,7 @@ export const OpenSource = () => {
               <Row k="stack" v="Expo · React Native · Swift" />
               <Row k="protocol" v="Bonjour + WebSocket (LAN-only)" />
               <Row k="telemetry" v="none" valueColor="var(--accent)" />
+              <Row k="ads" v="never" valueColor="var(--accent)" />
               <Row k="cloud" v="never" valueColor="var(--accent)" />
               <Row
                 k="contributors"
