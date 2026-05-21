@@ -19,6 +19,9 @@ importers:
       '@entangle/protocol':
         specifier: link:../../packages/shared
         version: link:../../packages/shared
+      babel-preset-expo:
+        specifier: ~55.0.18
+        version: 55.0.18(@babel/core@7.29.0)(@babel/runtime@7.29.2)(expo@55.0.18)(react-refresh@0.14.2)
       expo:
         specifier: ^55.0.12
         version: 55.0.18(patch_hash=7d9700d7a25595bbba864ad643271174c1daca8c25ebfab0b69ad92e99d93fe7)(@babel/core@7.29.0)(@expo/dom-webview@55.0.5)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)(typescript@5.9.3)

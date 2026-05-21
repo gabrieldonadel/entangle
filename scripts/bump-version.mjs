@@ -5,7 +5,9 @@
 // Mobile  → apps/mobile/package.json (version), apps/mobile/app.json (expo.version)
 // Desktop → apps/desktop/package.json (version),
 //           apps/desktop/macos/entangle-macOS/Info.plist (CFBundleShortVersionString,
-//           CFBundleVersion += 1)
+//           CFBundleVersion += 1),
+//           apps/desktop/macos/entangle-macOS/Supporting/Expo.plist
+//           (EXUpdatesRuntimeVersion)
 //
 // iOS/Android build numbers are not touched here — EAS handles those via
 // production.autoIncrement in apps/mobile/eas.json.
@@ -45,10 +47,15 @@ function mobileEdits(v) {
 
 function desktopEdits(v) {
   const infoPlist = resolve(REPO_ROOT, 'apps/desktop/macos/entangle-macOS/Info.plist');
+  const expoPlist = resolve(
+    REPO_ROOT,
+    'apps/desktop/macos/entangle-macOS/Supporting/Expo.plist',
+  );
   return [
     setJsonKey(resolve(REPO_ROOT, 'apps/desktop/package.json'), ['version'], v),
     setPlistString(infoPlist, 'CFBundleShortVersionString', v),
     incrementPlistInt(infoPlist, 'CFBundleVersion'),
+    setPlistString(expoPlist, 'EXUpdatesRuntimeVersion', v),
   ];
 }
 

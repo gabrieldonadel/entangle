@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@entangle/protocol": "link:../../packages/shared",
+    "babel-preset-expo": "~55.0.18",
     "expo": "^55.0.12",
     "expo-linear-gradient": "~55.0.14",
     "expo-modules-core": "^55.0.23",
