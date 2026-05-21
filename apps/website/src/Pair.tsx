@@ -1,7 +1,5 @@
 import React from "react";
-import { TESTFLIGHT_URL } from "./constants";
-
-const APP_STORE_URL: string | null = TESTFLIGHT_URL;
+import { APP_STORE_URL } from "./constants";
 
 export default function Pair() {
   const params = new URLSearchParams(window.location.search);
@@ -53,13 +51,9 @@ export default function Pair() {
               Open in Entangle
             </a>
           ) : null}
-          {APP_STORE_URL ? (
-            <a href={APP_STORE_URL} style={styles.ghost}>
-              Get the iPhone app
-            </a>
-          ) : (
-            <span style={styles.coming}>iPhone app coming soon to the App Store</span>
-          )}
+          <a href={APP_STORE_URL} style={styles.ghost}>
+            Get the iPhone app
+          </a>
         </div>
       </section>
     </main>
@@ -139,10 +133,5 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#f5f7fa",
     fontSize: 15,
     textDecoration: "none",
-  },
-  coming: {
-    fontSize: 13,
-    color: "#5a6378",
-    alignSelf: "center",
   },
 };

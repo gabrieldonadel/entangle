@@ -20,7 +20,7 @@ import {
   DESKTOP_RELEASES_URL,
   GITHUB_URL,
   SPONSOR_URL,
-  TESTFLIGHT_URL,
+  APP_STORE_URL,
   ANDROID_URL,
 } from "../constants";
 
@@ -707,7 +707,7 @@ export const Hero = ({ cursorPos, onTrackpadDrag, latencyMs }: HeroProps) => (
       >
         <a
           className="btn btn-primary"
-          href={TESTFLIGHT_URL}
+          href={APP_STORE_URL}
           target="_blank"
           rel="noreferrer"
         >
@@ -757,7 +757,7 @@ export const HowItWorks = () => {
       n: "01",
       title: "Install on both",
       body: "Grab Entangle for Mac and iPhone. Both apps are free, signed, and notarized.",
-      mono: "TestFlight + signed DMG",
+      mono: "App Store + signed DMG",
     },
     {
       n: "02",

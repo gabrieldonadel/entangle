@@ -57,7 +57,7 @@ export function PairingSheet({ visible, onClose }: Props) {
   if (!visible) return null;
 
   // Universal link: opens the iPhone app via associatedDomains when
-  // installed, otherwise lands on the website's /pair page (TestFlight
+  // installed, otherwise lands on the website's /pair page (App Store
   // CTA + manual `entangle://` fallback button).
   const qrPayload = pairing
     ? `${PAIR_LINK_BASE}?` +

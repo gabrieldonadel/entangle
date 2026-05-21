@@ -2,7 +2,7 @@ import React from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 
-import { TESTFLIGHT_URL } from '../constants';
+import { APP_STORE_URL } from '../constants';
 import { fonts, tokens } from '../theme';
 import { EntCard } from './atoms/EntCard';
 import { Heading } from './atoms/Heading';
@@ -38,7 +38,7 @@ export function EmptyPhones({ onShowPairing }: Props) {
             <Pressable
               style={styles.ghost}
               onPress={() => {
-                void Linking.openURL(TESTFLIGHT_URL);
+                void Linking.openURL(APP_STORE_URL);
               }}>
               <Svg width={13} height={13} viewBox="0 0 24 24">
                 <Path

@@ -66,7 +66,7 @@ The wire format is a single shared TypeScript package — [`@entangle/protocol`]
 | Platform                  | Download                                                                         |
 | ------------------------- | -------------------------------------------------------------------------------- |
 | **macOS** (Apple Silicon) | [`Entangle.dmg`](https://github.com/gabrieldonadel/entangle/releases)            |
-| **iOS**                   | [TestFlight beta](https://testflight.apple.com/join/q9VnAMJx)                    |
+| **iOS**                   | [App Store](https://apps.apple.com/us/app/entangle-remote-trackpad/id6764150476) |
 | **Android**               | [Google Play](https://play.google.com/store/apps/details?id=com.gabrieldonadel.entangle) · [`entangle.apk`](https://github.com/gabrieldonadel/entangle/releases) |
 
 ### Build from source
