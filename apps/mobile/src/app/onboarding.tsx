@@ -59,6 +59,11 @@ export default function OnboardingScreen() {
     router.replace("/connect");
   }, [markComplete]);
 
+  const finish = useCallback(async () => {
+    await markComplete();
+    router.replace("/connect");
+  }, [markComplete]);
+
   const renderStep = (s: Step): ReactNode => {
     switch (s) {
       case "welcome":
@@ -133,7 +138,7 @@ export default function OnboardingScreen() {
             stepLabel="Step 4 of 4"
             title="Power moves."
             lede="Three‑finger swipes drive macOS Spaces."
-            onContinue={() => router.navigate("/connect")}
+            onContinue={finish}
             items={[
               {
                 id: "left",

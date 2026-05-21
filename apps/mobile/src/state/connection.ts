@@ -353,10 +353,6 @@ export function getSocket(): WebSocket | null {
   return socket;
 }
 
-export function hasUserDisconnected(): boolean {
-  return manuallyDisconnected;
-}
-
 async function persistTrustedTokens(tokens: Record<string, string>): Promise<void> {
   try {
     await AsyncStorage.setItem(TRUSTED_TOKENS_KEY, JSON.stringify(tokens));

@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Svg, { Path, Rect } from "react-native-svg";
 
 import { MiniMac } from "@/features/demo/MiniMac";
 import { PracticeBanner } from "@/features/demo/PracticeBanner";
@@ -134,11 +135,15 @@ export default function TrackpadScreen() {
           style={[styles.kbButton, focused && styles.kbButtonActive]}
           onPress={toggleKeyboard}
         >
-          <Image
-            source="sf:keyboard"
-            tintColor={focused ? "#fff" : "#d1d1d6"}
-            style={styles.kbIcon}
-          />
+          {Platform.OS === "ios" ? (
+            <Image
+              source="sf:keyboard"
+              tintColor={focused ? "#fff" : "#d1d1d6"}
+              style={styles.kbIcon}
+            />
+          ) : (
+            <KeyboardIcon color={focused ? "#fff" : "#d1d1d6"} size={22} />
+          )}
         </Pressable>
       </View>
 
@@ -169,6 +174,28 @@ export default function TrackpadScreen() {
 
 function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
+}
+
+function KeyboardIcon({ color, size }: { color: string; size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect
+        x={2}
+        y={6}
+        width={20}
+        height={12}
+        rx={2}
+        stroke={color}
+        strokeWidth={1.5}
+      />
+      <Path
+        d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M18 14h.01M9 14h6"
+        stroke={color}
+        strokeWidth={1.6}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
 }
 
 const styles = StyleSheet.create({

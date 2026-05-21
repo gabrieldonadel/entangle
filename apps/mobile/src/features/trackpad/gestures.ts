@@ -8,6 +8,7 @@ import {
   useNaturalScrollRef,
   usePointerSensitivityRef,
 } from "@/state/settings";
+import { Platform } from "react-native";
 
 // Trackpad gesture event hooks. The same gesture configuration (thresholds,
 // activation rules, haptics) drives both the production trackpad surface and
@@ -36,6 +37,12 @@ const DRAG_TRAVEL_TOLERANCE = 8;
 const SWIPE_THRESHOLD_X = 50;
 const SWIPE_THRESHOLD_Y = 60;
 
+// Android capacitive touch reports small jitter on finger-down, so a pan with
+// minDistance(0) activates instantly and starves the single-tap inside
+// Gesture.Race. A few pixels of dead-zone lets the tap win without making the
+// cursor feel sluggish.
+const PAN_MIN_DISTANCE = Platform.OS === "android" ? 4 : 0;
+
 // Drag state lives in a single-element object held by closure. RNGH builds
 // gesture callbacks via Reanimated's worklet pipeline; even with
 // `runOnJS(true)`, plain `let` bindings get captured by *value* at gesture
@@ -50,7 +57,7 @@ export function createTrackpadGestures(handlers: TrackpadHandlers) {
   const pan = Gesture.Pan()
     .minPointers(1)
     .maxPointers(1)
-    .minDistance(0)
+    .minDistance(PAN_MIN_DISTANCE)
     .onChange((event) => {
       handlers.onMove?.(event.changeX, event.changeY);
     })
@@ -116,7 +123,8 @@ export function createTrackpadGestures(handlers: TrackpadHandlers) {
 
   const twoFingerDoubleTap = Gesture.Tap()
     .numberOfTaps(2)
-    .minPointers(2)
+    // IOS's built-in two-finger tap for right-click is actually a three-finger
+    .minPointers(Platform.OS === "ios" ? 2 : 3)
     .maxDuration(300)
     .maxDistance(15)
     .onStart(() => {
