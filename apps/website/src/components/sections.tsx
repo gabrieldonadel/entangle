@@ -17,7 +17,8 @@ import {
 import { useGitHubContributors } from "../hooks/useGitHubContributors";
 import type { AppView, CursorPos, Theme, TrackpadDragHandler } from "../types";
 import {
-  DESKTOP_RELEASES_URL,
+  DESKTOP_DMG_URL,
+  DESKTOP_VERSION,
   GITHUB_URL,
   SPONSOR_URL,
   APP_STORE_URL,
@@ -74,7 +75,7 @@ export const Nav = ({ theme, setTheme }: NavProps) => {
               letterSpacing: "0.06em",
             }}
           >
-            v1.0 · OSS
+            v{DESKTOP_VERSION} · OSS
           </span>
         </div>
         <nav className="nav-links-desktop">
@@ -713,12 +714,7 @@ export const Hero = ({ cursorPos, onTrackpadDrag, latencyMs }: HeroProps) => (
         >
           <AppleIcon /> Download for iPhone
         </a>
-        <a
-          className="btn btn-ghost"
-          href={DESKTOP_RELEASES_URL}
-          target="_blank"
-          rel="noreferrer"
-        >
+        <a className="btn btn-ghost" href={DESKTOP_DMG_URL} download>
           <AppleIcon /> Mac App · DMG
         </a>
         <a

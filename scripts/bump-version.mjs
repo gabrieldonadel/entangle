@@ -7,7 +7,9 @@
 //           apps/desktop/macos/entangle-macOS/Info.plist (CFBundleShortVersionString,
 //           CFBundleVersion += 1),
 //           apps/desktop/macos/entangle-macOS/Supporting/Expo.plist
-//           (EXUpdatesRuntimeVersion)
+//           (EXUpdatesRuntimeVersion),
+//           apps/website/src/constants.ts (DESKTOP_VERSION — both the nav
+//           pill and DESKTOP_DMG_URL derive from this)
 //
 // iOS/Android build numbers are not touched here — EAS handles those via
 // production.autoIncrement in apps/mobile/eas.json.
@@ -51,11 +53,13 @@ function desktopEdits(v) {
     REPO_ROOT,
     'apps/desktop/macos/entangle-macOS/Supporting/Expo.plist',
   );
+  const websiteConstants = resolve(REPO_ROOT, 'apps/website/src/constants.ts');
   return [
     setJsonKey(resolve(REPO_ROOT, 'apps/desktop/package.json'), ['version'], v),
     setPlistString(infoPlist, 'CFBundleShortVersionString', v),
     incrementPlistInt(infoPlist, 'CFBundleVersion'),
     setPlistString(expoPlist, 'EXUpdatesRuntimeVersion', v),
+    setDesktopVersion(websiteConstants, v),
   ];
 }
 
@@ -108,6 +112,18 @@ function incrementPlistInt(file, key) {
     const rel = file.startsWith(REPO_ROOT + '/') ? file.slice(REPO_ROOT.length + 1) : file;
     console.log(`${dryRun ? '~' : '✓'} ${rel} (${key}: ${current} → ${next})`);
     if (!dryRun) writeFileSync(file, after);
+  };
+}
+
+function setDesktopVersion(file, v) {
+  return (dryRun) => {
+    const before = readFileSync(file, 'utf8');
+    const re = /(export const DESKTOP_VERSION = ")[^"]+(";)/;
+    if (!re.test(before)) {
+      throw new Error(`setDesktopVersion: DESKTOP_VERSION declaration not found in ${file}`);
+    }
+    const after = before.replace(re, `$1${v}$2`);
+    report(file, before, after, dryRun);
   };
 }
 
