@@ -1,2 +1,5 @@
 packages:
+  - "apps/*"
   - "packages/*"
+patchedDependencies:
+  expo-dev-launcher: patches/expo-dev-launcher.patch

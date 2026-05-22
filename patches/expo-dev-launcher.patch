@@ -1,0 +1,23 @@
+diff --git a/ios/SwiftUI/LocalNetworkPermissionView.swift b/ios/SwiftUI/LocalNetworkPermissionView.swift
+index 1500a41bcd4a839b1018897c5bc8435581bdb226..386f611e4d022049cc6da3cc4f811fd7c6d92570 100644
+--- a/ios/SwiftUI/LocalNetworkPermissionView.swift
++++ b/ios/SwiftUI/LocalNetworkPermissionView.swift
+@@ -21,7 +21,7 @@ struct LocalNetworkPermissionView: View {
+       Color
+         .expoSystemBackground
+         .ignoresSafeArea(.all)
+-      
++
+       VStack(spacing: 24) {
+         Image("radar-icon", bundle: getDevLauncherBundle())
+           .resizable()
+@@ -49,6 +49,9 @@ struct LocalNetworkPermissionView: View {
+         }
+       }
+       .padding()
++      #if os(macOS)
++      .frame(maxHeight: 600)
++      #endif
+     }
+     .alert("Permission Not Granted", isPresented: $showTryAgainFailedAlert) {
+       Button("Open Settings") {

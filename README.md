@@ -35,7 +35,7 @@ You're across the room. The Mac is plugged into the TV. The keyboard is buried u
 
 |     | Feature                 | What you get                                                       |
 | --- | ----------------------- | ------------------------------------------------------------------ |
-| 🖱  | **Trackpad mode**       | Smooth, sub‑frame pointer with two‑finger scroll & tap‑to‑click.   |
+| 🖱   | **Trackpad mode**       | Smooth, sub‑frame pointer with two‑finger scroll & tap‑to‑click.   |
 | ⌨️  | **Keyboard relay**      | Type from your phone. Modifier keys, arrows, the works.            |
 | 🔒  | **LAN‑only by default** | No accounts, no cloud, no telemetry. Pairs over the local network. |
 | 📡  | **Auto‑discovery**      | Bonjour / mDNS finds your Mac the moment the app opens.            |
@@ -63,40 +63,30 @@ The wire format is a single shared TypeScript package — [`@entangle/protocol`]
 
 > Pre‑built binaries are coming soon. Star ⭐ the repo to get notified.
 
-| Platform                  | Download                                                                         |
-| ------------------------- | -------------------------------------------------------------------------------- |
-| **macOS** (Apple Silicon) | [`Entangle.dmg`](https://github.com/gabrieldonadel/entangle/releases)            |
-| **iOS**                   | [App Store](https://apps.apple.com/us/app/entangle-remote-trackpad/id6764150476) |
+| Platform                  | Download                                                                                                                                                         |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **macOS** (Apple Silicon) | [`Entangle.dmg`](https://github.com/gabrieldonadel/entangle/releases)                                                                                            |
+| **iOS**                   | [App Store](https://apps.apple.com/us/app/entangle-remote-trackpad/id6764150476)                                                                                 |
 | **Android**               | [Google Play](https://play.google.com/store/apps/details?id=com.gabrieldonadel.entangle) · [`entangle.apk`](https://github.com/gabrieldonadel/entangle/releases) |
 
 ### Build from source
-
-See [**Quick start**](#-quick-start) below.
-
-<br>
-
-## ⚡ Quick start
 
 ```sh
 # 1. Clone
 git clone https://github.com/gabrieldonadel/entangle.git
 cd entangle
 
-# 2. Install the root workspace (this only sets up packages/shared)
+# 2. Install dependencies
 pnpm install
 
-# 3. Install each app on its own (apps live outside the root workspace)
-cd apps/desktop && pnpm install --ignore-workspace && cd -
-cd apps/mobile  && pnpm install --ignore-workspace && cd -
-
-# 4. CocoaPods for the desktop app (first clone only)
+# 3. CocoaPods for the desktop app (first clone only)
 cd apps/desktop/macos && bundle install && bundle exec pod install && cd -
 
-# 5. Run the desktop app
+# 4. Run the desktop app
 pnpm desktop:start    # in one terminal — Metro on port 8090
 pnpm desktop:macos    # in another     — build & launch the macOS app
 
-# 6. Run the mobile app
+# 5. Run the mobile app
 pnpm mobile:start     # Expo dev server
 pnpm mobile:ios       # iOS simulator / device
 pnpm mobile:android   # Android emulator / device
@@ -106,7 +96,7 @@ That's it. The phone will find the Mac on its own — pick it from the discovere
 
 <br>
 
-## 🧰 Requirements
+#### 🧰 Requirements
 
 |                   |                                                                                  |
 | ----------------- | -------------------------------------------------------------------------------- |
@@ -138,7 +128,7 @@ entangle-monorepo/
 | Mobile  | [`apps/mobile`](apps/mobile)   | iOS / Android | Expo 55 + Expo Router + RN 0.83, React 19.2   |
 | Website | [`apps/website`](apps/website) | Web           | Vite + React 18                               |
 
-> **Why are the apps outside the pnpm workspace?** Desktop and mobile pin different React / React Native versions. With pnpm's default symlink layout Metro's resolver walks across the symlinked workspace and picks up the wrong copy of `react-native`. Each app does its own install with `--ignore-workspace` against its own `pnpm-lock.yaml`, while `@entangle/protocol` is consumed via `link:../../packages/shared` and TypeScript `paths`.
+> **One workspace, one lockfile.** Apps and shared packages all live in the same pnpm workspace. The root [`.npmrc`](.npmrc) sets `node-linker=hoisted` so each app gets a flat `node_modules` tree — conflicting versions (e.g. desktop's `react-native@0.83.6` vs mobile's `react-native@0.83.4`) get nested under the consuming app, while shared deps hoist to the root. Patches for the macOS port of Expo are pinned to specific versions in [`pnpm-workspace.yaml`](pnpm-workspace.yaml) so they only touch the version desktop resolves to.
 
 <br>
 
@@ -175,7 +165,7 @@ See [open issues](https://github.com/gabrieldonadel/entangle/issues) for the liv
 PRs welcome — small fixes don't need an issue first. For anything bigger, [open an issue](https://github.com/gabrieldonadel/entangle/issues/new) and let's chat.
 
 1. Fork & branch (`feat/your-thing`)
-2. `pnpm install` at the root, then `pnpm install --ignore-workspace` inside any app you'll be touching
+2. `pnpm install` at the root — that's it; apps share a single workspace
 3. Commit with [Conventional Commits](https://www.conventionalcommits.org/)
 4. Open a PR against `main`
 

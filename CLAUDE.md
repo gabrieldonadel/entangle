@@ -13,14 +13,14 @@ Entangle is a remote-mouse system: a macOS desktop "server" exposes a WebSocket 
 | [apps/website](apps/website)       | `@entangle/website`  | Vite + React 18                               |
 | [packages/shared](packages/shared) | `@entangle/protocol` | TS-only, source-imported (no build step)      |
 
-The pnpm workspace at the repo root only contains `packages/*`. **Each app is outside the workspace** and has its own [pnpm-workspace.yaml](apps/mobile/pnpm-workspace.yaml) with empty `packages: []` plus `pnpm-lock.yaml`. The shared package is consumed via `"@entangle/protocol": "link:../../packages/shared"` and TypeScript `paths`. This isolation is intentional — see "Why apps are isolated" below.
+Apps and shared packages all live in a single pnpm workspace ([pnpm-workspace.yaml](pnpm-workspace.yaml) declares `apps/*` and `packages/*`). One root [pnpm-lock.yaml](pnpm-lock.yaml), one install. `@entangle/protocol` is consumed via `"@entangle/protocol": "workspace:*"` and TypeScript `paths` — source-imported, no build step.
 
 ## Common commands
 
 Run from repo root:
 
 ```sh
-pnpm install                 # installs the root workspace (just packages/shared)
+pnpm install                 # installs every workspace package
 pnpm desktop:start           # Metro for desktop on port 8090
 pnpm desktop:macos           # build & run macOS app (react-native run-macos)
 pnpm mobile:start            # Expo dev server
@@ -29,13 +29,6 @@ pnpm mobile:android          # expo run:android
 pnpm desktop <cmd>           # forwards to apps/desktop (pnpm --filter entangle)
 pnpm mobile <cmd>            # forwards to apps/mobile (pnpm --filter entangle-mobile)
 pnpm lint                    # recursive lint across workspaces
-```
-
-Inside an app — install with `--ignore-workspace` so it uses its own lockfile:
-
-```sh
-cd apps/desktop && pnpm install --ignore-workspace
-cd apps/mobile  && pnpm install --ignore-workspace
 ```
 
 Desktop tests use Jest:
@@ -54,16 +47,14 @@ CocoaPods on first clone of desktop:
 cd apps/desktop/macos && bundle install && bundle exec pod install
 ```
 
-## Why apps are isolated (do not "fix" this)
+## How the install layout stays sane
 
-Desktop and mobile pin **different** React / React Native versions (RN 0.81 vs 0.83, React 19.1 vs 19.2). With pnpm's default symlink layout, Metro's resolver walks across the symlinked workspace and picks up the wrong copy of `react-native` from the sibling app's hoisted tree. The fix in place:
+Desktop and mobile pin **different** React / React Native versions (RN-macOS 0.81 + RN 0.83.6 on desktop, RN 0.83.4 on mobile; React 19.1 vs 19.2). Two things keep Metro from picking up a sibling app's copy:
 
-- Root [.npmrc](.npmrc) sets `node-linker=hoisted` so each install produces a flat `node_modules`.
-- Apps live outside the root workspace; each does its own install with `--ignore-workspace`.
-- Only `packages/*` is in the root workspace.
-- `@entangle/protocol` is a `link:` dependency (not `workspace:`), source-imported via TS `paths`, so no build step is needed.
+- Root [.npmrc](.npmrc) sets `node-linker=hoisted` so pnpm produces flat `node_modules` trees (no top-level `.pnpm` symlinks). Shared deps hoist to the repo root; conflicting versions nest into the consuming app's `node_modules` (so `apps/desktop/node_modules/react-native` is the 0.83.6 it needs, not mobile's 0.83.4).
+- Expo patches in [pnpm-workspace.yaml](pnpm-workspace.yaml) use version-pinned keys (e.g. `expo@55.0.17`) so the patch only matches the version desktop resolves to. **When desktop bumps Expo, update the patch key.**
 
-If you change dependency wiring, preserve all four properties or Metro will resolve the wrong RN.
+Do not reintroduce `--ignore-workspace` or per-app `pnpm-lock.yaml` files — Xcode's archive script runs `node --print "require.resolve('@expo/cli')"` from `apps/desktop/`, and that only works when the install is a real workspace install (so `@expo/cli` hoists to the root `node_modules`).
 
 ## Shared protocol (`@entangle/protocol`)
 
@@ -93,7 +84,7 @@ The macOS app is a thin RN-macOS shell over a Swift Expo module that does the re
   - [Util/AccessibilityCheck.swift](apps/desktop/modules/entangle-server/ios/Util/AccessibilityCheck.swift), [Util/IconEncoder.swift](apps/desktop/modules/entangle-server/ios/Util/IconEncoder.swift).
 - The TS facade is [modules/entangle-server/src/index.ts](apps/desktop/modules/entangle-server/src/index.ts) → `requireNativeModule('EntangleServer')`, re-exporting typed events.
 - Metro [config](apps/desktop/metro.config.js) rewrites `react-native` → `react-native-macos` for the `macos` platform and prepends `react-native-macos/Libraries/Core/InitializeCore` to the run-before-main modules. Keep this when touching Metro config.
-- A patched `expo-modules-core` is applied via [patches/expo-modules-core.patch](apps/desktop/patches/expo-modules-core.patch) (declared in [pnpm-workspace.yaml](apps/desktop/pnpm-workspace.yaml)).
+- Patched `expo` and `expo-modules-core` for macOS support — patches in [apps/desktop/patches](apps/desktop/patches), pinned to specific versions in the root [pnpm-workspace.yaml](pnpm-workspace.yaml).
 - Desktop Metro runs on **port 8090** (not 8081) — see [package.json](apps/desktop/package.json) `start` script.
 
 ## Mobile architecture
@@ -112,5 +103,5 @@ The macOS app is a thin RN-macOS shell over a Swift Expo module that does the re
 - Use the `@entangle/protocol` import on both sides; do not duplicate message shapes inline.
 - All wire messages must include `v: 1`. Increment `PROTOCOL_VERSION` (and update both sides) for breaking changes.
 - Modifier keys are sent as a `ModMask` bitfield using `ModFlags` (`Command|Option|Shift|Control|Fn`). Do not invent ad-hoc shapes.
-- Do not commit changes to per-app `pnpm-lock.yaml` from a root install — install inside the app with `--ignore-workspace`.
+- Single root `pnpm-lock.yaml`. Always run `pnpm install` from the repo root — never with `--ignore-workspace`.
 - Native input synthesis requires the user to grant macOS Accessibility — `AccessibilityGate` blocks the UI until `isAccessibilityTrusted()` returns true.
