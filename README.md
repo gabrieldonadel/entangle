@@ -61,8 +61,6 @@ The wire format is a single shared TypeScript package — [`@entangle/protocol`]
 
 ### From a release
 
-> Pre‑built binaries are coming soon. Star ⭐ the repo to get notified.
-
 | Platform                  | Download                                                                                                                                                         |
 | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **macOS** (Apple Silicon) | [`Entangle.dmg`](https://github.com/gabrieldonadel/entangle/releases)                                                                                            |
