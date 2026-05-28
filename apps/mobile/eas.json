@@ -32,7 +32,8 @@
       "autoIncrement": true,
       "channel": "production",
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "buildArtifactPaths": ["build-artifacts/*.apk"]
       }
     }
   },

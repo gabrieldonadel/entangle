@@ -108,14 +108,16 @@ jobs:
 
   github_release:
     name: Create GitHub Release
-    # `needs` for guard (must succeed — we read its `version` output); `after` for
-    # the submit jobs so the GitHub Release still gets published even if a store
-    # submission flakes (the binaries are already built and can be resubmitted).
-    needs: [guard]
+    # `needs` for guard (version output) and build_android (build_id, used to
+    # fetch the secondary universal-APK artifact). `after` for the submit jobs
+    # so the Release still publishes even if a store submission flakes — the
+    # binaries are already built and can be resubmitted.
+    needs: [guard, build_android]
     after: [submit_ios, submit_android]
     runs_on: linux-medium
     env:
       VERSION: ${{ needs.guard.outputs.version }}
+      ANDROID_BUILD_ID: ${{ needs.build_android.outputs.build_id }}
       GH_TOKEN: ${{ env.RELEASE_GH_TOKEN }}
     steps:
       - uses: eas/checkout
@@ -131,11 +133,32 @@ jobs:
               && sudo apt-get install -y gh
           fi
 
+      - name: Download universal APK from build artifacts
+        # The AAB build's `eas-build-pre-upload-artifacts` hook produces a
+        # universal signed APK alongside the AAB (see scripts/extract-universal-apk.mjs).
+        # `buildArtifactsUrl` is a presigned tar.gz of everything under
+        # buildArtifactPaths — we untar and grab the APK.
+        run: |
+          mkdir -p release-assets
+          URL=$(eas build:view --json "${ANDROID_BUILD_ID}" | jq -r '.artifacts.buildArtifactsUrl // empty')
+          if [ -z "$URL" ]; then
+            echo "Android build ${ANDROID_BUILD_ID} has no secondary artifacts — skipping APK attachment." >&2
+            exit 0
+          fi
+          curl -fsSL -o build-artifacts.tar.gz "$URL"
+          tar -xzf build-artifacts.tar.gz -C release-assets --strip-components=1
+          ls -la release-assets
+
       - name: Create release
         # gh infers --repo from the local git remote that eas/checkout configures,
         # which avoids depending on ${{ github.repository }} (unavailable here).
+        # Passing release-assets/*.apk attaches the universal APK if present;
+        # the glob expands to nothing (and gh ignores it) if the hook was skipped.
         run: |
+          shopt -s nullglob
+          APKS=(release-assets/*.apk)
           gh release create "v${VERSION}-mobile" \
             --title "Mobile v${VERSION}" \
             --generate-notes \
-            --verify-tag
+            --verify-tag \
+            "${APKS[@]}"
