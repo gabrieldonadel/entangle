@@ -46,14 +46,20 @@ jobs:
         run: node scripts/bump-version.mjs "$APP" "$VERSION"
 
       - name: Commit + push branch
+        id: commit
         env:
           APP: ${{ steps.parse.outputs.app }}
           VERSION: ${{ steps.parse.outputs.version }}
         run: |
           git add -A
           if git diff --cached --quiet; then
-            echo "No version changes to commit — does package.json/app.json/Info.plist already match?"
-            exit 1
+            # No-op, not an error: the publish workflow force-moves the tag onto
+            # the merge commit, which re-fires this workflow. By then the files
+            # already hold v${VERSION}, so there's nothing to prepare. Same for a
+            # manual tag re-push. Skip the rest of the job cleanly.
+            echo "${APP} is already at v${VERSION} — nothing to prepare. Skipping."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
           git commit -m "release(${APP}): v${VERSION}"
           # Force push so a leftover branch from a previous failed run of this
@@ -61,6 +67,7 @@ jobs:
           git push -fu origin "release/${APP}-${VERSION}"
 
       - name: Open PR
+        if: steps.commit.outputs.changed != 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APP: ${{ steps.parse.outputs.app }}
