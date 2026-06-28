@@ -140,7 +140,7 @@ jobs:
         # buildArtifactPaths — we untar and grab the APK.
         run: |
           mkdir -p release-assets
-          URL=$(eas build:view --json "${ANDROID_BUILD_ID}" | jq -r '.artifacts.buildArtifactsUrl // empty')
+          URL=$(npx -y eas-cli@latest build:view --json "${ANDROID_BUILD_ID}" | jq -r '.artifacts.buildArtifactsUrl // empty')
           if [ -z "$URL" ]; then
             echo "Android build ${ANDROID_BUILD_ID} has no secondary artifacts — skipping APK attachment." >&2
             exit 0
