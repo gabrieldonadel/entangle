@@ -2,7 +2,7 @@
   "expo": {
     "name": "entangle",
     "slug": "entangle-mobile",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "orientation": "portrait",
     "scheme": "entangle",
     "userInterfaceStyle": "automatic",
