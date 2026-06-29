@@ -134,19 +134,24 @@ jobs:
           fi
 
       - name: Download universal APK from build artifacts
-        # The AAB build's `eas-build-pre-upload-artifacts` hook produces a
-        # universal signed APK alongside the AAB (see scripts/extract-universal-apk.mjs).
-        # `buildArtifactsUrl` is a presigned tar.gz of everything under
-        # buildArtifactPaths — we untar and grab the APK.
+        # Best-effort: the AAB build's `eas-build-pre-upload-artifacts` hook
+        # produces a universal signed APK alongside the AAB (see
+        # scripts/extract-universal-apk.mjs). `buildArtifactsUrl` is a presigned
+        # tar.gz of everything under buildArtifactPaths — we untar and grab the
+        # APK. eas-cli must run from the project dir (apps/mobile) to resolve the
+        # EAS project; eas/checkout lands us at the monorepo root. Any failure
+        # here skips the APK rather than failing the Release (the default shell
+        # is `set -eo pipefail`, so capture to a file and guard every step).
         run: |
           mkdir -p release-assets
-          URL=$(npx -y eas-cli@latest build:view --json "${ANDROID_BUILD_ID}" | jq -r '.artifacts.buildArtifactsUrl // empty')
+          ( cd apps/mobile && npx -y eas-cli@latest build:view "${ANDROID_BUILD_ID}" --json --non-interactive ) > build.json 2>/dev/null || true
+          URL=$(jq -r '.artifacts.buildArtifactsUrl // empty' build.json 2>/dev/null || true)
           if [ -z "$URL" ]; then
-            echo "Android build ${ANDROID_BUILD_ID} has no secondary artifacts — skipping APK attachment." >&2
+            echo "No secondary artifacts for build ${ANDROID_BUILD_ID} — skipping APK attachment."
             exit 0
           fi
-          curl -fsSL -o build-artifacts.tar.gz "$URL"
-          tar -xzf build-artifacts.tar.gz -C release-assets --strip-components=1
+          curl -fsSL -o build-artifacts.tar.gz "$URL" || { echo "APK download failed — skipping attachment."; exit 0; }
+          tar -xzf build-artifacts.tar.gz -C release-assets --strip-components=1 || true
           ls -la release-assets
 
       - name: Create release
