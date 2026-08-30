@@ -7,6 +7,7 @@ export type Preferences = {
   sensitivity: number;
   naturalScroll: boolean;
   tapToClick: boolean;
+  highlightPointer: boolean;
   openAtLogin: boolean;
   showMenuBarIcon: boolean;
   hideDockIcon: boolean;

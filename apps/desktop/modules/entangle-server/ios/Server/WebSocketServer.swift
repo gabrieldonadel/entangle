@@ -11,7 +11,29 @@ final class WebSocketServer {
 
   private let queue = DispatchQueue(label: "entangle.server", qos: .userInitiated)
   private var listener: NWListener?
-  private var clients: [UUID: Client] = [:]
+  private var clients: [UUID: Client] = [:] {
+    didSet { publishClientCount(clients.count) }
+  }
+
+  /// Number of connected clients, readable from any thread.
+  ///
+  /// `clients` may only be touched on `queue`, and the connect/disconnect
+  /// callbacks already run there — a `queue.sync` read from inside one would
+  /// deadlock. This mirror exists so callers outside can ask safely.
+  private let countLock = NSLock()
+  private var storedClientCount = 0
+
+  var clientCount: Int {
+    countLock.lock()
+    defer { countLock.unlock() }
+    return storedClientCount
+  }
+
+  private func publishClientCount(_ count: Int) {
+    countLock.lock()
+    storedClientCount = count
+    countLock.unlock()
+  }
   private let serviceType: String
   private let serviceName: String
   private let preferredPort: UInt16
