@@ -29,6 +29,7 @@ public class EntangleServerModule: Module {
       self.accessibilityTimer = nil
       DockEnumerator.shared.stop()
       DockEnumerator.shared.onUpdate = nil
+      PointerHighlight.shared.setEnabled(false)
       self.server?.stop()
       self.server = nil
     }
@@ -38,6 +39,7 @@ public class EntangleServerModule: Module {
     }
 
     AsyncFunction("stopServer") { (promise: Promise) in
+      PointerHighlight.shared.setEnabled(false)
       self.server?.stop()
       self.server = nil
       self.serverPort = 0
@@ -126,6 +128,7 @@ public class EntangleServerModule: Module {
       PreferencesStore.shared.apply(patch)
       let after = PreferencesStore.shared.snapshot()
       self.sendEvent("preferencesChanged", after)
+      self.refreshPointerHighlight()
       let needsRestart =
         ((before["port"] as? Int) != (after["port"] as? Int)) ||
         ((before["serverName"] as? String) != (after["serverName"] as? String)) ||
@@ -217,11 +220,13 @@ public class EntangleServerModule: Module {
       self.sendEvent("serverReady", payload)
       promise?.resolve(payload)
     }
-    server.onClientConnected = { [weak self] id, host in
+    server.onClientConnected = { [weak self, weak server] id, host in
       self?.sendEvent("clientConnected", ["id": id.uuidString, "host": host])
+      self?.refreshPointerHighlight(server)
     }
-    server.onClientDisconnected = { [weak self] id in
+    server.onClientDisconnected = { [weak self, weak server] id in
       self?.sendEvent("clientDisconnected", ["id": id.uuidString])
+      self?.refreshPointerHighlight(server)
     }
     server.onMessage = { [weak self] id, text in
       let handledNatively = MessageDispatcher.handle(text) { response in
@@ -239,6 +244,19 @@ public class EntangleServerModule: Module {
     server.onPairRejected = { [weak self] id, host in
       self?.sendEvent("pairRejected", ["id": id, "host": host])
     }
+  }
+
+  /// The ring is only wanted while a phone is actually driving the pointer.
+  ///
+  /// The connect callbacks pass their own server reference: they can fire
+  /// before `startServer` has finished assigning `self.server`, and reading the
+  /// property then would report zero clients.
+  private func refreshPointerHighlight(_ target: WebSocketServer? = nil) {
+    let active = target ?? server
+    let connected = (active?.clientCount ?? 0) > 0
+    PointerHighlight.shared.setEnabled(
+      connected && PreferencesStore.shared.highlightPointer
+    )
   }
 
   private func wireDockEvents(_ server: WebSocketServer) {
