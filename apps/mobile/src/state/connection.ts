@@ -9,11 +9,13 @@ import {
   HEARTBEAT_INTERVAL_MS,
   HEARTBEAT_TIMEOUT_MS,
   PROTOCOL_VERSION,
+  isAudioState,
   isDockListResponse,
   isDockUpdate,
 } from '@entangle/protocol';
 import type { ClientMessage, DockApp, Message } from '@entangle/protocol';
 
+import { useAudio } from './audio';
 import { useDock } from './dock';
 import { DEMO_DOCK_APPS } from './demo';
 
@@ -125,6 +127,7 @@ export const useConnection = create<ConnectionState>((set, get) => ({
       socket = null;
     }
     useDock.getState().clear();
+    useAudio.getState().reset();
     set({
       phase: 'idle',
       target: null,
@@ -149,6 +152,8 @@ export const useConnection = create<ConnectionState>((set, get) => ({
       socket = null;
     }
     useDock.getState().setApps(DEMO_DOCK_APPS);
+    // Demo mode has no Mac to report a level, so seed one the slider can move.
+    useAudio.getState().applyRemote(0.45, false);
     set({
       phase: 'open',
       target: { name: 'Demo Mac', host: '0.0.0.0', port: 0 },
@@ -277,6 +282,10 @@ function handleMessage(msg: Message) {
   }
   if (isDockUpdate(msg)) {
     applyDockUpdate(msg);
+    return;
+  }
+  if (isAudioState(msg)) {
+    useAudio.getState().applyRemote(msg.level, msg.muted);
     return;
   }
   switch (msg.t) {

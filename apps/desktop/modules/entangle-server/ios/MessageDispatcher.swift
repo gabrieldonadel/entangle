@@ -43,6 +43,9 @@ enum MessageDispatcher {
     respond: (String) -> Void
   ) -> Bool? {
     switch tag {
+    case "a.set": return handleAudioSet(json)
+    case "a.step": return handleAudioStep(json)
+    case "a.mute": return handleAudioMute(json)
     case "d.list": return handleDockList(respond: respond)
     case "d.activate": return handleDockActivate(json)
     case "g.space": return handleSpaceGesture(json)
@@ -128,6 +131,32 @@ enum MessageDispatcher {
     return true
   }
 
+  private static func handleAudioSet(_ json: [String: Any]) -> Bool {
+    guard let level = numeric(json["level"]) else { return false }
+    VolumeController.shared.setLevel(Float32(level))
+    return true
+  }
+
+  private static func handleAudioStep(_ json: [String: Any]) -> Bool {
+    guard let dir = json["dir"] as? String else { return false }
+    switch dir {
+    case "up":
+      VolumeController.shared.step(up: true)
+      return true
+    case "down":
+      VolumeController.shared.step(up: false)
+      return true
+    default:
+      return false
+    }
+  }
+
+  private static func handleAudioMute(_ json: [String: Any]) -> Bool {
+    // Absent `muted` means toggle.
+    VolumeController.shared.setMuted(json["muted"] as? Bool)
+    return true
+  }
+
   private static func handleDockList(respond: (String) -> Void) -> Bool {
     let apps = DockEnumerator.shared.currentApps()
     if let encoded = encodeDockList(apps) {
@@ -159,6 +188,19 @@ enum MessageDispatcher {
   }
 
   // MARK: - Helpers
+
+  static func encodeAudioState(level: Float32, muted: Bool) -> String? {
+    let payload: [String: Any] = [
+      "v": 1,
+      "t": "state.audio",
+      "level": Double(level),
+      "muted": muted
+    ]
+    guard let data = try? JSONSerialization.data(withJSONObject: payload) else {
+      return nil
+    }
+    return String(data: data, encoding: .utf8)
+  }
 
   static func encodeDockList(_ apps: [DockEnumerator.DockApp]) -> String? {
     let payload: [String: Any] = [

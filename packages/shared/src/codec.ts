@@ -7,6 +7,7 @@ import type {
   WelcomeMessage,
   DockListResponseMessage,
   DockUpdateMessage,
+  AudioStateMessage,
   PongMessage,
 } from './messages';
 
@@ -19,6 +20,9 @@ const CLIENT_TAGS = new Set<ClientMessage['t']>([
   'g.mission',
   'k.text',
   'k.key',
+  'a.set',
+  'a.step',
+  'a.mute',
   'd.list',
   'd.activate',
   'hello',
@@ -34,6 +38,7 @@ const SERVER_TAGS = new Set<ServerMessage['t']>([
   'd.list',
   'd.update',
   'state.mods',
+  'state.audio',
   'pair.accepted',
   'pair.rejected',
 ]);
@@ -81,4 +86,8 @@ export function isDockListResponse(msg: Message): msg is DockListResponseMessage
 
 export function isDockUpdate(msg: Message): msg is DockUpdateMessage {
   return msg.t === 'd.update';
+}
+
+export function isAudioState(msg: Message): msg is AudioStateMessage {
+  return msg.t === 'state.audio';
 }

@@ -61,7 +61,7 @@ Do not reintroduce `--ignore-workspace` or per-app `pnpm-lock.yaml` files — Xc
 [packages/shared/src](packages/shared/src) is the single source of truth for the wire format:
 
 - [constants.ts](packages/shared/src/constants.ts) — `PROTOCOL_VERSION`, Bonjour service identifiers (`_entangle._tcp.`), `DEFAULT_PORT` (49827), heartbeat / idle timeouts, close codes, `ModFlags` bitmask.
-- [messages.ts](packages/shared/src/messages.ts) — every `ClientMessage` and `ServerMessage` shape. All messages carry `v: 1` and a discriminator `t` (e.g. `'p.move'`, `'p.click'`, `'s.wheel'`, `'g.space'`, `'g.mission'`, `'k.text'`, `'k.key'`, `'d.list'`, `'d.activate'`, `'hello'`, `'ping'`).
+- [messages.ts](packages/shared/src/messages.ts) — every `ClientMessage` and `ServerMessage` shape. All messages carry `v: 1` and a discriminator `t` (e.g. `'p.move'`, `'p.click'`, `'s.wheel'`, `'g.space'`, `'g.mission'`, `'k.text'`, `'k.key'`, `'a.set'`, `'a.step'`, `'a.mute'`, `'d.list'`, `'d.activate'`, `'hello'`, `'ping'`, and server-pushed `'state.audio'`).
 - [codec.ts](packages/shared/src/codec.ts) — encode/decode helpers used by both sides.
 
 Both apps reach this via TS path aliases:
@@ -80,7 +80,7 @@ The macOS app is a thin RN-macOS shell over a Swift Expo module that does the re
   - [EntangleServerModule.swift](apps/desktop/modules/entangle-server/ios/EntangleServerModule.swift) — Expo `Module` definition, exposes `startServer / stopServer / sendToClient / broadcast / isAccessibilityTrusted / promptAccessibility` and emits `clientConnected / clientDisconnected / message / error / serverReady / accessibilityChanged`.
   - [Server/WebSocketServer.swift](apps/desktop/modules/entangle-server/ios/Server/WebSocketServer.swift) — listens on `DEFAULT_PORT`, advertises Bonjour, manages clients & heartbeats.
   - [MessageDispatcher.swift](apps/desktop/modules/entangle-server/ios/MessageDispatcher.swift) — parses incoming JSON `ClientMessage`s and fans out to controllers.
-  - [System/](apps/desktop/modules/entangle-server/ios/System) — `CursorController`, `ScrollController`, `KeyController`, `GestureController`, `DockEnumerator` (CGEvent / Accessibility APIs).
+  - [System/](apps/desktop/modules/entangle-server/ios/System) — `CursorController`, `ScrollController`, `KeyController`, `GestureController`, `DockEnumerator` (CGEvent / Accessibility APIs), `VolumeController` (CoreAudio output volume + mute, needs no permission).
   - [Util/AccessibilityCheck.swift](apps/desktop/modules/entangle-server/ios/Util/AccessibilityCheck.swift), [Util/IconEncoder.swift](apps/desktop/modules/entangle-server/ios/Util/IconEncoder.swift).
 - The TS facade is [modules/entangle-server/src/index.ts](apps/desktop/modules/entangle-server/src/index.ts) → `requireNativeModule('EntangleServer')`, re-exporting typed events.
 - Metro [config](apps/desktop/metro.config.js) rewrites `react-native` → `react-native-macos` for the `macos` platform and prepends `react-native-macos/Libraries/Core/InitializeCore` to the run-before-main modules. Keep this when touching Metro config.

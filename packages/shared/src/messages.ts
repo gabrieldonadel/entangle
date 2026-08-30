@@ -89,6 +89,32 @@ export interface KeyPressMessage {
   mods: ModMask;
 }
 
+export type VolumeDir = 'up' | 'down';
+
+/** Set the Mac's output volume to an absolute level in the 0…1 range. */
+export interface AudioSetMessage {
+  v: 1;
+  t: 'a.set';
+  level: number;
+}
+
+/**
+ * Nudge the Mac's output volume one step. Used by the phone's hardware volume
+ * buttons, which report a direction rather than a level.
+ */
+export interface AudioStepMessage {
+  v: 1;
+  t: 'a.step';
+  dir: VolumeDir;
+}
+
+/** Mute or unmute the Mac. Omit `muted` to toggle. */
+export interface AudioMuteMessage {
+  v: 1;
+  t: 'a.mute';
+  muted?: boolean;
+}
+
 export interface DockListRequestMessage {
   v: 1;
   t: 'd.list';
@@ -137,6 +163,9 @@ export type ClientMessage =
   | MissionGestureMessage
   | KeyTextMessage
   | KeyPressMessage
+  | AudioSetMessage
+  | AudioStepMessage
+  | AudioMuteMessage
   | DockListRequestMessage
   | DockActivateMessage
   | HelloMessage
@@ -193,6 +222,18 @@ export interface ModStateMessage {
   mods: ModMask;
 }
 
+/**
+ * The Mac's current output volume. Pushed on connect and whenever the level or
+ * mute state changes — including changes made on the Mac itself — so the phone
+ * never shows a stale slider.
+ */
+export interface AudioStateMessage {
+  v: 1;
+  t: 'state.audio';
+  level: number;
+  muted: boolean;
+}
+
 export interface PairAcceptedMessage {
   v: 1;
   t: 'pair.accepted';
@@ -211,6 +252,7 @@ export type ServerMessage =
   | DockListResponseMessage
   | DockUpdateMessage
   | ModStateMessage
+  | AudioStateMessage
   | PairAcceptedMessage
   | PairRejectedMessage;
 

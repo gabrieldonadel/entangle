@@ -29,6 +29,8 @@ public class EntangleServerModule: Module {
       self.accessibilityTimer = nil
       DockEnumerator.shared.stop()
       DockEnumerator.shared.onUpdate = nil
+      VolumeController.shared.stopWatching()
+      VolumeController.shared.onChange = nil
       self.server?.stop()
       self.server = nil
     }
@@ -38,6 +40,8 @@ public class EntangleServerModule: Module {
     }
 
     AsyncFunction("stopServer") { (promise: Promise) in
+      VolumeController.shared.stopWatching()
+      VolumeController.shared.onChange = nil
       self.server?.stop()
       self.server = nil
       self.serverPort = 0
@@ -183,6 +187,7 @@ public class EntangleServerModule: Module {
 
     wireServerEvents(server, name: name, promise: promise)
     wireDockEvents(server)
+    wireVolumeEvents(server)
 
     do {
       try server.start()
@@ -217,8 +222,15 @@ public class EntangleServerModule: Module {
       self.sendEvent("serverReady", payload)
       promise?.resolve(payload)
     }
-    server.onClientConnected = { [weak self] id, host in
+    server.onClientConnected = { [weak self, weak server] id, host in
       self?.sendEvent("clientConnected", ["id": id.uuidString, "host": host])
+      // Seed the phone's volume slider so it does not start from a guess.
+      if let state = VolumeController.shared.currentState(),
+         let payload = MessageDispatcher.encodeAudioState(
+           level: state.level, muted: state.muted
+         ) {
+        server?.send(payload, to: id)
+      }
     }
     server.onClientDisconnected = { [weak self] id in
       self?.sendEvent("clientDisconnected", ["id": id.uuidString])
@@ -239,6 +251,16 @@ public class EntangleServerModule: Module {
     server.onPairRejected = { [weak self] id, host in
       self?.sendEvent("pairRejected", ["id": id, "host": host])
     }
+  }
+
+  private func wireVolumeEvents(_ server: WebSocketServer) {
+    VolumeController.shared.onChange = { [weak server] level, muted in
+      guard let server = server,
+            let payload = MessageDispatcher.encodeAudioState(level: level, muted: muted)
+      else { return }
+      server.broadcast(payload)
+    }
+    VolumeController.shared.startWatching()
   }
 
   private func wireDockEvents(_ server: WebSocketServer) {
