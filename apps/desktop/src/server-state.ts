@@ -291,7 +291,7 @@ function sendWelcome(clientId: string) {
       version: '0.0.1',
       host: serviceName ?? '',
     },
-    caps: ['pointer', 'scroll', 'keyboard', 'dock', 'gestures'],
+    caps: ['pointer', 'scroll', 'keyboard', 'dock', 'gestures', 'audio'],
   };
   if (port != null) {
     EntangleServer.sendToClient(clientId, encode(welcome));
