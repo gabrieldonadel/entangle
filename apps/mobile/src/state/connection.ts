@@ -27,6 +27,16 @@ export type ConnectionPhase =
 
 const TRUSTED_TOKENS_KEY = 'entangle.trustedTokens';
 
+/**
+ * How long a socket may sit in CONNECTING before we give up on it.
+ *
+ * A WebSocket opened against a host iOS cannot resolve (a stale `.local.`
+ * name, a scoped IPv6 literal) never fires `onopen`, `onerror` or `onclose`.
+ * Without this timeout the phase stays `connecting` forever, which makes the
+ * whole discovery list untappable with no way back.
+ */
+const CONNECT_TIMEOUT_MS = 8000;
+
 export interface ConnectionTarget {
   name: string;
   host: string;
@@ -62,6 +72,7 @@ let socket: WebSocket | null = null;
 let pingTimer: ReturnType<typeof setInterval> | null = null;
 let pongTimeout: ReturnType<typeof setTimeout> | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let connectTimeout: ReturnType<typeof setTimeout> | null = null;
 let reconnectAttempt = 0;
 let pingId = 0;
 let pingSentAt = 0;
@@ -187,8 +198,10 @@ function openSocket() {
 
   const ws = new WebSocket(`ws://${target.host}:${target.port}`);
   socket = ws;
+  startConnectTimeout(ws);
 
   ws.onopen = () => {
+    clearConnectTimeout();
     reconnectAttempt = 0;
     useConnection.setState({ phase: 'open', lastError: null });
     if (pendingPairToken) {
@@ -216,7 +229,7 @@ function openSocket() {
   };
 
   ws.onerror = () => {
-    useConnection.setState({ lastError: 'WebSocket error' });
+    useConnection.setState({ lastError: 'Could not reach that Mac' });
   };
 
   ws.onclose = () => {
@@ -226,6 +239,35 @@ function openSocket() {
     if (useConnection.getState().phase === 'pairing') return;
     scheduleReconnect();
   };
+}
+
+function startConnectTimeout(ws: WebSocket) {
+  clearConnectTimeout();
+  connectTimeout = setTimeout(() => {
+    connectTimeout = null;
+    if (socket !== ws || ws.readyState === WebSocket.OPEN) return;
+    // Nothing ever came back from this socket. Detach it before closing so a
+    // late `onclose` cannot schedule a second reconnect on top of ours.
+    ws.onopen = null;
+    ws.onmessage = null;
+    ws.onerror = null;
+    ws.onclose = null;
+    try {
+      ws.close();
+    } catch {}
+    socket = null;
+    clearTimers();
+    useConnection.setState({ lastError: 'Could not reach that Mac' });
+    if (manuallyDisconnected) return;
+    scheduleReconnect();
+  }, CONNECT_TIMEOUT_MS);
+}
+
+function clearConnectTimeout() {
+  if (connectTimeout) {
+    clearTimeout(connectTimeout);
+    connectTimeout = null;
+  }
 }
 
 function handleMessage(msg: Message) {
@@ -335,6 +377,7 @@ function scheduleReconnect() {
 }
 
 function clearTimers() {
+  clearConnectTimeout();
   if (pingTimer) {
     clearInterval(pingTimer);
     pingTimer = null;

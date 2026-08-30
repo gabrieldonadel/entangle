@@ -17,7 +17,8 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const phase = useConnection((s) => s.phase);
   const segments = useSegments();
-  const onPairScreen = segments[0] === "pair";
+  const currentRoute = segments[0];
+  const onPairScreen = currentRoute === "pair";
   const onboardingHydrated = useOnboarding((s) => s.hydrated);
   const onboardingComplete = useOnboarding((s) => s.completed);
   const hydrateOnboarding = useOnboarding((s) => s.hydrate);
@@ -35,9 +36,13 @@ export default function RootLayout() {
     } else if (phase === "idle" && !onPairScreen) {
       // Stay on /pair when the universal link landed us here with params
       // — pair.tsx will read them and call connectWithToken itself.
-      router.replace(onboardingComplete ? "/connect" : "/onboarding");
+      const destination = onboardingComplete ? "connect" : "onboarding";
+      // Replacing the route we are already on remounts it, which would wipe
+      // the discovery list and the pending selection every time a connection
+      // is cancelled.
+      if (currentRoute !== destination) router.replace(`/${destination}`);
     }
-  }, [phase, onPairScreen, onboardingHydrated, onboardingComplete]);
+  }, [phase, onPairScreen, currentRoute, onboardingHydrated, onboardingComplete]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

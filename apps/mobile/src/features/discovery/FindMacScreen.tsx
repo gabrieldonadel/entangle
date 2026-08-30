@@ -38,6 +38,8 @@ export function FindMacScreen({ onBeforeConnect, onTryDemo }: FindMacScreenProps
   const { services, scanning, rescan } = useDiscovery();
   const phase = useConnection((s) => s.phase);
   const connect = useConnection((s) => s.connect);
+  const disconnect = useConnection((s) => s.disconnect);
+  const lastError = useConnection((s) => s.lastError);
   const connecting = phase === "connecting" || phase === "reconnecting";
   const [pendingName, setPendingName] = useState<string | null>(null);
 
@@ -47,18 +49,27 @@ export function FindMacScreen({ onBeforeConnect, onTryDemo }: FindMacScreenProps
   );
 
   const handleTap = async (service: (typeof sortedServices)[number]) => {
-    if (connecting) return;
     const target: ConnectionTarget = {
       name: service.name,
       host: service.host,
       port: service.port,
     };
+    // An attempt already in flight must never make the list untappable:
+    // tapping the pending row cancels it, tapping another switches to it.
+    if (connecting) {
+      disconnect();
+      if (pendingName === service.name) {
+        setPendingName(null);
+        return;
+      }
+    }
     setPendingName(service.name);
     if (onBeforeConnect) await onBeforeConnect(target);
-    try {
-      await AsyncStorage.setItem(LAST_HOST_KEY, JSON.stringify(target));
-    } catch {}
     connect(target);
+    // Remembering the host is best-effort and must not gate the connect.
+    AsyncStorage.setItem(LAST_HOST_KEY, JSON.stringify(target)).catch(
+      () => undefined,
+    );
   };
 
   return (
@@ -94,6 +105,16 @@ export function FindMacScreen({ onBeforeConnect, onTryDemo }: FindMacScreenProps
             ))
           )}
         </View>
+
+        {connecting ? (
+          <Text style={styles.status}>
+            {phase === "reconnecting"
+              ? "Still trying — tap the Mac again to cancel."
+              : "Connecting — tap the Mac again to cancel."}
+          </Text>
+        ) : lastError ? (
+          <Text style={styles.error}>{lastError}</Text>
+        ) : null}
 
         <Pressable
           onPress={rescan}
@@ -276,6 +297,18 @@ const styles = StyleSheet.create({
   emptyText: {
     color: C.muted,
     fontSize: 13,
+  },
+  status: {
+    marginTop: 12,
+    color: C.muted,
+    fontSize: 12,
+    fontFamily: F.body,
+  },
+  error: {
+    marginTop: 12,
+    color: "#ff453a",
+    fontSize: 12,
+    fontFamily: F.body,
   },
   rescanRow: {
     alignSelf: "flex-start",
