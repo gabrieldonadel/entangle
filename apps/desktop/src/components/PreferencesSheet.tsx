@@ -116,6 +116,16 @@ export function PreferencesSheet({visible, onClose}: Props) {
                   onChange={v => prefs.set('tapToClick', v)}
                 />
               }
+            />
+            <Field
+              label="Highlight pointer"
+              hint="Ring the cursor while a phone is connected"
+              control={
+                <Toggle
+                  on={prefs.highlightPointer}
+                  onChange={v => prefs.set('highlightPointer', v)}
+                />
+              }
               last
             />
 
