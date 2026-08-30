@@ -14,6 +14,9 @@
       ],
       "@entangle/protocol/*": [
         "../../packages/shared/src/*"
+      ],
+      "volume-buttons": [
+        "./modules/volume-buttons/src"
       ]
     }
   },

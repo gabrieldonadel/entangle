@@ -3,6 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import { PROTOCOL_VERSION } from '@entangle/protocol';
+import { isSupported as volumeButtonsSupported } from 'volume-buttons';
 
 import { C } from '@/features/onboarding/atoms';
 import { useConnection } from '@/state/connection';
@@ -26,6 +27,8 @@ export default function SettingsScreen() {
   const setPointerSensitivity = useSettings((s) => s.setPointerSensitivity);
   const naturalScroll = useSettings((s) => s.naturalScroll);
   const setNaturalScroll = useSettings((s) => s.setNaturalScroll);
+  const volumeButtons = useSettings((s) => s.volumeButtons);
+  const setVolumeButtons = useSettings((s) => s.setVolumeButtons);
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
@@ -75,6 +78,22 @@ export default function SettingsScreen() {
             <Switch value={naturalScroll} onValueChange={setNaturalScroll} />
           </View>
         </View>
+
+        {volumeButtonsSupported ? (
+          <View style={styles.card}>
+            <View style={styles.toggleRow}>
+              <View style={styles.toggleLabels}>
+                <Text style={styles.toggleTitle}>Volume buttons control the Mac</Text>
+                <Text style={styles.toggleSubtitle}>
+                  While connected, this phone&apos;s volume buttons change the Mac&apos;s
+                  volume. The phone&apos;s own volume is taken over and will move as you
+                  press.
+                </Text>
+              </View>
+              <Switch value={volumeButtons} onValueChange={setVolumeButtons} />
+            </View>
+          </View>
+        ) : null}
 
         <View style={styles.card}>
           <Text style={styles.title}>Spaces &amp; Mission Control</Text>

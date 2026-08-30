@@ -9,6 +9,7 @@ import { useEffect } from "react";
 import { useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
+import { useVolumeButtons } from "@/features/audio/useVolumeButtons";
 import { useConnection } from "@/state/connection";
 import { useOnboarding } from "@/state/onboarding";
 import { C } from "@/features/onboarding/atoms";
@@ -21,6 +22,10 @@ export default function RootLayout() {
   const onboardingHydrated = useOnboarding((s) => s.hydrated);
   const onboardingComplete = useOnboarding((s) => s.completed);
   const hydrateOnboarding = useOnboarding((s) => s.hydrate);
+
+  // Hardware volume buttons drive the Mac from anywhere in the app while a
+  // connection is open, so this lives at the root rather than on one screen.
+  useVolumeButtons();
 
   useEffect(() => {
     void hydrateOnboarding();
