@@ -61,7 +61,7 @@ Do not reintroduce `--ignore-workspace` or per-app `pnpm-lock.yaml` files — Xc
 [packages/shared/src](packages/shared/src) is the single source of truth for the wire format:
 
 - [constants.ts](packages/shared/src/constants.ts) — `PROTOCOL_VERSION`, Bonjour service identifiers (`_entangle._tcp.`), `DEFAULT_PORT` (49827), heartbeat / idle timeouts, close codes, `ModFlags` bitmask.
-- [messages.ts](packages/shared/src/messages.ts) — every `ClientMessage` and `ServerMessage` shape. All messages carry `v: 1` and a discriminator `t` (e.g. `'p.move'`, `'p.click'`, `'s.wheel'`, `'g.space'`, `'g.mission'`, `'k.text'`, `'k.key'`, `'a.set'`, `'a.step'`, `'a.mute'`, `'d.list'`, `'d.activate'`, `'hello'`, `'ping'`, and server-pushed `'state.audio'`).
+- [messages.ts](packages/shared/src/messages.ts) — every `ClientMessage` and `ServerMessage` shape. All messages carry `v: 1` and a discriminator `t` (e.g. `'p.move'`, `'p.click'`, `'s.wheel'`, `'g.space'`, `'g.mission'`, `'k.text'`, `'k.key'`, `'a.set'`, `'a.step'`, `'a.mute'`, `'sys.wake'`, `'d.list'`, `'d.activate'`, `'hello'`, `'ping'`, and server-pushed `'state.audio'` / `'state.display'`).
 - [codec.ts](packages/shared/src/codec.ts) — encode/decode helpers used by both sides.
 
 Both apps reach this via TS path aliases:
@@ -80,7 +80,7 @@ The macOS app is a thin RN-macOS shell over a Swift Expo module that does the re
   - [EntangleServerModule.swift](apps/desktop/modules/entangle-server/ios/EntangleServerModule.swift) — Expo `Module` definition, exposes `startServer / stopServer / sendToClient / broadcast / isAccessibilityTrusted / promptAccessibility` and emits `clientConnected / clientDisconnected / message / error / serverReady / accessibilityChanged`.
   - [Server/WebSocketServer.swift](apps/desktop/modules/entangle-server/ios/Server/WebSocketServer.swift) — listens on `DEFAULT_PORT`, advertises Bonjour, manages clients & heartbeats.
   - [MessageDispatcher.swift](apps/desktop/modules/entangle-server/ios/MessageDispatcher.swift) — parses incoming JSON `ClientMessage`s and fans out to controllers.
-  - [System/](apps/desktop/modules/entangle-server/ios/System) — `CursorController`, `ScrollController`, `KeyController`, `GestureController`, `DockEnumerator` (CGEvent / Accessibility APIs), `VolumeController` (CoreAudio output volume + mute, needs no permission).
+  - [System/](apps/desktop/modules/entangle-server/ios/System) — `CursorController`, `ScrollController`, `KeyController`, `GestureController`, `DockEnumerator` (CGEvent / Accessibility APIs), `VolumeController` (CoreAudio output volume + mute, needs no permission), `DisplayController` (display sleep state + `IOPMAssertionDeclareUserActivity` wake, needs no permission).
   - [Util/AccessibilityCheck.swift](apps/desktop/modules/entangle-server/ios/Util/AccessibilityCheck.swift), [Util/IconEncoder.swift](apps/desktop/modules/entangle-server/ios/Util/IconEncoder.swift).
 - The TS facade is [modules/entangle-server/src/index.ts](apps/desktop/modules/entangle-server/src/index.ts) → `requireNativeModule('EntangleServer')`, re-exporting typed events.
 - Metro [config](apps/desktop/metro.config.js) rewrites `react-native` → `react-native-macos` for the `macos` platform and prepends `react-native-macos/Libraries/Core/InitializeCore` to the run-before-main modules. Keep this when touching Metro config.
@@ -95,7 +95,7 @@ The macOS app is a thin RN-macOS shell over a Swift Expo module that does the re
   - [(tabs)/](<apps/mobile/src/app/(tabs)>) hosts trackpad / keyboard / dock surfaces.
 - Feature surfaces in [src/features](apps/mobile/src/features) (`trackpad`, `keyboard`, `dock`).
 - Networking in [src/net](apps/mobile/src/net): [discovery.ts](apps/mobile/src/net/discovery.ts) (Bonjour via `react-native-zeroconf`) and [send.ts](apps/mobile/src/net/send.ts) (WebSocket + queue).
-- Zustand stores in [src/state](apps/mobile/src/state): `connection`, `dock`, `modifiers`, `settings`. AsyncStorage is used for persisted settings.
+- Zustand stores in [src/state](apps/mobile/src/state): `connection`, `audio`, `display`, `dock`, `modifiers`, `settings`. AsyncStorage is used for persisted settings.
 - Path alias `@/*` → `src/*` is set in TS only — Metro resolves through the default config, so prefer the alias for clarity.
 
 ## Conventions worth knowing
@@ -104,4 +104,5 @@ The macOS app is a thin RN-macOS shell over a Swift Expo module that does the re
 - All wire messages must include `v: 1`. Increment `PROTOCOL_VERSION` (and update both sides) for breaking changes.
 - Modifier keys are sent as a `ModMask` bitfield using `ModFlags` (`Command|Option|Shift|Control|Fn`). Do not invent ad-hoc shapes.
 - Single root `pnpm-lock.yaml`. Always run `pnpm install` from the repo root — never with `--ignore-workspace`.
+- Features the Mac may not have are gated on the `caps` list in the `welcome` message (`audio`, `wake`, …). Add a cap in [src/server-state.ts](apps/desktop/src/server-state.ts) and check it on the phone, so an older Mac never shows a dead control.
 - Native input synthesis requires the user to grant macOS Accessibility — `AccessibilityGate` blocks the UI until `isAccessibilityTrusted()` returns true.

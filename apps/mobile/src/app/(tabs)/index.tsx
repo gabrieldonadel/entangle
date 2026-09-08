@@ -16,12 +16,14 @@ import Svg, { Path, Rect } from "react-native-svg";
 import { VolumeBar } from "@/features/audio/VolumeBar";
 import { MiniMac } from "@/features/demo/MiniMac";
 import { PracticeBanner } from "@/features/demo/PracticeBanner";
+import { WakeOverlay } from "@/features/display/WakeOverlay";
 import { HiddenInput } from "@/features/keyboard/HiddenInput";
 import { ModifierBar } from "@/features/keyboard/ModifierBar";
 import { SpecialKeys } from "@/features/keyboard/SpecialKeys";
 import { TrackpadSurface } from "@/features/trackpad/TrackpadSurface";
 import type { LocalGestureEvent } from "@/features/trackpad/TrackpadSurface";
 import { useConnection } from "@/state/connection";
+import { useDisplay } from "@/state/display";
 import { useModifiers } from "@/state/modifiers";
 import { C } from "@/features/onboarding/atoms";
 
@@ -35,6 +37,7 @@ export default function TrackpadScreen() {
   const latency = useConnection((s) => s.latencyMs);
   const demo = useConnection((s) => s.demo);
   const serverCaps = useConnection((s) => s.serverCaps);
+  const screenAsleep = useDisplay((s) => s.asleep);
   const clearModifiers = useModifiers((s) => s.clear);
 
   const inputRef = useRef<TextInput>(null);
@@ -159,7 +162,15 @@ export default function TrackpadScreen() {
           with no effect. Demo mode has no caps list but drives it locally. */}
       {demo || serverCaps.includes("audio") ? <VolumeBar /> : null}
 
-      <TrackpadSurface onLocalGesture={demo ? handleLocalGesture : undefined} />
+      <View style={styles.padWrap}>
+        <TrackpadSurface onLocalGesture={demo ? handleLocalGesture : undefined} />
+        {/* A sleeping screen swallows pointer moves, so cover the pad with a
+            tap-to-wake surface instead. Macs without the `wake` cap never
+            report their display state. */}
+        {!demo && screenAsleep && serverCaps.includes("wake") ? (
+          <WakeOverlay />
+        ) : null}
+      </View>
 
       <HiddenInput
         ref={inputRef}
@@ -267,5 +278,8 @@ const styles = StyleSheet.create({
   },
   miniMacWrap: {
     marginBottom: 12,
+  },
+  padWrap: {
+    flex: 1,
   },
 });

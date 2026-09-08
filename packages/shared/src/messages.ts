@@ -115,6 +115,15 @@ export interface AudioMuteMessage {
   muted?: boolean;
 }
 
+/**
+ * Wake the Mac's display. Sent when the phone sees `state.display` report the
+ * screen as asleep — a pointer move would otherwise land on a dark screen.
+ */
+export interface SystemWakeMessage {
+  v: 1;
+  t: 'sys.wake';
+}
+
 export interface DockListRequestMessage {
   v: 1;
   t: 'd.list';
@@ -166,6 +175,7 @@ export type ClientMessage =
   | AudioSetMessage
   | AudioStepMessage
   | AudioMuteMessage
+  | SystemWakeMessage
   | DockListRequestMessage
   | DockActivateMessage
   | HelloMessage
@@ -234,6 +244,17 @@ export interface AudioStateMessage {
   muted: boolean;
 }
 
+/**
+ * Whether the Mac's display is asleep. Pushed on connect and whenever the
+ * screens sleep or wake, so the phone can offer to wake the Mac instead of
+ * moving a cursor nobody can see.
+ */
+export interface DisplayStateMessage {
+  v: 1;
+  t: 'state.display';
+  asleep: boolean;
+}
+
 export interface PairAcceptedMessage {
   v: 1;
   t: 'pair.accepted';
@@ -253,6 +274,7 @@ export type ServerMessage =
   | DockUpdateMessage
   | ModStateMessage
   | AudioStateMessage
+  | DisplayStateMessage
   | PairAcceptedMessage
   | PairRejectedMessage;
 
