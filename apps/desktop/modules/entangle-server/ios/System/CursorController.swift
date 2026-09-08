@@ -48,7 +48,15 @@ final class CursorController {
     }
   }
 
-  func move(dx: CGFloat, dy: CGFloat) {
+  /// When the frame was sent and when it reached us. Carried only while
+  /// diagnostics are on, so the measurement can span the queue hop that
+  /// separates arrival from the posted CGEvent.
+  struct MoveTiming {
+    let clientTimestamp: Double?
+    let arrival: Double
+  }
+
+  func move(dx: CGFloat, dy: CGFloat, timing: MoveTiming? = nil) {
     let scale = CGFloat(PreferencesStore.shared.sensitivity)
     queue.async {
       let current = self.originForNextMove()
@@ -56,6 +64,13 @@ final class CursorController {
       self.virtualPosition = target
       self.lastMoveAt = Date()
       self.postMove(to: target, dragging: self.isDragging)
+      if let timing = timing {
+        LatencyMonitor.shared.record(
+          clientTimestamp: timing.clientTimestamp,
+          arrival: timing.arrival,
+          posted: LatencyMonitor.now()
+        )
+      }
     }
   }
 

@@ -234,6 +234,9 @@ function handleMessage(clientId: string, msg: Message) {
       sendWelcome(clientId);
       return;
     case 'ping':
+      // Normally answered in Swift so the phone's round-trip measurement does
+      // not include a lap through here. This is the fallback for a ping the
+      // native dispatcher could not parse.
       EntangleServer.sendToClient(clientId, encode({ v: PROTOCOL_VERSION, t: 'pong', id: msg.id }));
       return;
     default:
@@ -252,7 +255,7 @@ function sendWelcome(clientId: string) {
       version: '0.0.1',
       host: serviceName ?? '',
     },
-    caps: ['pointer', 'scroll', 'keyboard', 'dock', 'gestures', 'audio', 'wake'],
+    caps: ['pointer', 'scroll', 'keyboard', 'dock', 'gestures', 'audio', 'wake', 'diag'],
   };
   if (port != null) {
     EntangleServer.sendToClient(clientId, encode(welcome));

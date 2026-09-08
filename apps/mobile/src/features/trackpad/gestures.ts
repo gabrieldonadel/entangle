@@ -4,6 +4,7 @@ import { Gesture } from "react-native-gesture-handler";
 import { PROTOCOL_VERSION } from "@entangle/protocol";
 
 import { sendMessage } from "@/net/send";
+import { diagEnabledRef, recordSend } from "@/state/diag";
 import {
   useNaturalScrollRef,
   usePointerSensitivityRef,
@@ -208,9 +209,19 @@ function flushMove() {
     dx: pendingDx,
     dy: pendingDy,
     seq: pendingSeq,
+    // Only while diagnostics are on: the Mac uses the gap between successive
+    // stamps to measure delay variation, so any monotonic clock will do.
+    ...(diagEnabledRef.current ? { ts: now() } : null),
   });
+  recordSend();
   pendingDx = 0;
   pendingDy = 0;
+}
+
+function now(): number {
+  return typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now();
 }
 
 function accumulateMove(dx: number, dy: number) {

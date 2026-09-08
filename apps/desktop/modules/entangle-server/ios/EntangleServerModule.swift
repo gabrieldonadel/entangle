@@ -8,6 +8,9 @@ public class EntangleServerModule: Module {
   private var accessibilityTimer: DispatchSourceTimer?
   private var lastAccessibilityState: Bool = false
   private var statsTimer: DispatchSourceTimer?
+  /// Ids of the phones currently connected. Only ever touched from the
+  /// server's serial queue, where the connect and disconnect callbacks run.
+  private var connectedClients = Set<String>()
   /// Inbound message counts since the last stats tick, keyed by client id.
   /// Written from the server queue, drained from the stats timer.
   private var inboundCounts: [String: Int] = [:]
@@ -39,6 +42,8 @@ public class EntangleServerModule: Module {
       VolumeController.shared.onChange = nil
       DisplayController.shared.stopWatching()
       DisplayController.shared.onChange = nil
+      LatencyMonitor.shared.setEnabled(false)
+      LatencyMonitor.shared.onSnapshot = nil
       self.server?.stop()
       self.server = nil
     }
@@ -53,6 +58,8 @@ public class EntangleServerModule: Module {
       VolumeController.shared.onChange = nil
       DisplayController.shared.stopWatching()
       DisplayController.shared.onChange = nil
+      LatencyMonitor.shared.setEnabled(false)
+      LatencyMonitor.shared.onSnapshot = nil
       self.server?.stop()
       self.server = nil
       self.serverPort = 0
@@ -200,6 +207,7 @@ public class EntangleServerModule: Module {
     wireDockEvents(server)
     wireVolumeEvents(server)
     wireDisplayEvents(server)
+    wireDiagnostics(server)
 
     do {
       try server.start()
@@ -236,6 +244,7 @@ public class EntangleServerModule: Module {
       promise?.resolve(payload)
     }
     server.onClientConnected = { [weak self, weak server] id, host in
+      self?.connectedClients.insert(id.uuidString)
       self?.sendEvent("clientConnected", ["id": id.uuidString, "host": host])
       // Seed the phone's volume slider so it does not start from a guess.
       if let state = VolumeController.shared.currentState(),
@@ -253,7 +262,12 @@ public class EntangleServerModule: Module {
       }
     }
     server.onClientDisconnected = { [weak self] id in
+      self?.connectedClients.remove(id.uuidString)
       self?.sendEvent("clientDisconnected", ["id": id.uuidString])
+      // Nobody left to read the numbers, and they are not free to collect.
+      if self?.connectedClients.isEmpty == true {
+        LatencyMonitor.shared.setEnabled(false)
+      }
     }
     server.onMessage = { [weak self] id, text in
       let handledNatively = MessageDispatcher.handle(text) { response in
@@ -298,6 +312,14 @@ public class EntangleServerModule: Module {
       server.broadcast(payload)
     }
     DisplayController.shared.startWatching()
+  }
+
+  private func wireDiagnostics(_ server: WebSocketServer) {
+    LatencyMonitor.shared.onSnapshot = { [weak server] snapshot in
+      guard let server = server,
+            let payload = MessageDispatcher.encodeDiagState(snapshot) else { return }
+      server.broadcast(payload)
+    }
   }
 
   private func wireDockEvents(_ server: WebSocketServer) {

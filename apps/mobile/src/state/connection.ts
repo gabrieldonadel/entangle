@@ -10,6 +10,7 @@ import {
   HEARTBEAT_TIMEOUT_MS,
   PROTOCOL_VERSION,
   isAudioState,
+  isDiagState,
   isDisplayState,
   isDockListResponse,
   isDockUpdate,
@@ -17,6 +18,7 @@ import {
 import type { ClientMessage, DockApp, Message } from '@entangle/protocol';
 
 import { useAudio } from './audio';
+import { recordRtt, useDiag } from './diag';
 import { useDisplay } from './display';
 import { useDock } from './dock';
 import { DEMO_DOCK_APPS } from './demo';
@@ -77,9 +79,14 @@ let pingTimer: ReturnType<typeof setInterval> | null = null;
 let pongTimeout: ReturnType<typeof setTimeout> | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let connectTimeout: ReturnType<typeof setTimeout> | null = null;
+let diagPingTimer: ReturnType<typeof setInterval> | null = null;
 let reconnectAttempt = 0;
 let pingId = 0;
-let pingSentAt = 0;
+/** Ping id → send time. Matching the pong by id keeps the round-trip figure
+ *  honest when diagnostics add pings of their own. */
+const pendingPings = new Map<number, number>();
+/** The id of the ping the heartbeat timeout is currently waiting on. */
+let heartbeatPingId = 0;
 let manuallyDisconnected = false;
 let pendingPairCode: string | null = null;
 let pendingPairToken: string | null = null;
@@ -131,6 +138,7 @@ export const useConnection = create<ConnectionState>((set, get) => ({
     useDock.getState().clear();
     useAudio.getState().reset();
     useDisplay.getState().reset();
+    useDiag.getState().reset();
     set({
       phase: 'idle',
       target: null,
@@ -228,6 +236,11 @@ function openSocket() {
       },
     };
     ws.send(encode(hello));
+    // A reconnect gives us a fresh server-side monitor; re-arm it if the user
+    // left diagnostics on.
+    if (useDiag.getState().enabled) {
+      ws.send(encode({ v: PROTOCOL_VERSION, t: 'diag.set', on: true }));
+    }
     startHeartbeat();
   };
 
@@ -296,6 +309,10 @@ function handleMessage(msg: Message) {
     useDisplay.getState().applyRemote(msg.asleep);
     return;
   }
+  if (isDiagState(msg)) {
+    useDiag.getState().applyRemote(msg);
+    return;
+  }
   switch (msg.t) {
     case 'welcome':
       useConnection.setState({
@@ -304,15 +321,20 @@ function handleMessage(msg: Message) {
         serverCaps: msg.caps,
       });
       return;
-    case 'pong':
-      if (pongTimeout) {
+    case 'pong': {
+      if (msg.id === heartbeatPingId && pongTimeout) {
         clearTimeout(pongTimeout);
         pongTimeout = null;
       }
-      if (pingSentAt > 0) {
-        useConnection.setState({ latencyMs: Date.now() - pingSentAt });
+      const sentAt = pendingPings.get(msg.id);
+      if (sentAt != null) {
+        pendingPings.delete(msg.id);
+        const rtt = Date.now() - sentAt;
+        useConnection.setState({ latencyMs: rtt });
+        recordRtt(rtt);
       }
       return;
+    }
     case 'pair.accepted': {
       const { target, trustedTokens } = useConnection.getState();
       if (target && pendingPairToken) {
@@ -370,13 +392,32 @@ function applyDockUpdate(msg: {
   useDock.getState().setApps(Array.from(byId.values()));
 }
 
+/** Ping cadence while diagnostics are on, so the round trip is sampled during
+ *  a gesture rather than every few seconds. */
+const DIAG_PING_INTERVAL_MS = 500;
+
+function sendPing(): number | null {
+  if (!socket || socket.readyState !== WebSocket.OPEN) return null;
+  pingId += 1;
+  const id = pingId;
+  pendingPings.set(id, Date.now());
+  // A pong that never arrives would otherwise keep its entry forever.
+  if (pendingPings.size > 32) {
+    const cutoff = Date.now() - 10_000;
+    for (const [pending, sentAt] of pendingPings) {
+      if (sentAt < cutoff) pendingPings.delete(pending);
+    }
+  }
+  socket.send(encode({ v: PROTOCOL_VERSION, t: 'ping', id }));
+  return id;
+}
+
 function startHeartbeat() {
   clearInterval(pingTimer ?? undefined);
   pingTimer = setInterval(() => {
-    if (!socket || socket.readyState !== WebSocket.OPEN) return;
-    pingId += 1;
-    pingSentAt = Date.now();
-    socket.send(encode({ v: PROTOCOL_VERSION, t: 'ping', id: pingId }));
+    const id = sendPing();
+    if (id == null) return;
+    heartbeatPingId = id;
     if (pongTimeout) clearTimeout(pongTimeout);
     pongTimeout = setTimeout(() => {
       try {
@@ -384,6 +425,12 @@ function startHeartbeat() {
       } catch {}
     }, HEARTBEAT_TIMEOUT_MS);
   }, HEARTBEAT_INTERVAL_MS);
+
+  clearInterval(diagPingTimer ?? undefined);
+  diagPingTimer = setInterval(() => {
+    if (!useDiag.getState().enabled) return;
+    sendPing();
+  }, DIAG_PING_INTERVAL_MS);
 }
 
 function scheduleReconnect() {
@@ -395,9 +442,14 @@ function scheduleReconnect() {
 
 function clearTimers() {
   clearConnectTimeout();
+  pendingPings.clear();
   if (pingTimer) {
     clearInterval(pingTimer);
     pingTimer = null;
+  }
+  if (diagPingTimer) {
+    clearInterval(diagPingTimer);
+    diagPingTimer = null;
   }
   if (pongTimeout) {
     clearTimeout(pongTimeout);

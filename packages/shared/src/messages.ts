@@ -41,6 +41,13 @@ export interface PointerMoveMessage {
   dx: number;
   dy: number;
   seq: number;
+  /**
+   * Client-monotonic send time in milliseconds, present only while
+   * diagnostics are on. The Mac never compares it against its own clock —
+   * only successive `ts` differences against successive arrival differences,
+   * which measures delay variation without needing the two clocks to agree.
+   */
+  ts?: number;
 }
 
 export interface PointerClickMessage {
@@ -124,6 +131,16 @@ export interface SystemWakeMessage {
   t: 'sys.wake';
 }
 
+/**
+ * Turn per-move instrumentation on or off. Off by default: it costs a
+ * timestamp on every pointer frame and a `state.diag` push every second.
+ */
+export interface DiagSetMessage {
+  v: 1;
+  t: 'diag.set';
+  on: boolean;
+}
+
 export interface DockListRequestMessage {
   v: 1;
   t: 'd.list';
@@ -176,6 +193,7 @@ export type ClientMessage =
   | AudioStepMessage
   | AudioMuteMessage
   | SystemWakeMessage
+  | DiagSetMessage
   | DockListRequestMessage
   | DockActivateMessage
   | HelloMessage
@@ -255,6 +273,35 @@ export interface DisplayStateMessage {
   asleep: boolean;
 }
 
+/**
+ * One second of pointer-path measurements from the Mac. Pushed only while
+ * diagnostics are on.
+ *
+ * Every figure is measured on the Mac's own clock, so none of them depend on
+ * the two devices agreeing about the time. Round-trip time is the phone's to
+ * measure.
+ */
+export interface DiagStateMessage {
+  v: 1;
+  t: 'state.diag';
+  /** Pointer moves applied in the last second. */
+  rate: number;
+  /** Gap between consecutive moves, milliseconds. */
+  gapP50: number;
+  gapP95: number;
+  /**
+   * Mean absolute one-way delay variation, milliseconds: how much the gap
+   * between two arrivals differed from the gap between the two sends. Zero
+   * means the stream arrived exactly as evenly as it was sent.
+   */
+  jitter: number;
+  /** Arrival to CGEvent posted, milliseconds. */
+  procP50: number;
+  procP95: number;
+  /** Gaps longer than 50 ms in the last second — the "freeze then jump". */
+  stalls: number;
+}
+
 export interface PairAcceptedMessage {
   v: 1;
   t: 'pair.accepted';
@@ -275,6 +322,7 @@ export type ServerMessage =
   | ModStateMessage
   | AudioStateMessage
   | DisplayStateMessage
+  | DiagStateMessage
   | PairAcceptedMessage
   | PairRejectedMessage;
 

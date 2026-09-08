@@ -49,6 +49,11 @@ enum MessageDispatcher {
     case "sys.wake":
       DisplayController.shared.wake()
       return true
+    case "diag.set":
+      guard let on = json["on"] as? Bool else { return false }
+      LatencyMonitor.shared.setEnabled(on)
+      return true
+    case "ping": return handlePing(json, respond: respond)
     case "d.list": return handleDockList(respond: respond)
     case "d.activate": return handleDockActivate(json)
     case "g.space": return handleSpaceGesture(json)
@@ -65,7 +70,22 @@ enum MessageDispatcher {
     guard let deltaX = numeric(json["dx"]), let deltaY = numeric(json["dy"]) else {
       return false
     }
-    CursorController.shared.move(dx: CGFloat(deltaX), dy: CGFloat(deltaY))
+    // Stamp the arrival before the queue hop, so the measured processing time
+    // includes the hop rather than hiding it.
+    let timing = LatencyMonitor.shared.enabled
+      ? CursorController.MoveTiming(
+          clientTimestamp: numeric(json["ts"]), arrival: LatencyMonitor.now()
+        )
+      : nil
+    CursorController.shared.move(dx: CGFloat(deltaX), dy: CGFloat(deltaY), timing: timing)
+    return true
+  }
+
+  /// Answered natively so the round trip the phone measures is the transport,
+  /// not a lap through the desktop's JavaScript.
+  private static func handlePing(_ json: [String: Any], respond: (String) -> Void) -> Bool {
+    guard let id = numeric(json["id"]) else { return false }
+    respond("{\"v\":1,\"t\":\"pong\",\"id\":\(Int(id))}")
     return true
   }
 
@@ -215,6 +235,30 @@ enum MessageDispatcher {
       return nil
     }
     return String(data: data, encoding: .utf8)
+  }
+
+  static func encodeDiagState(_ snapshot: LatencyMonitor.Snapshot) -> String? {
+    let payload: [String: Any] = [
+      "v": 1,
+      "t": "state.diag",
+      "rate": snapshot.rate,
+      "gapP50": rounded(snapshot.gapP50),
+      "gapP95": rounded(snapshot.gapP95),
+      "jitter": rounded(snapshot.jitter),
+      "procP50": rounded(snapshot.procP50),
+      "procP95": rounded(snapshot.procP95),
+      "stalls": snapshot.stalls
+    ]
+    guard let data = try? JSONSerialization.data(withJSONObject: payload) else {
+      return nil
+    }
+    return String(data: data, encoding: .utf8)
+  }
+
+  /// Two decimals is well past what anyone can act on, and it keeps the
+  /// payload short.
+  private static func rounded(_ value: Double) -> Double {
+    (value * 100).rounded() / 100
   }
 
   static func encodeDockList(_ apps: [DockEnumerator.DockApp]) -> String? {
