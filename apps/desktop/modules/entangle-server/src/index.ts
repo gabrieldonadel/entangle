@@ -45,6 +45,15 @@ const nativeModule = requireNativeModule<NativeModuleType>('EntangleServer');
 export type ClientConnectedEvent = { id: string; host: string };
 export type ClientDisconnectedEvent = { id: string };
 export type ServerMessageEvent = { id: string; text: string; handledNatively: boolean };
+/**
+ * Inbound message counts for the last second, one entry per client. Pointer
+ * moves are handled natively and never reach the `message` event, so this is
+ * the only place the UI sees them.
+ */
+export type MessageStatsEvent = {
+  clients: { id: string; count: number }[];
+  total: number;
+};
 export type ServerErrorEvent = { message: string };
 export type ServerReadyEvent = { port: number; serviceName: string; lanHost?: string };
 export type AccessibilityChangedEvent = { trusted: boolean };
@@ -56,6 +65,7 @@ export type EntangleServerEvents = {
   clientConnected: (event: ClientConnectedEvent) => void;
   clientDisconnected: (event: ClientDisconnectedEvent) => void;
   message: (event: ServerMessageEvent) => void;
+  messageStats: (event: MessageStatsEvent) => void;
   error: (event: ServerErrorEvent) => void;
   serverReady: (event: ServerReadyEvent) => void;
   accessibilityChanged: (event: AccessibilityChangedEvent) => void;

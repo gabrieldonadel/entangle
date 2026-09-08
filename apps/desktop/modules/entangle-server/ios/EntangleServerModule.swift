@@ -7,6 +7,11 @@ public class EntangleServerModule: Module {
   private var serviceName: String = ""
   private var accessibilityTimer: DispatchSourceTimer?
   private var lastAccessibilityState: Bool = false
+  private var statsTimer: DispatchSourceTimer?
+  /// Inbound message counts since the last stats tick, keyed by client id.
+  /// Written from the server queue, drained from the stats timer.
+  private var inboundCounts: [String: Int] = [:]
+  private let statsLock = NSLock()
 
   // swiftlint:disable:next function_body_length
   public func definition() -> ModuleDefinition {
@@ -15,7 +20,7 @@ public class EntangleServerModule: Module {
     Events(
       "clientConnected", "clientDisconnected", "message", "error", "serverReady",
       "accessibilityChanged", "pairingExpired", "pairingStarted", "pairingStopped",
-      "preferencesChanged", "pairRejected"
+      "preferencesChanged", "pairRejected", "messageStats"
     )
 
     OnCreate {
@@ -27,6 +32,7 @@ public class EntangleServerModule: Module {
     OnDestroy {
       self.accessibilityTimer?.cancel()
       self.accessibilityTimer = nil
+      self.stopStatsTimer()
       DockEnumerator.shared.stop()
       DockEnumerator.shared.onUpdate = nil
       VolumeController.shared.stopWatching()
@@ -42,6 +48,7 @@ public class EntangleServerModule: Module {
     }
 
     AsyncFunction("stopServer") { (promise: Promise) in
+      self.stopStatsTimer()
       VolumeController.shared.stopWatching()
       VolumeController.shared.onChange = nil
       DisplayController.shared.stopWatching()
@@ -197,6 +204,7 @@ public class EntangleServerModule: Module {
     do {
       try server.start()
       self.server = server
+      self.startStatsTimer()
       // Fresh installs (no trusted hosts yet) need a pair window to be open
       // so the first phone has something to talk to. We open one automatically
       // and emit pairingStarted so the UI can surface the code/QR.
@@ -251,10 +259,17 @@ public class EntangleServerModule: Module {
       let handledNatively = MessageDispatcher.handle(text) { response in
         self?.server?.send(response, to: id)
       }
+      self?.countInbound(id)
+      // Pointer moves arrive at the display refresh rate. Handing every one of
+      // them to JavaScript costs a bridge crossing, a JSON.parse and a store
+      // update — a React render per cursor sample, on the same machine that
+      // has to post the CGEvent. Natively handled messages stay native; the
+      // UI gets counts once a second from `messageStats` instead.
+      guard !handledNatively else { return }
       self?.sendEvent("message", [
         "id": id.uuidString,
         "text": text,
-        "handledNatively": handledNatively
+        "handledNatively": false
       ])
     }
     server.onError = { [weak self] message in
@@ -294,6 +309,44 @@ public class EntangleServerModule: Module {
     DockEnumerator.shared.onError = { [weak self] message in
       self?.sendEvent("error", ["message": message])
     }
+  }
+
+  // MARK: - Inbound message stats
+
+  private func countInbound(_ id: UUID) {
+    let key = id.uuidString
+    statsLock.lock()
+    inboundCounts[key, default: 0] += 1
+    statsLock.unlock()
+  }
+
+  /// Drains the per-client counters once a second. The desktop UI uses this
+  /// for its rate sparkline and per-phone event counts; nothing else needs to
+  /// see the hot path.
+  private func startStatsTimer() {
+    guard statsTimer == nil else { return }
+    let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.global(qos: .utility))
+    timer.schedule(deadline: .now() + 1, repeating: .seconds(1))
+    timer.setEventHandler { [weak self] in
+      guard let self = self else { return }
+      self.statsLock.lock()
+      let counts = self.inboundCounts
+      self.inboundCounts.removeAll(keepingCapacity: true)
+      self.statsLock.unlock()
+      let clients = counts.map { ["id": $0.key, "count": $0.value] }
+      let total = counts.values.reduce(0, +)
+      self.sendEvent("messageStats", ["clients": clients, "total": total])
+    }
+    timer.resume()
+    statsTimer = timer
+  }
+
+  private func stopStatsTimer() {
+    statsTimer?.cancel()
+    statsTimer = nil
+    statsLock.lock()
+    inboundCounts.removeAll()
+    statsLock.unlock()
   }
 
   // MARK: - Accessibility polling

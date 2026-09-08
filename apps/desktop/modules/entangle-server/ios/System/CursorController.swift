@@ -9,6 +9,24 @@ final class CursorController {
   private let queue = DispatchQueue(label: "entangle.cursor", qos: .userInteractive)
   private var isDragging: Bool = false
 
+  /// Where we believe the cursor is, in full precision.
+  ///
+  /// Reading the position back from the window server on every move throws
+  /// away the sub-pixel part of each delta, which is most of a slow finger
+  /// movement, and costs a `CGEvent` allocation per sample. We integrate
+  /// locally instead and only re-read after a pause, when something else
+  /// (the physical mouse, an app warping the pointer) may have moved it.
+  private var virtualPosition: CGPoint?
+  private var lastMoveAt: Date = .distantPast
+
+  /// How long the stream has to go quiet before we trust the OS position over
+  /// our own again.
+  private static let resyncIdleInterval: TimeInterval = 0.25
+
+  /// Union of every screen in CG coordinates. Rebuilt only when the display
+  /// layout changes, not once per pointer sample.
+  private var cachedScreenBounds: CGRect?
+
   // Click-count tracking for double / triple click recognition. macOS expects
   // mouseDown events with `mouseEventClickState = 2/3` for the 2nd/3rd click
   // in a series, otherwise apps see only single clicks.
@@ -21,15 +39,34 @@ final class CursorController {
 
   private init() {
     self.eventSource = CGEventSource(stateID: .hidSystemState)
+    NotificationCenter.default.addObserver(
+      forName: NSApplication.didChangeScreenParametersNotification,
+      object: nil,
+      queue: nil
+    ) { [weak self] _ in
+      self?.queue.async { self?.cachedScreenBounds = nil }
+    }
   }
 
   func move(dx: CGFloat, dy: CGFloat) {
     let scale = CGFloat(PreferencesStore.shared.sensitivity)
     queue.async {
-      let current = self.currentMouseLocation()
+      let current = self.originForNextMove()
       let target = self.clampToScreens(CGPoint(x: current.x + dx * scale, y: current.y + dy * scale))
+      self.virtualPosition = target
+      self.lastMoveAt = Date()
       self.postMove(to: target, dragging: self.isDragging)
     }
+  }
+
+  /// The position the next delta applies to: our own, while a gesture is in
+  /// flight; the real one after a pause.
+  private func originForNextMove() -> CGPoint {
+    guard let virtual = virtualPosition,
+          Date().timeIntervalSince(lastMoveAt) < Self.resyncIdleInterval else {
+      return currentMouseLocation()
+    }
+    return virtual
   }
 
   func click(button: MouseButton, phase: ClickPhase) {
@@ -106,8 +143,17 @@ final class CursorController {
   }
 
   private func clampToScreens(_ point: CGPoint) -> CGPoint {
+    guard let bounds = screenBounds() else { return point }
+    let x = min(max(point.x, bounds.minX), bounds.maxX - 1)
+    let y = min(max(point.y, bounds.minY), bounds.maxY - 1)
+    return CGPoint(x: x, y: y)
+  }
+
+  private func screenBounds() -> CGRect? {
+    if let cached = cachedScreenBounds { return cached }
+
     let screens = NSScreen.screens
-    guard !screens.isEmpty else { return point }
+    guard !screens.isEmpty else { return nil }
 
     var unionRect: CGRect = .null
     for screen in screens {
@@ -123,9 +169,8 @@ final class CursorController {
       unionRect = unionRect.isNull ? converted : unionRect.union(converted)
     }
 
-    let x = min(max(point.x, unionRect.minX), unionRect.maxX - 1)
-    let y = min(max(point.y, unionRect.minY), unionRect.maxY - 1)
-    return CGPoint(x: x, y: y)
+    cachedScreenBounds = unionRect
+    return unionRect
   }
 
   private func postMove(to point: CGPoint, dragging: Bool) {

@@ -37,7 +37,12 @@ final class WebSocketServer {
   }
 
   func start() throws {
-    let params = NWParameters(tls: nil)
+    // Pointer frames are tiny and latency-critical. Nagle would hold one back
+    // waiting for company, and a delayed ACK on the other side can stretch
+    // that wait into tens of milliseconds.
+    let tcpOptions = NWProtocolTCP.Options()
+    tcpOptions.noDelay = true
+    let params = NWParameters(tls: nil, tcp: tcpOptions)
     params.allowLocalEndpointReuse = true
     params.includePeerToPeer = false
 
