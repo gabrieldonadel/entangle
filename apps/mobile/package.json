@@ -18,6 +18,7 @@
     "@react-navigation/bottom-tabs": "^7.15.5",
     "@react-navigation/elements": "^2.9.10",
     "@react-navigation/native": "^7.1.33",
+    "entangle-udp": "workspace:*",
     "expo": "~55.0.26",
     "expo-build-properties": "~55.0.13",
     "expo-constants": "~55.0.16",
