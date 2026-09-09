@@ -28,6 +28,8 @@ export interface MacDiag {
 
 interface DiagState {
   enabled: boolean;
+  /** Where the Mac is writing the log, once it has told us. */
+  logPath: string | null;
   /** Pointer messages the phone put on the wire in the last second. */
   sendRate: number;
   /** Round trip measured by the phone, milliseconds. */
@@ -44,10 +46,10 @@ interface DiagState {
 let sentSinceTick = 0;
 /** Round trips since the last tick. */
 let rttSamples: number[] = [];
-let tickTimer: ReturnType<typeof setInterval> | null = null;
 
 export const useDiag = create<DiagState>((set) => ({
   enabled: false,
+  logPath: null,
   sendRate: 0,
   rttP50: 0,
   rttP95: 0,
@@ -56,12 +58,11 @@ export const useDiag = create<DiagState>((set) => ({
     diagEnabledRef.current = enabled;
     sentSinceTick = 0;
     rttSamples = [];
-    stopTicking();
-    if (enabled) startTicking();
-    set({ enabled, sendRate: 0, rttP50: 0, rttP95: 0, mac: null });
+    set({ enabled, sendRate: 0, rttP50: 0, rttP95: 0, mac: null, logPath: null });
   },
   applyRemote: (msg) =>
-    set({
+    set((state) => ({
+      logPath: msg.logPath ?? state.logPath,
       mac: {
         rate: msg.rate,
         gapP50: msg.gapP50,
@@ -71,13 +72,12 @@ export const useDiag = create<DiagState>((set) => ({
         procP95: msg.procP95,
         stalls: msg.stalls,
       },
-    }),
+    })),
   reset: () => {
     diagEnabledRef.current = false;
     sentSinceTick = 0;
     rttSamples = [];
-    stopTicking();
-    set({ enabled: false, sendRate: 0, rttP50: 0, rttP95: 0, mac: null });
+    set({ enabled: false, sendRate: 0, rttP50: 0, rttP95: 0, mac: null, logPath: null });
   },
 }));
 
@@ -92,26 +92,31 @@ export function recordRtt(ms: number) {
   rttSamples.push(ms);
 }
 
-function startTicking() {
-  tickTimer = setInterval(() => {
-    const rate = sentSinceTick;
-    const samples = rttSamples;
-    sentSinceTick = 0;
-    rttSamples = [];
-    // Keep the last reading when a second passes with no round trip, rather
-    // than blinking to zero between pings.
-    const { p50, p95 } = summarize(samples);
-    useDiag.setState((state) => ({
-      sendRate: rate,
-      rttP50: samples.length > 0 ? p50 : state.rttP50,
-      rttP95: samples.length > 0 ? p95 : state.rttP95,
-    }));
-  }, 1000);
+export interface PhoneStats {
+  sendRate: number;
+  rttP50: number;
+  rttP95: number;
 }
 
-function stopTicking() {
-  if (tickTimer) {
-    clearInterval(tickTimer);
-    tickTimer = null;
-  }
+/**
+ * Rolls one second of phone-side counters into the store and returns them, so
+ * the caller can put the same figures on the wire for the Mac's log.
+ *
+ * The connection owns the timer rather than this module, so the displayed
+ * numbers and the reported ones are always the same second — and so this
+ * store never has to import the socket.
+ */
+export function tickPhoneStats(): PhoneStats {
+  const sendRate = sentSinceTick;
+  const samples = rttSamples;
+  sentSinceTick = 0;
+  rttSamples = [];
+  const { p50, p95 } = summarize(samples);
+  const state = useDiag.getState();
+  // Keep the last reading when a second passes with no round trip, rather
+  // than blinking to zero between pings.
+  const rttP50 = samples.length > 0 ? p50 : state.rttP50;
+  const rttP95 = samples.length > 0 ? p95 : state.rttP95;
+  useDiag.setState({ sendRate, rttP50, rttP95 });
+  return { sendRate, rttP50, rttP95 };
 }

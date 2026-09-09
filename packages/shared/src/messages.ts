@@ -141,6 +141,21 @@ export interface DiagSetMessage {
   on: boolean;
 }
 
+/**
+ * The phone's own half of the diagnostics, once a second while they are on.
+ *
+ * Sent so both sides land in the same log line on the Mac: the phone is the
+ * only one that can measure how often it sends and what the round trip is.
+ */
+export interface DiagReportMessage {
+  v: 1;
+  t: 'diag.report';
+  /** Pointer messages put on the wire in the last second. */
+  sendRate: number;
+  rttP50: number;
+  rttP95: number;
+}
+
 export interface DockListRequestMessage {
   v: 1;
   t: 'd.list';
@@ -194,6 +209,7 @@ export type ClientMessage =
   | AudioMuteMessage
   | SystemWakeMessage
   | DiagSetMessage
+  | DiagReportMessage
   | DockListRequestMessage
   | DockActivateMessage
   | HelloMessage
@@ -300,6 +316,11 @@ export interface DiagStateMessage {
   procP95: number;
   /** Gaps longer than 50 ms in the last second — the "freeze then jump". */
   stalls: number;
+  /**
+   * Where the Mac is appending the log, so the phone can say where to look.
+   * Absent if the log could not be opened.
+   */
+  logPath?: string;
 }
 
 export interface PairAcceptedMessage {

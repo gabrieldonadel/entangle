@@ -18,7 +18,7 @@ import {
 import type { ClientMessage, DockApp, Message } from '@entangle/protocol';
 
 import { useAudio } from './audio';
-import { recordRtt, useDiag } from './diag';
+import { recordRtt, tickPhoneStats, useDiag } from './diag';
 import { useDisplay } from './display';
 import { useDock } from './dock';
 import { DEMO_DOCK_APPS } from './demo';
@@ -80,6 +80,7 @@ let pongTimeout: ReturnType<typeof setTimeout> | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let connectTimeout: ReturnType<typeof setTimeout> | null = null;
 let diagPingTimer: ReturnType<typeof setInterval> | null = null;
+let diagReportTimer: ReturnType<typeof setInterval> | null = null;
 let reconnectAttempt = 0;
 let pingId = 0;
 /** Ping id → send time. Matching the pong by id keeps the round-trip figure
@@ -431,6 +432,16 @@ function startHeartbeat() {
     if (!useDiag.getState().enabled) return;
     sendPing();
   }, DIAG_PING_INTERVAL_MS);
+
+  // One tick owns both the displayed phone figures and the ones the Mac writes
+  // to its log, so the two can never disagree.
+  clearInterval(diagReportTimer ?? undefined);
+  diagReportTimer = setInterval(() => {
+    if (!useDiag.getState().enabled) return;
+    const stats = tickPhoneStats();
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+    socket.send(encode({ v: PROTOCOL_VERSION, t: 'diag.report', ...stats }));
+  }, 1000);
 }
 
 function scheduleReconnect() {
@@ -450,6 +461,10 @@ function clearTimers() {
   if (diagPingTimer) {
     clearInterval(diagPingTimer);
     diagPingTimer = null;
+  }
+  if (diagReportTimer) {
+    clearInterval(diagReportTimer);
+    diagReportTimer = null;
   }
   if (pongTimeout) {
     clearTimeout(pongTimeout);

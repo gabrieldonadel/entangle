@@ -27,6 +27,7 @@ const CLIENT_TAGS = new Set<ClientMessage['t']>([
   'a.mute',
   'sys.wake',
   'diag.set',
+  'diag.report',
   'd.list',
   'd.activate',
   'hello',

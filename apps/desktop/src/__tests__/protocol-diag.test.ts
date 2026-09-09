@@ -1,5 +1,6 @@
 import { decode, encode, isDiagState, PROTOCOL_VERSION } from '@entangle/protocol';
 import type {
+  DiagReportMessage,
   DiagSetMessage,
   DiagStateMessage,
   PointerMoveMessage,
@@ -28,6 +29,28 @@ describe('diagnostics messages', () => {
     expect(decoded).not.toBeNull();
     expect(isDiagState(decoded!)).toBe(true);
     expect(decoded).toEqual(SNAPSHOT);
+  });
+
+  it('round-trips the phone\'s own report', () => {
+    const report: DiagReportMessage = {
+      v: PROTOCOL_VERSION,
+      t: 'diag.report',
+      sendRate: 117,
+      rttP50: 11,
+      rttP95: 23,
+    };
+    expect(decode(encode(report))).toEqual(report);
+  });
+
+  it('carries the log path when the Mac has one', () => {
+    const withPath: DiagStateMessage = {
+      ...SNAPSHOT,
+      logPath: '/Users/someone/Library/Logs/Entangle/pointer-diag.jsonl',
+    };
+    const decoded = decode(encode(withPath));
+    expect(decoded).toEqual(withPath);
+    // And stays absent when it is not set, rather than becoming null.
+    expect(decode(encode(SNAPSHOT))).not.toHaveProperty('logPath');
   });
 
   it('does not mistake another push for a diag snapshot', () => {

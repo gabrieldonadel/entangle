@@ -27,6 +27,9 @@ final class LatencyMonitor {
   /// Called once a second while enabled.
   var onSnapshot: ((Snapshot) -> Void)?
 
+  /// Where the log is being appended, or nil if it could not be opened.
+  var logPath: String? { DiagLog.shared.path }
+
   private let lock = NSLock()
   private var isEnabled = false
   private var timer: DispatchSourceTimer?
@@ -37,6 +40,27 @@ final class LatencyMonitor {
   private var stalls = 0
   private var lastArrival: Double?
   private var lastClientTimestamp: Double?
+
+  /// The phone's own figures, as of its last `diag.report`.
+  private var phoneSendRate: Int?
+  private var phoneRttP50: Double?
+  private var phoneRttP95: Double?
+
+  /// A run is an unbroken stretch of seconds with pointer activity — one
+  /// swipe session. Percentiles over a whole run are the numbers worth
+  /// quoting; a single second is a small sample.
+  private var runGaps: [Double] = []
+  private var runProcessing: [Double] = []
+  private var runVariations: [Double] = []
+  private var runPhoneSendRates: [Int] = []
+  private var runPhoneRtt: [Double] = []
+  private var runStalls = 0
+  private var runSeconds = 0
+  private var runTruncated = false
+
+  /// Bounds the memory a very long run can hold: at 120 Hz this is about four
+  /// minutes of continuous swiping before we stop collecting raw samples.
+  private static let runSampleCap = 30_000
 
   private init() {}
 
@@ -50,10 +74,20 @@ final class LatencyMonitor {
     lock.lock()
     let changed = enabled != isEnabled
     isEnabled = enabled
-    if !enabled { resetLocked() }
+    if !enabled {
+      // Do not lose the swipe that was in progress when the toggle went off.
+      if runSeconds > 0 { logRunLocked() }
+      resetLocked()
+    }
     lock.unlock()
     guard changed else { return }
-    if enabled { startTimer() } else { stopTimer() }
+    if enabled {
+      DiagLog.shared.open(note: ["reason": "diagnostics enabled"])
+      startTimer()
+    } else {
+      stopTimer()
+      DiagLog.shared.close(note: ["reason": "diagnostics disabled"])
+    }
   }
 
   /// - Parameters:
@@ -80,6 +114,15 @@ final class LatencyMonitor {
     lastArrival = arrival
     if let clientTimestamp = clientTimestamp { lastClientTimestamp = clientTimestamp }
     processing.append(posted - arrival)
+  }
+
+  func recordPhoneReport(sendRate: Int, rttP50: Double, rttP95: Double) {
+    lock.lock()
+    defer { lock.unlock() }
+    guard isEnabled else { return }
+    phoneSendRate = sendRate
+    phoneRttP50 = rttP50
+    phoneRttP95 = rttP95
   }
 
   /// Milliseconds on a monotonic clock. Unlike `Date`, it cannot step
@@ -124,6 +167,15 @@ final class LatencyMonitor {
       stalls: stalls
     )
 
+    if snapshot.rate > 0 {
+      logSampleLocked(snapshot)
+      foldIntoRunLocked(snapshot)
+    } else if runSeconds > 0 {
+      // The swipe stopped. Summarize it while the samples are still here.
+      logRunLocked()
+      resetRunLocked()
+    }
+
     gaps.removeAll(keepingCapacity: true)
     processing.removeAll(keepingCapacity: true)
     variations.removeAll(keepingCapacity: true)
@@ -133,6 +185,86 @@ final class LatencyMonitor {
     return snapshot
   }
 
+  // MARK: - Logging
+
+  /// A second with no pointer activity says nothing about the pointer path, so
+  /// only active seconds are written. That keeps the file to the moments the
+  /// user was actually swiping.
+  private func logSampleLocked(_ snapshot: Snapshot) {
+    var record: [String: Any] = [
+      "type": "second",
+      "moves": snapshot.rate,
+      "gapP50": jsonNumber(snapshot.gapP50),
+      "gapP95": jsonNumber(snapshot.gapP95),
+      "jitter": jsonNumber(snapshot.jitter),
+      "procP50": jsonNumber(snapshot.procP50),
+      "procP95": jsonNumber(snapshot.procP95),
+      "stalls": snapshot.stalls
+    ]
+    if let sendRate = phoneSendRate { record["phoneSent"] = sendRate }
+    if let rtt = phoneRttP50 { record["phoneRttP50"] = jsonNumber(rtt) }
+    if let rtt = phoneRttP95 { record["phoneRttP95"] = jsonNumber(rtt) }
+    DiagLog.shared.write(record)
+  }
+
+  private func foldIntoRunLocked(_ snapshot: Snapshot) {
+    runSeconds += 1
+    runStalls += snapshot.stalls
+    if runGaps.count + gaps.count > Self.runSampleCap {
+      runTruncated = true
+    } else {
+      runGaps.append(contentsOf: gaps)
+      runProcessing.append(contentsOf: processing)
+      runVariations.append(contentsOf: variations)
+    }
+    if let sendRate = phoneSendRate { runPhoneSendRates.append(sendRate) }
+    if let rtt = phoneRttP50 { runPhoneRtt.append(rtt) }
+  }
+
+  /// Percentiles over the whole swipe, which is the figure worth quoting — a
+  /// single second is a small sample, and the per-second lines above already
+  /// show how it varied.
+  private func logRunLocked() {
+    var record: [String: Any] = [
+      "type": "run",
+      "seconds": runSeconds,
+      "moves": runProcessing.count,
+      "gapP50": jsonNumber(Self.percentile(runGaps, 0.5)),
+      "gapP95": jsonNumber(Self.percentile(runGaps, 0.95)),
+      "gapMax": jsonNumber(runGaps.max() ?? 0),
+      "jitter": runVariations.isEmpty
+        ? 0
+        : jsonNumber(runVariations.reduce(0, +) / Double(runVariations.count)),
+      "procP50": jsonNumber(Self.percentile(runProcessing, 0.5)),
+      "procP95": jsonNumber(Self.percentile(runProcessing, 0.95)),
+      "procMax": jsonNumber(runProcessing.max() ?? 0),
+      "stalls": runStalls
+    ]
+    if !runPhoneSendRates.isEmpty {
+      let total = runPhoneSendRates.reduce(0, +)
+      record["phoneSentAvg"] = jsonNumber(Double(total) / Double(runPhoneSendRates.count))
+    }
+    if !runPhoneRtt.isEmpty {
+      record["phoneRttP50"] = jsonNumber(Self.percentile(runPhoneRtt, 0.5))
+      record["phoneRttWorst"] = jsonNumber(runPhoneRtt.max() ?? 0)
+    }
+    if runTruncated { record["truncated"] = true }
+    DiagLog.shared.write(record)
+  }
+
+  private func resetRunLocked() {
+    runGaps.removeAll(keepingCapacity: true)
+    runProcessing.removeAll(keepingCapacity: true)
+    runVariations.removeAll(keepingCapacity: true)
+    runPhoneSendRates.removeAll(keepingCapacity: true)
+    runPhoneRtt.removeAll(keepingCapacity: true)
+    runStalls = 0
+    runSeconds = 0
+    runTruncated = false
+  }
+
+
+
   private func resetLocked() {
     gaps.removeAll(keepingCapacity: true)
     processing.removeAll(keepingCapacity: true)
@@ -140,6 +272,10 @@ final class LatencyMonitor {
     stalls = 0
     lastArrival = nil
     lastClientTimestamp = nil
+    phoneSendRate = nil
+    phoneRttP50 = nil
+    phoneRttP95 = nil
+    resetRunLocked()
   }
 
   /// Nearest-rank percentile, matching `percentile()` in `@entangle/protocol`.

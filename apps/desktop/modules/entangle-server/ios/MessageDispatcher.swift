@@ -53,6 +53,7 @@ enum MessageDispatcher {
       guard let on = json["on"] as? Bool else { return false }
       LatencyMonitor.shared.setEnabled(on)
       return true
+    case "diag.report": return handleDiagReport(json)
     case "ping": return handlePing(json, respond: respond)
     case "d.list": return handleDockList(respond: respond)
     case "d.activate": return handleDockActivate(json)
@@ -78,6 +79,20 @@ enum MessageDispatcher {
         )
       : nil
     CursorController.shared.move(dx: CGFloat(deltaX), dy: CGFloat(deltaY), timing: timing)
+    return true
+  }
+
+  /// The phone's half of the diagnostics, folded into the same log line as
+  /// ours so the two sides can be read together.
+  private static func handleDiagReport(_ json: [String: Any]) -> Bool {
+    guard let sendRate = numeric(json["sendRate"]),
+          let rttP50 = numeric(json["rttP50"]),
+          let rttP95 = numeric(json["rttP95"]) else {
+      return false
+    }
+    LatencyMonitor.shared.recordPhoneReport(
+      sendRate: Int(sendRate), rttP50: rttP50, rttP95: rttP95
+    )
     return true
   }
 
@@ -238,27 +253,24 @@ enum MessageDispatcher {
   }
 
   static func encodeDiagState(_ snapshot: LatencyMonitor.Snapshot) -> String? {
-    let payload: [String: Any] = [
+    var payload: [String: Any] = [
       "v": 1,
       "t": "state.diag",
       "rate": snapshot.rate,
-      "gapP50": rounded(snapshot.gapP50),
-      "gapP95": rounded(snapshot.gapP95),
-      "jitter": rounded(snapshot.jitter),
-      "procP50": rounded(snapshot.procP50),
-      "procP95": rounded(snapshot.procP95),
+      "gapP50": jsonNumber(snapshot.gapP50),
+      "gapP95": jsonNumber(snapshot.gapP95),
+      "jitter": jsonNumber(snapshot.jitter),
+      "procP50": jsonNumber(snapshot.procP50),
+      "procP95": jsonNumber(snapshot.procP95),
       "stalls": snapshot.stalls
     ]
+    if let logPath = LatencyMonitor.shared.logPath {
+      payload["logPath"] = logPath
+    }
     guard let data = try? JSONSerialization.data(withJSONObject: payload) else {
       return nil
     }
     return String(data: data, encoding: .utf8)
-  }
-
-  /// Two decimals is well past what anyone can act on, and it keeps the
-  /// payload short.
-  private static func rounded(_ value: Double) -> Double {
-    (value * 100).rounded() / 100
   }
 
   static func encodeDockList(_ apps: [DockEnumerator.DockApp]) -> String? {

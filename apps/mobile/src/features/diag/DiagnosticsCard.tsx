@@ -20,6 +20,7 @@ export function DiagnosticsCard() {
   const rttP50 = useDiag((s) => s.rttP50);
   const rttP95 = useDiag((s) => s.rttP95);
   const mac = useDiag((s) => s.mac);
+  const logPath = useDiag((s) => s.logPath);
 
   const toggle = useCallback((on: boolean) => {
     useDiag.getState().setEnabled(on);
@@ -63,6 +64,13 @@ export function DiagnosticsCard() {
           ) : (
             <Text style={styles.waiting}>Waiting for the first second…</Text>
           )}
+
+          {logPath ? (
+            <Text style={styles.logPath}>
+              Every second you actually swipe is appended to {logPath} on the Mac. Idle
+              seconds are skipped, and each swipe ends with a summary line.
+            </Text>
+          ) : null}
         </View>
       ) : null}
     </View>
@@ -123,4 +131,10 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   waiting: { color: '#6b6b70', fontSize: 13, paddingVertical: 5 },
+  logPath: {
+    color: '#6b6b70',
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: 12,
+  },
 });

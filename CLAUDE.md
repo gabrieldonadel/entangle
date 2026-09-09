@@ -41,6 +41,8 @@ pnpm desktop test -- -t "name"          # by name
 
 Mobile linting goes through Expo: `pnpm mobile lint` (i.e. `expo lint`).
 
+The pointer diagnostics log path can be exercised without a phone or a real cursor — see the build command in [scripts/diag-harness/main.swift](scripts/diag-harness/main.swift). Keep that file out of `modules/entangle-server/ios`: the podspec globs `**/*.swift` there and a second `main` breaks the app build.
+
 CocoaPods on first clone of desktop:
 
 ```sh
@@ -61,7 +63,7 @@ Do not reintroduce `--ignore-workspace` or per-app `pnpm-lock.yaml` files — Xc
 [packages/shared/src](packages/shared/src) is the single source of truth for the wire format:
 
 - [constants.ts](packages/shared/src/constants.ts) — `PROTOCOL_VERSION`, Bonjour service identifiers (`_entangle._tcp.`), `DEFAULT_PORT` (49827), heartbeat / idle timeouts, close codes, `ModFlags` bitmask.
-- [messages.ts](packages/shared/src/messages.ts) — every `ClientMessage` and `ServerMessage` shape. All messages carry `v: 1` and a discriminator `t` (e.g. `'p.move'`, `'p.click'`, `'s.wheel'`, `'g.space'`, `'g.mission'`, `'k.text'`, `'k.key'`, `'a.set'`, `'a.step'`, `'a.mute'`, `'sys.wake'`, `'diag.set'`, `'d.list'`, `'d.activate'`, `'hello'`, `'ping'`, and server-pushed `'state.audio'` / `'state.display'` / `'state.diag'`).
+- [messages.ts](packages/shared/src/messages.ts) — every `ClientMessage` and `ServerMessage` shape. All messages carry `v: 1` and a discriminator `t` (e.g. `'p.move'`, `'p.click'`, `'s.wheel'`, `'g.space'`, `'g.mission'`, `'k.text'`, `'k.key'`, `'a.set'`, `'a.step'`, `'a.mute'`, `'sys.wake'`, `'diag.set'`, `'diag.report'`, `'d.list'`, `'d.activate'`, `'hello'`, `'ping'`, and server-pushed `'state.audio'` / `'state.display'` / `'state.diag'`).
 - [codec.ts](packages/shared/src/codec.ts) — encode/decode helpers used by both sides.
 - [metrics.ts](packages/shared/src/metrics.ts) — `percentile` / `summarize`, so the phone's diagnostics figures mean the same thing as the Mac's (which computes its own in Swift).
 
@@ -82,7 +84,7 @@ The macOS app is a thin RN-macOS shell over a Swift Expo module that does the re
   - [Server/WebSocketServer.swift](apps/desktop/modules/entangle-server/ios/Server/WebSocketServer.swift) — listens on `DEFAULT_PORT`, advertises Bonjour, manages clients & heartbeats.
   - [MessageDispatcher.swift](apps/desktop/modules/entangle-server/ios/MessageDispatcher.swift) — parses incoming JSON `ClientMessage`s and fans out to controllers.
   - [System/](apps/desktop/modules/entangle-server/ios/System) — `CursorController`, `ScrollController`, `KeyController`, `GestureController`, `DockEnumerator` (CGEvent / Accessibility APIs), `VolumeController` (CoreAudio output volume + mute, needs no permission), `DisplayController` (display sleep state + `IOPMAssertionDeclareUserActivity` wake, needs no permission), `LatencyMonitor` (opt-in pointer-path measurement, off by default).
-  - [Util/AccessibilityCheck.swift](apps/desktop/modules/entangle-server/ios/Util/AccessibilityCheck.swift), [Util/IconEncoder.swift](apps/desktop/modules/entangle-server/ios/Util/IconEncoder.swift).
+  - [Util/AccessibilityCheck.swift](apps/desktop/modules/entangle-server/ios/Util/AccessibilityCheck.swift), [Util/IconEncoder.swift](apps/desktop/modules/entangle-server/ios/Util/IconEncoder.swift), [Util/DiagLog.swift](apps/desktop/modules/entangle-server/ios/Util/DiagLog.swift) (appends the pointer log to `~/Library/Logs/Entangle/pointer-diag.jsonl`; `ENTANGLE_DIAG_LOG_DIR` redirects it).
 - The TS facade is [modules/entangle-server/src/index.ts](apps/desktop/modules/entangle-server/src/index.ts) → `requireNativeModule('EntangleServer')`, re-exporting typed events.
 - Metro [config](apps/desktop/metro.config.js) rewrites `react-native` → `react-native-macos` for the `macos` platform and prepends `react-native-macos/Libraries/Core/InitializeCore` to the run-before-main modules. Keep this when touching Metro config.
 - Patched `expo` and `expo-modules-core` for macOS support — patches in [apps/desktop/patches](apps/desktop/patches), pinned to specific versions in the root [pnpm-workspace.yaml](pnpm-workspace.yaml).
