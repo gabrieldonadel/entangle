@@ -36,6 +36,7 @@ describe('diagnostics messages', () => {
       v: PROTOCOL_VERSION,
       t: 'diag.report',
       sendRate: 117,
+      touchRate: 119,
       rttP50: 11,
       rttP95: 23,
     };
@@ -59,6 +60,23 @@ describe('diagnostics messages', () => {
     );
     expect(display).not.toBeNull();
     expect(isDiagState(display!)).toBe(false);
+  });
+
+  it('marks the first frame of a gesture, and only that one', () => {
+    const first: PointerMoveMessage = {
+      v: PROTOCOL_VERSION,
+      t: 'p.move',
+      dx: 0.5,
+      dy: 0,
+      seq: 1,
+      ts: 100,
+      first: true,
+    };
+    expect(decode(encode(first))).toEqual(first);
+
+    // Later frames leave the flag out rather than sending `first: false`.
+    const later: PointerMoveMessage = { v: PROTOCOL_VERSION, t: 'p.move', dx: 1, dy: 1, seq: 2 };
+    expect(decode(encode(later))).not.toHaveProperty('first');
   });
 
   it('carries a pointer move with and without a timestamp', () => {

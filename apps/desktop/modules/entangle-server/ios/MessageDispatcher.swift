@@ -75,7 +75,9 @@ enum MessageDispatcher {
     // includes the hop rather than hiding it.
     let timing = LatencyMonitor.shared.enabled
       ? CursorController.MoveTiming(
-          clientTimestamp: numeric(json["ts"]), arrival: LatencyMonitor.now()
+          clientTimestamp: numeric(json["ts"]),
+          arrival: LatencyMonitor.now(),
+          firstOfGesture: json["first"] as? Bool ?? false
         )
       : nil
     CursorController.shared.move(dx: CGFloat(deltaX), dy: CGFloat(deltaY), timing: timing)
@@ -91,7 +93,10 @@ enum MessageDispatcher {
       return false
     }
     LatencyMonitor.shared.recordPhoneReport(
-      sendRate: Int(sendRate), rttP50: rttP50, rttP95: rttP95
+      sendRate: Int(sendRate),
+      touchRate: Int(numeric(json["touchRate"]) ?? sendRate),
+      rttP50: rttP50,
+      rttP95: rttP95
     )
     return true
   }

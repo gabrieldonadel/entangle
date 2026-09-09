@@ -4,7 +4,7 @@ import { Gesture } from "react-native-gesture-handler";
 import { PROTOCOL_VERSION } from "@entangle/protocol";
 
 import { sendMessage } from "@/net/send";
-import { diagEnabledRef, recordSend } from "@/state/diag";
+import { diagEnabledRef, recordSend, recordTouch } from "@/state/diag";
 import {
   useNaturalScrollRef,
   usePointerSensitivityRef,
@@ -192,30 +192,57 @@ export function createTrackpadGestures(handlers: TrackpadHandlers) {
 // These send the events to the connected Mac. Used by the production
 // TrackpadSurface; the onboarding lesson supplies its own handlers instead.
 
-// Pointer coalescing: gesture events fire faster than we want to send. RAF
-// batches them into one wire message per frame.
+// Pointer coalescing. Gesture events can arrive faster than is worth putting
+// on the wire, so deltas accumulate and go out at most every
+// MIN_SEND_INTERVAL_MS.
+//
+// This used to flush on `requestAnimationFrame`, which pinned the send rate to
+// RN's JS display link — 60 Hz in practice, even on a 120 Hz phone, and it
+// added up to a frame of quantization on top. A monotonic rate limit lets the
+// cadence follow touch delivery instead of the display clock.
+const MIN_SEND_INTERVAL_MS = 4;
+
 let pendingDx = 0;
 let pendingDy = 0;
 let pendingSeq = 0;
-let moveRaf: number | null = null;
+let lastSentAt = 0;
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+/**
+ * The next frame opens a gesture. The Mac uses this to restart its pacing
+ * measurement, so time spent with the finger off the glass is not counted as
+ * a delivery gap.
+ */
+let nextMoveIsFirst = true;
 
 function flushMove() {
-  moveRaf = null;
+  if (flushTimer != null) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
   if (pendingDx === 0 && pendingDy === 0) return;
   pendingSeq += 1;
+  lastSentAt = now();
+  const isFirst = nextMoveIsFirst;
+  nextMoveIsFirst = false;
   sendMessage({
     v: PROTOCOL_VERSION,
     t: "p.move",
     dx: pendingDx,
     dy: pendingDy,
     seq: pendingSeq,
+    ...(isFirst ? { first: true } : null),
     // Only while diagnostics are on: the Mac uses the gap between successive
     // stamps to measure delay variation, so any monotonic clock will do.
-    ...(diagEnabledRef.current ? { ts: now() } : null),
+    ...(diagEnabledRef.current ? { ts: lastSentAt } : null),
   });
   recordSend();
   pendingDx = 0;
   pendingDy = 0;
+}
+
+/** Arms a gesture start, so the next flush marks itself as the first frame. */
+function startMoveGesture() {
+  nextMoveIsFirst = true;
 }
 
 function now(): number {
@@ -228,8 +255,16 @@ function accumulateMove(dx: number, dy: number) {
   const sensitivity = usePointerSensitivityRef.current;
   pendingDx += dx * sensitivity;
   pendingDy += dy * sensitivity;
-  if (moveRaf == null) {
-    moveRaf = requestAnimationFrame(flushMove);
+  recordTouch();
+
+  const elapsed = now() - lastSentAt;
+  if (elapsed >= MIN_SEND_INTERVAL_MS) {
+    flushMove();
+    return;
+  }
+  // Too soon. Keep accumulating and make sure the tail still goes out.
+  if (flushTimer == null) {
+    flushTimer = setTimeout(flushMove, MIN_SEND_INTERVAL_MS - elapsed);
   }
 }
 
@@ -263,13 +298,18 @@ function accumulateScroll(dx: number, dy: number) {
 export function createDefaultTrackpadHandlers(): TrackpadHandlers {
   return {
     onMove: accumulateMove,
-    onMoveEnd: flushMove,
+    onMoveEnd: () => {
+      flushMove();
+      startMoveGesture();
+    },
     onDragBegin: () => {
+      startMoveGesture();
       sendMessage({ v: PROTOCOL_VERSION, t: "p.drag", phase: "begin" });
     },
     onDragMove: accumulateMove,
     onDragEnd: () => {
       flushMove();
+      startMoveGesture();
       sendMessage({ v: PROTOCOL_VERSION, t: "p.drag", phase: "end" });
     },
     onScrollBegin: () => {

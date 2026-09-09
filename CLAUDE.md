@@ -107,6 +107,7 @@ The macOS app is a thin RN-macOS shell over a Swift Expo module that does the re
 - All wire messages must include `v: 1`. Increment `PROTOCOL_VERSION` (and update both sides) for breaking changes.
 - Modifier keys are sent as a `ModMask` bitfield using `ModFlags` (`Command|Option|Shift|Control|Fn`). Do not invent ad-hoc shapes.
 - Single root `pnpm-lock.yaml`. Always run `pnpm install` from the repo root — never with `--ignore-workspace`.
+- Pointer sends are paced by a monotonic 4 ms rate limit in [gestures.ts](apps/mobile/src/features/trackpad/gestures.ts), not by `requestAnimationFrame`. RN's rAF is driven by the JS display link, which pins the send rate to 60 Hz even on a 120 Hz phone and adds a frame of quantization. Do not put it back.
 - The pointer hot path (`p.move`, `s.wheel`, `k.*`, `ping`) is answered entirely in Swift and deliberately never reaches the desktop's JavaScript — `EntangleServerModule` emits aggregate counts once a second via `messageStats` instead. Keep it that way; a `sendEvent` per pointer frame costs a React render per cursor sample.
 - Features the Mac may not have are gated on the `caps` list in the `welcome` message (`audio`, `wake`, …). Add a cap in [src/server-state.ts](apps/desktop/src/server-state.ts) and check it on the phone, so an older Mac never shows a dead control.
 - Native input synthesis requires the user to grant macOS Accessibility — `AccessibilityGate` blocks the UI until `isAccessibilityTrusted()` returns true.

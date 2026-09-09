@@ -54,6 +54,7 @@ final class CursorController {
   struct MoveTiming {
     let clientTimestamp: Double?
     let arrival: Double
+    let firstOfGesture: Bool
   }
 
   func move(dx: CGFloat, dy: CGFloat, timing: MoveTiming? = nil) {
@@ -68,7 +69,8 @@ final class CursorController {
         LatencyMonitor.shared.record(
           clientTimestamp: timing.clientTimestamp,
           arrival: timing.arrival,
-          posted: LatencyMonitor.now()
+          posted: LatencyMonitor.now(),
+          firstOfGesture: timing.firstOfGesture
         )
       }
     }

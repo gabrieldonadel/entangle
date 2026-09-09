@@ -28,6 +28,8 @@ export interface MacDiag {
 
 interface DiagState {
   enabled: boolean;
+  /** Raw gesture callbacks in the last second, before coalescing. */
+  touchRate: number;
   /** Where the Mac is writing the log, once it has told us. */
   logPath: string | null;
   /** Pointer messages the phone put on the wire in the last second. */
@@ -44,12 +46,15 @@ interface DiagState {
 
 /** Sends since the last tick. A plain counter: no re-render per frame. */
 let sentSinceTick = 0;
+/** Gesture callbacks since the last tick. */
+let touchesSinceTick = 0;
 /** Round trips since the last tick. */
 let rttSamples: number[] = [];
 
 export const useDiag = create<DiagState>((set) => ({
   enabled: false,
   logPath: null,
+  touchRate: 0,
   sendRate: 0,
   rttP50: 0,
   rttP95: 0,
@@ -57,8 +62,17 @@ export const useDiag = create<DiagState>((set) => ({
   setEnabled: (enabled) => {
     diagEnabledRef.current = enabled;
     sentSinceTick = 0;
+    touchesSinceTick = 0;
     rttSamples = [];
-    set({ enabled, sendRate: 0, rttP50: 0, rttP95: 0, mac: null, logPath: null });
+    set({
+      enabled,
+      sendRate: 0,
+      touchRate: 0,
+      rttP50: 0,
+      rttP95: 0,
+      mac: null,
+      logPath: null,
+    });
   },
   applyRemote: (msg) =>
     set((state) => ({
@@ -76,8 +90,17 @@ export const useDiag = create<DiagState>((set) => ({
   reset: () => {
     diagEnabledRef.current = false;
     sentSinceTick = 0;
+    touchesSinceTick = 0;
     rttSamples = [];
-    set({ enabled: false, sendRate: 0, rttP50: 0, rttP95: 0, mac: null, logPath: null });
+    set({
+      enabled: false,
+      sendRate: 0,
+      touchRate: 0,
+      rttP50: 0,
+      rttP95: 0,
+      mac: null,
+      logPath: null,
+    });
   },
 }));
 
@@ -87,6 +110,15 @@ export function recordSend() {
   sentSinceTick += 1;
 }
 
+/**
+ * Called from the gesture callback, before coalescing. Also deliberately
+ * store-free: this is the hottest callback in the app.
+ */
+export function recordTouch() {
+  if (!diagEnabledRef.current) return;
+  touchesSinceTick += 1;
+}
+
 export function recordRtt(ms: number) {
   if (!diagEnabledRef.current) return;
   rttSamples.push(ms);
@@ -94,6 +126,7 @@ export function recordRtt(ms: number) {
 
 export interface PhoneStats {
   sendRate: number;
+  touchRate: number;
   rttP50: number;
   rttP95: number;
 }
@@ -108,8 +141,10 @@ export interface PhoneStats {
  */
 export function tickPhoneStats(): PhoneStats {
   const sendRate = sentSinceTick;
+  const touchRate = touchesSinceTick;
   const samples = rttSamples;
   sentSinceTick = 0;
+  touchesSinceTick = 0;
   rttSamples = [];
   const { p50, p95 } = summarize(samples);
   const state = useDiag.getState();
@@ -117,6 +152,6 @@ export function tickPhoneStats(): PhoneStats {
   // than blinking to zero between pings.
   const rttP50 = samples.length > 0 ? p50 : state.rttP50;
   const rttP95 = samples.length > 0 ? p95 : state.rttP95;
-  useDiag.setState({ sendRate, rttP50, rttP95 });
-  return { sendRate, rttP50, rttP95 };
+  useDiag.setState({ sendRate, touchRate, rttP50, rttP95 });
+  return { sendRate, touchRate, rttP50, rttP95 };
 }

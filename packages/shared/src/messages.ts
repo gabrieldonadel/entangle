@@ -48,6 +48,12 @@ export interface PointerMoveMessage {
    * which measures delay variation without needing the two clocks to agree.
    */
   ts?: number;
+  /**
+   * True on the first frame of a gesture. The gap before it is the time the
+   * finger was off the glass, not a delivery gap, so the Mac restarts its
+   * pacing measurement here instead of recording a stall.
+   */
+  first?: boolean;
 }
 
 export interface PointerClickMessage {
@@ -152,6 +158,12 @@ export interface DiagReportMessage {
   t: 'diag.report';
   /** Pointer messages put on the wire in the last second. */
   sendRate: number;
+  /**
+   * Raw gesture callbacks in the last second, before coalescing. Sending
+   * fewer than this means the phone is discarding touch samples; sending the
+   * same means the wire is carrying everything the OS reports.
+   */
+  touchRate: number;
   rttP50: number;
   rttP95: number;
 }
