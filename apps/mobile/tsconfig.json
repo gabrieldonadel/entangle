@@ -14,6 +14,12 @@
       ],
       "@entangle/protocol/*": [
         "../../packages/shared/src/*"
+      ],
+      "entangle-udp": [
+        "./modules/entangle-udp/src"
+      ],
+      "entangle-udp/*": [
+        "./modules/entangle-udp/src/*"
       ]
     }
   },
@@ -21,6 +27,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "expo-env.d.ts",
+    "./modules/entangle-udp/src/**/*.ts"
   ]
 }

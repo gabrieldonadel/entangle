@@ -3,6 +3,12 @@ import Foundation
 
 public class EntangleServerModule: Module {
   private var server: WebSocketServer?
+  private let datagrams = DatagramServer()
+  /// UDP port the datagram listener bound to, or 0 if it could not start.
+  private var datagramPort: UInt16 = 0
+  /// Datagrams received per client since the last `udp.ok`.
+  private var datagramCounts: [UUID: Int] = [:]
+  private let datagramCountLock = NSLock()
   private var serverPort: UInt16 = 0
   private var serviceName: String = ""
   private var accessibilityTimer: DispatchSourceTimer?
@@ -44,6 +50,7 @@ public class EntangleServerModule: Module {
       DisplayController.shared.onChange = nil
       LatencyMonitor.shared.setEnabled(false)
       LatencyMonitor.shared.onSnapshot = nil
+      self.datagrams.stop()
       self.server?.stop()
       self.server = nil
     }
@@ -60,6 +67,8 @@ public class EntangleServerModule: Module {
       DisplayController.shared.onChange = nil
       LatencyMonitor.shared.setEnabled(false)
       LatencyMonitor.shared.onSnapshot = nil
+      self.datagrams.stop()
+      self.datagramPort = 0
       self.server?.stop()
       self.server = nil
       self.serverPort = 0
@@ -237,6 +246,7 @@ public class EntangleServerModule: Module {
     server.onReady = { [weak self] port in
       guard let self = self else { return }
       self.serverPort = port
+      self.startDatagrams(on: port)
       let host = NetworkInterfaces.primaryIPv4()
       var payload: [String: Any] = ["port": Int(port), "serviceName": name]
       if let host = host { payload["lanHost"] = host }
@@ -244,8 +254,16 @@ public class EntangleServerModule: Module {
       promise?.resolve(payload)
     }
     server.onClientConnected = { [weak self, weak server] id, host in
-      self?.connectedClients.insert(id.uuidString)
-      self?.sendEvent("clientConnected", ["id": id.uuidString, "host": host])
+      guard let self = self else { return }
+      self.connectedClients.insert(id.uuidString)
+      var payload: [String: Any] = ["id": id.uuidString, "host": host]
+      // The datagram token is issued here and travels to the phone inside
+      // `welcome`, which JavaScript builds.
+      if self.datagramPort > 0 {
+        payload["udpPort"] = Int(self.datagramPort)
+        payload["udpToken"] = self.datagrams.issueToken(for: id)
+      }
+      self.sendEvent("clientConnected", payload)
       // Seed the phone's volume slider so it does not start from a guess.
       if let state = VolumeController.shared.currentState(),
          let payload = MessageDispatcher.encodeAudioState(
@@ -262,6 +280,8 @@ public class EntangleServerModule: Module {
       }
     }
     server.onClientDisconnected = { [weak self] id in
+      self?.datagrams.revokeTokens(for: id)
+      self?.clearDatagramCount(for: id)
       self?.connectedClients.remove(id.uuidString)
       self?.sendEvent("clientDisconnected", ["id": id.uuidString])
       // Nobody left to read the numbers, and they are not free to collect.
@@ -333,6 +353,69 @@ public class EntangleServerModule: Module {
     }
   }
 
+  // MARK: - Datagram path
+
+  private func startDatagrams(on port: UInt16) {
+    datagrams.onMessage = { [weak self] id, text in
+      guard let self = self else { return }
+      let handledNatively = MessageDispatcher.handle(text, transport: .datagram) { response in
+        self.server?.send(response, to: id)
+      }
+      self.countInbound(id)
+      self.countDatagram(for: id)
+      guard !handledNatively else { return }
+      // A datagram carrying something off the hot path is not expected, but
+      // the token vouches for it, so treat it like any other message.
+      self.sendEvent("message", [
+        "id": id.uuidString,
+        "text": text,
+        "handledNatively": false
+      ])
+    }
+    datagrams.onReady = { [weak self] boundPort in
+      self?.datagramPort = boundPort
+    }
+    datagrams.onError = { [weak self] message in
+      self?.sendEvent("error", ["message": message])
+    }
+    do {
+      try datagrams.start(port: port)
+      // Optimistic: `onReady` confirms it, but a client connecting in the
+      // meantime should still get an offer.
+      datagramPort = port
+    } catch {
+      datagramPort = 0
+      sendEvent("error", ["message": "udp listener failed: \(error.localizedDescription)"])
+    }
+  }
+
+  private func countDatagram(for id: UUID) {
+    datagramCountLock.lock()
+    datagramCounts[id, default: 0] += 1
+    datagramCountLock.unlock()
+  }
+
+  private func clearDatagramCount(for id: UUID) {
+    datagramCountLock.lock()
+    datagramCounts.removeValue(forKey: id)
+    datagramCountLock.unlock()
+  }
+
+  /// Tells each phone that its datagrams are landing. Without this a blocked
+  /// port is indistinguishable from a working one at the sending end, and the
+  /// pointer would die silently.
+  private func flushDatagramAcks() {
+    datagramCountLock.lock()
+    let counts = datagramCounts
+    datagramCounts.removeAll(keepingCapacity: true)
+    datagramCountLock.unlock()
+    for (id, frames) in counts where frames > 0 {
+      if let payload = MessageDispatcher.encodeUdpOk(frames: frames) {
+        server?.send(payload, to: id)
+      }
+    }
+  }
+
   // MARK: - Inbound message stats
 
   private func countInbound(_ id: UUID) {
@@ -358,6 +441,7 @@ public class EntangleServerModule: Module {
       let clients = counts.map { ["id": $0.key, "count": $0.value] }
       let total = counts.values.reduce(0, +)
       self.sendEvent("messageStats", ["clients": clients, "total": total])
+      self.flushDatagramAcks()
     }
     timer.resume()
     statsTimer = timer

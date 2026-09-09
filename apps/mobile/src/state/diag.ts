@@ -26,8 +26,12 @@ export interface MacDiag {
   stalls: number;
 }
 
+export type Transport = 'off' | 'probing' | 'active';
+
 interface DiagState {
   enabled: boolean;
+  /** Which wire pointer frames are currently taking. */
+  transport: Transport;
   /** Raw gesture callbacks in the last second, before coalescing. */
   touchRate: number;
   /** Where the Mac is writing the log, once it has told us. */
@@ -53,6 +57,7 @@ let rttSamples: number[] = [];
 
 export const useDiag = create<DiagState>((set) => ({
   enabled: false,
+  transport: 'off',
   logPath: null,
   touchRate: 0,
   sendRate: 0,

@@ -42,7 +42,13 @@ type NativeModuleType = {
 
 const nativeModule = requireNativeModule<NativeModuleType>('EntangleServer');
 
-export type ClientConnectedEvent = { id: string; host: string };
+export type ClientConnectedEvent = {
+  id: string;
+  host: string;
+  /** Present when the datagram listener is up; goes into `welcome`. */
+  udpPort?: number;
+  udpToken?: string;
+};
 export type ClientDisconnectedEvent = { id: string };
 export type ServerMessageEvent = { id: string; text: string; handledNatively: boolean };
 /**

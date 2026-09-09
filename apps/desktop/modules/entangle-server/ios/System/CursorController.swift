@@ -61,6 +61,7 @@ final class CursorController {
   struct MoveTiming {
     let clientTimestamp: Double?
     let arrival: Double
+    let viaDatagram: Bool
   }
 
   func apply(_ frame: PointerAccumulator.Frame, timing: MoveTiming? = nil) {
@@ -86,7 +87,8 @@ final class CursorController {
           clientTimestamp: timing.clientTimestamp,
           arrival: timing.arrival,
           posted: LatencyMonitor.now(),
-          firstOfGesture: resolution.startsGesture
+          firstOfGesture: resolution.startsGesture,
+          viaDatagram: timing.viaDatagram
         )
       }
     }

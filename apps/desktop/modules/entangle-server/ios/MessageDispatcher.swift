@@ -9,14 +9,26 @@ import Foundation
 /// supplied `respond` closure to send a message back to the originating
 /// client (used for request-response pairs like `d.list`).
 enum MessageDispatcher {
-  static func handle(_ text: String, respond: (String) -> Void) -> Bool {
+  /// Which wire a message came in on. Pointer frames arrive on either; the
+  /// diagnostics log counts them separately so the datagram path can be seen
+  /// working, or seen falling back.
+  enum Transport {
+    case stream
+    case datagram
+  }
+
+  static func handle(
+    _ text: String,
+    transport: Transport = .stream,
+    respond: (String) -> Void
+  ) -> Bool {
     guard let data = text.data(using: .utf8),
           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
           let tag = json["t"] as? String else {
       return false
     }
 
-    if let handled = dispatchInput(tag: tag, json: json) {
+    if let handled = dispatchInput(tag: tag, json: json, transport: transport) {
       return handled
     }
     if let handled = dispatchSystem(tag: tag, json: json, respond: respond) {
@@ -25,9 +37,13 @@ enum MessageDispatcher {
     return false
   }
 
-  private static func dispatchInput(tag: String, json: [String: Any]) -> Bool? {
+  private static func dispatchInput(
+    tag: String,
+    json: [String: Any],
+    transport: Transport
+  ) -> Bool? {
     switch tag {
-    case "p.move": return handlePointerMove(json)
+    case "p.move": return handlePointerMove(json, transport: transport)
     case "p.click": return handlePointerClick(json)
     case "p.drag": return handlePointerDrag(json)
     case "s.wheel": return handleScrollWheel(json)
@@ -67,7 +83,10 @@ enum MessageDispatcher {
 
   // MARK: - Handlers
 
-  private static func handlePointerMove(_ json: [String: Any]) -> Bool {
+  private static func handlePointerMove(
+    _ json: [String: Any],
+    transport: Transport = .stream
+  ) -> Bool {
     guard let deltaX = numeric(json["dx"]), let deltaY = numeric(json["dy"]) else {
       return false
     }
@@ -89,7 +108,8 @@ enum MessageDispatcher {
     let timing = LatencyMonitor.shared.enabled
       ? CursorController.MoveTiming(
           clientTimestamp: numeric(json["ts"]),
-          arrival: LatencyMonitor.now()
+          arrival: LatencyMonitor.now(),
+          viaDatagram: transport == .datagram
         )
       : nil
     CursorController.shared.apply(frame, timing: timing)
@@ -263,6 +283,14 @@ enum MessageDispatcher {
       "t": "state.display",
       "asleep": asleep
     ]
+    guard let data = try? JSONSerialization.data(withJSONObject: payload) else {
+      return nil
+    }
+    return String(data: data, encoding: .utf8)
+  }
+
+  static func encodeUdpOk(frames: Int) -> String? {
+    let payload: [String: Any] = ["v": 1, "t": "udp.ok", "frames": frames]
     guard let data = try? JSONSerialization.data(withJSONObject: payload) else {
       return nil
     }

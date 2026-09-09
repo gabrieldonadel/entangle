@@ -11,11 +11,14 @@ import {
   PROTOCOL_VERSION,
   isAudioState,
   isDiagState,
+  isUdpOk,
   isDisplayState,
   isDockListResponse,
   isDockUpdate,
 } from '@entangle/protocol';
 import type { ClientMessage, DockApp, Message } from '@entangle/protocol';
+
+import * as udp from '@/net/udp';
 
 import { useAudio } from './audio';
 import { recordRtt, tickPhoneStats, useDiag } from './diag';
@@ -140,6 +143,7 @@ export const useConnection = create<ConnectionState>((set, get) => ({
     useAudio.getState().reset();
     useDisplay.getState().reset();
     useDiag.getState().reset();
+    udp.reset();
     set({
       phase: 'idle',
       target: null,
@@ -258,6 +262,8 @@ function openSocket() {
   ws.onclose = () => {
     socket = null;
     clearTimers();
+    // The token dies with the socket that issued it.
+    udp.reset();
     if (manuallyDisconnected) return;
     if (useConnection.getState().phase === 'pairing') return;
     scheduleReconnect();
@@ -314,14 +320,23 @@ function handleMessage(msg: Message) {
     useDiag.getState().applyRemote(msg);
     return;
   }
+  if (isUdpOk(msg)) {
+    udp.noteOk();
+    return;
+  }
   switch (msg.t) {
-    case 'welcome':
+    case 'welcome': {
       useConnection.setState({
         serverName: msg.server.name,
         serverVersion: msg.server.version,
         serverCaps: msg.caps,
       });
+      // The offer carries the port and this session's token. Absent means the
+      // Mac has no datagram listener, and pointer frames stay on this socket.
+      const { target } = useConnection.getState();
+      if (target) udp.configure(target.host, msg.udp);
       return;
+    }
     case 'pong': {
       if (msg.id === heartbeatPingId && pongTimeout) {
         clearTimeout(pongTimeout);
@@ -439,6 +454,7 @@ function startHeartbeat() {
   diagReportTimer = setInterval(() => {
     if (!useDiag.getState().enabled) return;
     const stats = tickPhoneStats();
+    useDiag.setState({ transport: udp.getState() });
     if (!socket || socket.readyState !== WebSocket.OPEN) return;
     socket.send(encode({ v: PROTOCOL_VERSION, t: 'diag.report', ...stats }));
   }, 1000);

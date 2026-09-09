@@ -18,6 +18,7 @@ export function DiagnosticsCard() {
   const enabled = useDiag((s) => s.enabled);
   const sendRate = useDiag((s) => s.sendRate);
   const touchRate = useDiag((s) => s.touchRate);
+  const transport = useDiag((s) => s.transport);
   const rttP50 = useDiag((s) => s.rttP50);
   const rttP95 = useDiag((s) => s.rttP95);
   const mac = useDiag((s) => s.mac);
@@ -44,6 +45,7 @@ export function DiagnosticsCard() {
       {enabled ? (
         <View style={styles.readout}>
           <Text style={styles.group}>Phone</Text>
+          <Stat label="Transport" value={TRANSPORT_LABELS[transport]} />
           <Stat label="Touch samples" value={`${touchRate}/s`} />
           <Stat label="Sent" value={`${sendRate}/s`} />
           <Stat label="Round trip" value={`${ms(rttP50)} p50 · ${ms(rttP95)} p95`} />
@@ -78,6 +80,12 @@ export function DiagnosticsCard() {
     </View>
   );
 }
+
+const TRANSPORT_LABELS = {
+  off: 'WebSocket',
+  probing: 'UDP, proving it',
+  active: 'UDP',
+} as const;
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (

@@ -256,11 +256,28 @@ export interface DockApp {
   path?: string;
 }
 
+/**
+ * How to reach this Mac's datagram socket, offered in `welcome`.
+ *
+ * Absent on a Mac that has no UDP listener, in which case the phone keeps
+ * sending pointer frames over the WebSocket.
+ */
+export interface UdpOffer {
+  port: number;
+  /**
+   * Session token. Every datagram carries it, and it dies with the socket
+   * that issued it — a LAN datagram is otherwise trivially spoofable, and
+   * this is an input device.
+   */
+  token: string;
+}
+
 export interface WelcomeMessage {
   v: 1;
   t: 'welcome';
   server: { name: string; version: string; host: string };
   caps: string[];
+  udp?: UdpOffer;
 }
 
 export interface PongMessage {
@@ -353,6 +370,20 @@ export interface DiagStateMessage {
   logPath?: string;
 }
 
+/**
+ * Sent about once a second while datagrams are actually arriving.
+ *
+ * This is the phone's only proof that the datagram path works. A blocked port
+ * looks exactly like a working one from the sending side, so without this the
+ * pointer would die silently the first time a firewall got in the way.
+ */
+export interface UdpOkMessage {
+  v: 1;
+  t: 'udp.ok';
+  /** Datagrams received since the last one of these. */
+  frames: number;
+}
+
 export interface PairAcceptedMessage {
   v: 1;
   t: 'pair.accepted';
@@ -374,7 +405,21 @@ export type ServerMessage =
   | AudioStateMessage
   | DisplayStateMessage
   | DiagStateMessage
+  | UdpOkMessage
   | PairAcceptedMessage
   | PairRejectedMessage;
 
 export type Message = ClientMessage | ServerMessage;
+
+/**
+ * A pointer frame on the datagram path.
+ *
+ * The token lives in the envelope rather than in the message so the
+ * authentication boundary stays visible and the message shapes stay identical
+ * on both transports.
+ */
+export interface Datagram {
+  v: 1;
+  tk: string;
+  m: ClientMessage;
+}

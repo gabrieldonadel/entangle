@@ -1,5 +1,7 @@
-import { decode, encode, isDiagState, PROTOCOL_VERSION } from '@entangle/protocol';
+import { decode, encode, isDiagState, isUdpOk, PROTOCOL_VERSION } from '@entangle/protocol';
 import type {
+  UdpOkMessage,
+  WelcomeMessage,
   DiagReportMessage,
   DiagSetMessage,
   DiagStateMessage,
@@ -74,5 +76,31 @@ describe('diagnostics messages', () => {
 
     const stamped: PointerMoveMessage = { ...plain, ts: 1234.5 };
     expect(decode(encode(stamped))).toEqual(stamped);
+  });
+});
+
+describe('udp handshake messages', () => {
+  it('round-trips a welcome carrying the datagram offer', () => {
+    const welcome: WelcomeMessage = {
+      v: PROTOCOL_VERSION,
+      t: 'welcome',
+      server: { name: 'Mac', version: '0.0.1', host: 'Mac' },
+      caps: ['pointer', 'udp'],
+      udp: { port: 49827, token: 'abc123' },
+    };
+    expect(decode(encode(welcome))).toEqual(welcome);
+  });
+
+  it('round-trips a udp.ok, and recognises it', () => {
+    const ok: UdpOkMessage = { v: PROTOCOL_VERSION, t: 'udp.ok', frames: 57 };
+    const decoded = decode(encode(ok));
+    expect(decoded).not.toBeNull();
+    expect(isUdpOk(decoded!)).toBe(true);
+    expect(decoded).toEqual(ok);
+  });
+
+  it('does not mistake another push for a udp.ok', () => {
+    const other = decode(encode({ v: PROTOCOL_VERSION, t: 'state.display', asleep: true }));
+    expect(isUdpOk(other!)).toBe(false);
   });
 });

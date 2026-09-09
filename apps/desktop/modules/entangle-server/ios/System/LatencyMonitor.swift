@@ -54,6 +54,8 @@ final class LatencyMonitor {
   private var stallsSource = 0
   private var deliveryExcess: [Double] = []
   private var gestures = 0
+  private var udpFrames = 0
+  private var streamFrames = 0
   /// Frames the accumulator discarded as duplicates or overtaken. Zero over
   /// TCP; the number to watch once pointer frames move to UDP.
   private var stale = 0
@@ -80,6 +82,8 @@ final class LatencyMonitor {
   private var runDeliveryWorst: Double = 0
   private var runGestures = 0
   private var runStale = 0
+  private var runUdpFrames = 0
+  private var runStreamFrames = 0
   private var runSeconds = 0
   private var runTruncated = false
 
@@ -119,6 +123,7 @@ final class LatencyMonitor {
   ///   - clientTimestamp: the phone's `ts`, in its own milliseconds.
   ///   - arrival: when the frame reached us, in our milliseconds.
   ///   - posted: when the CGEvent went out, in our milliseconds.
+  ///   - viaDatagram: arrived over UDP rather than the WebSocket.
   ///   - firstOfGesture: the frame opened a gesture, so the gap before it is
   ///     the finger being off the glass rather than a delivery gap. Recording
   ///     it would put a stall in the numbers for every pause between swipes.
@@ -126,11 +131,14 @@ final class LatencyMonitor {
     clientTimestamp: Double?,
     arrival: Double,
     posted: Double,
-    firstOfGesture: Bool = false
+    firstOfGesture: Bool = false,
+    viaDatagram: Bool = false
   ) {
     lock.lock()
     defer { lock.unlock() }
     guard isEnabled else { return }
+
+    if viaDatagram { udpFrames += 1 } else { streamFrames += 1 }
 
     if firstOfGesture {
       lastArrival = nil
@@ -252,6 +260,8 @@ final class LatencyMonitor {
     deliveryExcess.removeAll(keepingCapacity: true)
     gestures = 0
     stale = 0
+    udpFrames = 0
+    streamFrames = 0
     // `lastArrival` deliberately survives the drain: the gap across a window
     // boundary is as real as any other.
     return snapshot
@@ -277,6 +287,8 @@ final class LatencyMonitor {
       "netWorst": jsonNumber(snapshot.deliveryWorst),
       "gestures": gestures,
       "stale": stale,
+      "udp": udpFrames,
+      "tcp": streamFrames,
       "gaps": Self.histogram(gaps)
     ]
     if let sendRate = phoneSendRate { record["phoneSent"] = sendRate }
@@ -294,6 +306,8 @@ final class LatencyMonitor {
     runDeliveryWorst = max(runDeliveryWorst, snapshot.deliveryWorst)
     runGestures += gestures
     runStale += stale
+    runUdpFrames += udpFrames
+    runStreamFrames += streamFrames
     if runGaps.count + gaps.count > Self.runSampleCap {
       runTruncated = true
     } else {
@@ -328,6 +342,8 @@ final class LatencyMonitor {
       "netWorst": jsonNumber(runDeliveryWorst),
       "gestures": runGestures,
       "stale": runStale,
+      "udp": runUdpFrames,
+      "tcp": runStreamFrames,
       "gaps": Self.histogram(runGaps)
     ]
     if !runPhoneSendRates.isEmpty {
@@ -354,6 +370,8 @@ final class LatencyMonitor {
     runDeliveryWorst = 0
     runGestures = 0
     runStale = 0
+    runUdpFrames = 0
+    runStreamFrames = 0
     runSeconds = 0
     runTruncated = false
   }
@@ -370,6 +388,8 @@ final class LatencyMonitor {
     deliveryExcess.removeAll(keepingCapacity: true)
     gestures = 0
     stale = 0
+    udpFrames = 0
+    streamFrames = 0
     lastArrival = nil
     lastClientTimestamp = nil
     phoneSendRate = nil

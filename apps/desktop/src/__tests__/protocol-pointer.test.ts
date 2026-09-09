@@ -1,4 +1,10 @@
-import { decode, encode, isPointerMove, PROTOCOL_VERSION } from '@entangle/protocol';
+import {
+  decode,
+  encode,
+  encodeDatagram,
+  isPointerMove,
+  PROTOCOL_VERSION,
+} from '@entangle/protocol';
 import type { PointerMoveMessage } from '@entangle/protocol';
 
 describe('pointer frames', () => {
@@ -50,5 +56,37 @@ describe('pointer frames', () => {
       expect(frame.cx).toBeCloseTo(dx);
       expect(frame.cy).toBeCloseTo(dy);
     }
+  });
+});
+
+describe('datagram envelope', () => {
+  it('wraps a message with the session token', () => {
+    const frame: PointerMoveMessage = {
+      v: PROTOCOL_VERSION,
+      t: 'p.move',
+      dx: 1,
+      dy: 2,
+      cx: 1,
+      cy: 2,
+      g: 3,
+      seq: 4,
+    };
+    const parsed = JSON.parse(encodeDatagram('deadbeef', frame));
+    expect(parsed).toEqual({ v: PROTOCOL_VERSION, tk: 'deadbeef', m: frame });
+  });
+
+  it('keeps the token out of the message itself', () => {
+    // The Mac authenticates the envelope and dispatches `m` unchanged, so the
+    // message shape has to be identical on both transports.
+    const frame: PointerMoveMessage = {
+      v: PROTOCOL_VERSION,
+      t: 'p.move',
+      dx: 0,
+      dy: 0,
+      seq: 1,
+    };
+    const parsed = JSON.parse(encodeDatagram('token', frame));
+    expect(parsed.m).not.toHaveProperty('tk');
+    expect(decode(JSON.stringify(parsed.m))).toEqual(frame);
   });
 });

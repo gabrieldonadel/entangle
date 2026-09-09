@@ -2,8 +2,9 @@ import * as Haptics from "expo-haptics";
 import { Gesture } from "react-native-gesture-handler";
 
 import { PROTOCOL_VERSION } from "@entangle/protocol";
+import type { ClientMessage } from "@entangle/protocol";
 
-import { sendMessage } from "@/net/send";
+import { sendMessage, sendPointerFrame } from "@/net/send";
 import { diagEnabledRef, recordSend, recordTouch } from "@/state/diag";
 import {
   useNaturalScrollRef,
@@ -223,7 +224,10 @@ let gestureId = 0;
 /** Set when the next frame opens a new gesture. */
 let gestureStarting = true;
 
-function flushMove() {
+/** The last frame put on the wire, for the stream copy described below. */
+let lastFrame: ClientMessage | null = null;
+
+function flushMove(alsoStream = false) {
   if (flushTimer != null) {
     clearTimeout(flushTimer);
     flushTimer = null;
@@ -231,7 +235,7 @@ function flushMove() {
   if (pendingDx === 0 && pendingDy === 0) return;
   pendingSeq += 1;
   lastSentAt = now();
-  sendMessage({
+  const frame: ClientMessage = {
     v: PROTOCOL_VERSION,
     t: "p.move",
     dx: pendingDx,
@@ -243,10 +247,30 @@ function flushMove() {
     // Only while diagnostics are on: the Mac uses the gap between successive
     // stamps to measure delay variation, so any monotonic clock will do.
     ...(diagEnabledRef.current ? { ts: lastSentAt } : null),
-  });
+  };
+  lastFrame = frame;
+  sendPointerFrame(frame, alsoStream);
   recordSend();
   pendingDx = 0;
   pendingDy = 0;
+}
+
+/**
+ * Flushes before a message that acts on the cursor's position — a click, a
+ * drag boundary, a scroll — all of which travel on the WebSocket.
+ *
+ * Ordering only holds within one transport, so a click on the stream could
+ * otherwise overtake the datagram that positioned the cursor and land in the
+ * wrong place. Putting the positioning frame on the stream too fixes the
+ * order; the duplicate costs nothing because the Mac drops whichever copy
+ * arrives second.
+ */
+function flushMoveBeforeAction() {
+  if (pendingDx !== 0 || pendingDy !== 0) {
+    flushMove(true);
+    return;
+  }
+  if (lastFrame != null) sendMessage(lastFrame);
 }
 
 /** Arms a new gesture: the next frame restarts the running total. */
@@ -318,20 +342,42 @@ export function createDefaultTrackpadHandlers(): TrackpadHandlers {
   return {
     onMove: accumulateMove,
     onMoveEnd: () => {
-      flushMove();
+      // The last frame of a gesture goes on the stream too, so whatever the
+      // user does next is ordered behind the cursor's final position.
+      flushMove(true);
       startMoveGesture();
     },
+    onTap: () => {
+      flushMoveBeforeAction();
+      sendMessage({
+        v: PROTOCOL_VERSION,
+        t: "p.click",
+        button: "left",
+        phase: "tap",
+      });
+    },
+    onRightClick: () => {
+      flushMoveBeforeAction();
+      sendMessage({
+        v: PROTOCOL_VERSION,
+        t: "p.click",
+        button: "right",
+        phase: "tap",
+      });
+    },
     onDragBegin: () => {
+      flushMoveBeforeAction();
       startMoveGesture();
       sendMessage({ v: PROTOCOL_VERSION, t: "p.drag", phase: "begin" });
     },
     onDragMove: accumulateMove,
     onDragEnd: () => {
-      flushMove();
+      flushMove(true);
       startMoveGesture();
       sendMessage({ v: PROTOCOL_VERSION, t: "p.drag", phase: "end" });
     },
     onScrollBegin: () => {
+      flushMoveBeforeAction();
       sendMessage({
         v: PROTOCOL_VERSION,
         t: "s.wheel",
@@ -349,22 +395,6 @@ export function createDefaultTrackpadHandlers(): TrackpadHandlers {
         dx: 0,
         dy: 0,
         phase: "end",
-      });
-    },
-    onTap: () => {
-      sendMessage({
-        v: PROTOCOL_VERSION,
-        t: "p.click",
-        button: "left",
-        phase: "tap",
-      });
-    },
-    onRightClick: () => {
-      sendMessage({
-        v: PROTOCOL_VERSION,
-        t: "p.click",
-        button: "right",
-        phase: "tap",
       });
     },
     onSpaceSwipe: (dir) => {

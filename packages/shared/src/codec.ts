@@ -11,6 +11,7 @@ import type {
   DisplayStateMessage,
   DiagStateMessage,
   PongMessage,
+  UdpOkMessage,
 } from './messages';
 
 const CLIENT_TAGS = new Set<ClientMessage['t']>([
@@ -46,6 +47,7 @@ const SERVER_TAGS = new Set<ServerMessage['t']>([
   'state.audio',
   'state.display',
   'state.diag',
+  'udp.ok',
   'pair.accepted',
   'pair.rejected',
 ]);
@@ -54,6 +56,14 @@ const ALL_TAGS = new Set<string>([...CLIENT_TAGS, ...SERVER_TAGS]);
 
 export function encode(msg: Message): string {
   return JSON.stringify(msg);
+}
+
+/**
+ * Wraps a message for the datagram path. Kept here so both sides agree on the
+ * envelope, exactly as they do on the messages inside it.
+ */
+export function encodeDatagram(token: string, msg: ClientMessage): string {
+  return JSON.stringify({ v: PROTOCOL_VERSION, tk: token, m: msg });
 }
 
 export function decode(raw: string): Message | null {
@@ -105,4 +115,8 @@ export function isDisplayState(msg: Message): msg is DisplayStateMessage {
 
 export function isDiagState(msg: Message): msg is DiagStateMessage {
   return msg.t === 'state.diag';
+}
+
+export function isUdpOk(msg: Message): msg is UdpOkMessage {
+  return msg.t === 'udp.ok';
 }
