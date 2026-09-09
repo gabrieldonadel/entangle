@@ -19,10 +19,22 @@ final class LatencyMonitor {
     let procP50: Double
     let procP95: Double
     let stalls: Int
+    /// Stalls the wire caused: the frames were sent evenly and arrived late.
+    let stallsDelivery: Int
+    /// Stalls the phone caused: it sent nothing for that long. A finger held
+    /// still mid-gesture looks exactly like this, and so does a blocked JS
+    /// thread — either way the wire is innocent.
+    let stallsSource: Int
+    /// Worst amount by which an arrival gap exceeded its send gap.
+    let deliveryWorst: Double
   }
 
   /// A gap longer than this reads as a stall rather than as pacing.
   private static let stallThresholdMs: Double = 50
+
+  /// How much an arrival gap has to exceed its send gap before the wire, and
+  /// not the phone, is responsible for it.
+  private static let deliveryMarginMs: Double = 20
 
   /// Called once a second while enabled.
   var onSnapshot: ((Snapshot) -> Void)?
@@ -38,6 +50,9 @@ final class LatencyMonitor {
   private var processing: [Double] = []
   private var variations: [Double] = []
   private var stalls = 0
+  private var stallsDelivery = 0
+  private var stallsSource = 0
+  private var deliveryExcess: [Double] = []
   private var gestures = 0
   /// Frames the accumulator discarded as duplicates or overtaken. Zero over
   /// TCP; the number to watch once pointer frames move to UDP.
@@ -60,6 +75,9 @@ final class LatencyMonitor {
   private var runPhoneSendRates: [Int] = []
   private var runPhoneRtt: [Double] = []
   private var runStalls = 0
+  private var runStallsDelivery = 0
+  private var runStallsSource = 0
+  private var runDeliveryWorst: Double = 0
   private var runGestures = 0
   private var runStale = 0
   private var runSeconds = 0
@@ -123,13 +141,30 @@ final class LatencyMonitor {
     if let previous = lastArrival {
       let gap = arrival - previous
       gaps.append(gap)
-      if gap > Self.stallThresholdMs { stalls += 1 }
 
       // One-way delay variation: how much the arrival gap differs from the
       // send gap. Both terms are differences within a single clock, so a
       // constant offset between the two devices cancels out.
+      var sendGap: Double?
       if let clientTimestamp = clientTimestamp, let previousClient = lastClientTimestamp {
-        variations.append(abs(gap - (clientTimestamp - previousClient)))
+        sendGap = clientTimestamp - previousClient
+        variations.append(abs(gap - sendGap!))
+      }
+
+      if gap > Self.stallThresholdMs {
+        stalls += 1
+        // A long gap only indicts the wire if the phone was sending during it.
+        // Otherwise it is a finger held still inside a gesture, or a stalled
+        // JS thread — neither of which UDP would fix.
+        if let sendGap = sendGap {
+          let excess = gap - sendGap
+          if excess > Self.deliveryMarginMs {
+            stallsDelivery += 1
+            deliveryExcess.append(excess)
+          } else {
+            stallsSource += 1
+          }
+        }
       }
     }
     lastArrival = arrival
@@ -193,7 +228,10 @@ final class LatencyMonitor {
         : variations.reduce(0, +) / Double(variations.count),
       procP50: Self.percentile(processing, 0.5),
       procP95: Self.percentile(processing, 0.95),
-      stalls: stalls
+      stalls: stalls,
+      stallsDelivery: stallsDelivery,
+      stallsSource: stallsSource,
+      deliveryWorst: deliveryExcess.max() ?? 0
     )
 
     if snapshot.rate > 0 {
@@ -209,6 +247,9 @@ final class LatencyMonitor {
     processing.removeAll(keepingCapacity: true)
     variations.removeAll(keepingCapacity: true)
     stalls = 0
+    stallsDelivery = 0
+    stallsSource = 0
+    deliveryExcess.removeAll(keepingCapacity: true)
     gestures = 0
     stale = 0
     // `lastArrival` deliberately survives the drain: the gap across a window
@@ -231,6 +272,9 @@ final class LatencyMonitor {
       "procP50": jsonNumber(snapshot.procP50),
       "procP95": jsonNumber(snapshot.procP95),
       "stalls": snapshot.stalls,
+      "stallsNet": snapshot.stallsDelivery,
+      "stallsSrc": snapshot.stallsSource,
+      "netWorst": jsonNumber(snapshot.deliveryWorst),
       "gestures": gestures,
       "stale": stale,
       "gaps": Self.histogram(gaps)
@@ -245,6 +289,9 @@ final class LatencyMonitor {
   private func foldIntoRunLocked(_ snapshot: Snapshot) {
     runSeconds += 1
     runStalls += snapshot.stalls
+    runStallsDelivery += snapshot.stallsDelivery
+    runStallsSource += snapshot.stallsSource
+    runDeliveryWorst = max(runDeliveryWorst, snapshot.deliveryWorst)
     runGestures += gestures
     runStale += stale
     if runGaps.count + gaps.count > Self.runSampleCap {
@@ -276,6 +323,9 @@ final class LatencyMonitor {
       "procP95": jsonNumber(Self.percentile(runProcessing, 0.95)),
       "procMax": jsonNumber(runProcessing.max() ?? 0),
       "stalls": runStalls,
+      "stallsNet": runStallsDelivery,
+      "stallsSrc": runStallsSource,
+      "netWorst": jsonNumber(runDeliveryWorst),
       "gestures": runGestures,
       "stale": runStale,
       "gaps": Self.histogram(runGaps)
@@ -299,6 +349,9 @@ final class LatencyMonitor {
     runPhoneSendRates.removeAll(keepingCapacity: true)
     runPhoneRtt.removeAll(keepingCapacity: true)
     runStalls = 0
+    runStallsDelivery = 0
+    runStallsSource = 0
+    runDeliveryWorst = 0
     runGestures = 0
     runStale = 0
     runSeconds = 0
@@ -312,6 +365,9 @@ final class LatencyMonitor {
     processing.removeAll(keepingCapacity: true)
     variations.removeAll(keepingCapacity: true)
     stalls = 0
+    stallsDelivery = 0
+    stallsSource = 0
+    deliveryExcess.removeAll(keepingCapacity: true)
     gestures = 0
     stale = 0
     lastArrival = nil

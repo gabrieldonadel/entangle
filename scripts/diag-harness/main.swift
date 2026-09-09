@@ -130,6 +130,22 @@ monitor.recordPhoneReport(sendRate: 115, touchRate: 120, rttP50: 12, rttP95: 41)
 gesture(seconds: 1.0, hz: 120, jitterMs: 3.0, stallEvery: 60)
 RunLoop.current.run(until: Date().addingTimeInterval(1.2))
 
+// A third gesture holding both kinds of long gap, to prove they are told
+// apart: one where the phone kept sending and the frames arrived late (the
+// wire's fault), and one where the phone sent nothing for just as long — a
+// finger held still mid-gesture, which no transport change would fix.
+monitor.recordPhoneReport(sendRate: 60, touchRate: 60, rttP50: 14, rttP95: 30)
+gesture(seconds: 0.2, hz: 120, jitterMs: 0.5)
+// Wire stall: 200 ms late, but sent on the usual 8.3 ms cadence.
+clientClock += 8.3
+arrivalClock += 208.3
+monitor.record(clientTimestamp: clientClock, arrival: arrivalClock, posted: arrivalClock + 0.2)
+// Finger still: both clocks advance together, so nothing was held up.
+clientClock += 200
+arrivalClock += 200
+monitor.record(clientTimestamp: clientClock, arrival: arrivalClock, posted: arrivalClock + 0.2)
+RunLoop.current.run(until: Date().addingTimeInterval(1.2))
+
 // Idle: this window must write nothing, but must close the run.
 RunLoop.current.run(until: Date().addingTimeInterval(1.4))
 monitor.setEnabled(false)

@@ -44,11 +44,15 @@ final class CursorController {
     self.eventSource = CGEventSource(stateID: .hidSystemState)
     NotificationCenter.default.addObserver(
       forName: NSApplication.didChangeScreenParametersNotification,
-      object: nil,
-      queue: nil
+      object: .none,
+      queue: .main
     ) { [weak self] _ in
-      self?.queue.async { self?.cachedScreenBounds = nil }
+      self?.refreshScreenBounds()
     }
+    // Warm the cache off the pointer path. Building it lazily meant the first
+    // move of a session paid for `NSScreen.screens` — one 31 ms frame showed
+    // up in a real session's `procMax`, against a p95 of 0.18 ms.
+    refreshScreenBounds()
   }
 
   /// When the frame was sent and when it reached us. Carried only while
@@ -178,9 +182,27 @@ final class CursorController {
     return CGPoint(x: x, y: y)
   }
 
+  /// Recomputes the cached union on the main thread, where AppKit wants to be
+  /// asked about screens.
+  private func refreshScreenBounds() {
+    if Thread.isMainThread {
+      let bounds = Self.unionOfScreens()
+      queue.async { self.cachedScreenBounds = bounds }
+    } else {
+      DispatchQueue.main.async { self.refreshScreenBounds() }
+    }
+  }
+
   private func screenBounds() -> CGRect? {
     if let cached = cachedScreenBounds { return cached }
+    // Cold: the warm-up has not landed yet. Pay for it once here rather than
+    // let the pointer escape the display.
+    let bounds = Self.unionOfScreens()
+    cachedScreenBounds = bounds
+    return bounds
+  }
 
+  private static func unionOfScreens() -> CGRect? {
     let screens = NSScreen.screens
     guard !screens.isEmpty else { return nil }
 
@@ -198,7 +220,6 @@ final class CursorController {
       unionRect = unionRect.isNull ? converted : unionRect.union(converted)
     }
 
-    cachedScreenBounds = unionRect
     return unionRect
   }
 
