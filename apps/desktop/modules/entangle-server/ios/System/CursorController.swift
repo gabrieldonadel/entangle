@@ -27,6 +27,9 @@ final class CursorController {
   /// layout changes, not once per pointer sample.
   private var cachedScreenBounds: CGRect?
 
+  /// Resolves each frame's movement. Only touched on `queue`.
+  private var accumulator = PointerAccumulator()
+
   // Click-count tracking for double / triple click recognition. macOS expects
   // mouseDown events with `mouseEventClickState = 2/3` for the 2nd/3rd click
   // in a series, otherwise apps see only single clicks.
@@ -54,14 +57,23 @@ final class CursorController {
   struct MoveTiming {
     let clientTimestamp: Double?
     let arrival: Double
-    let firstOfGesture: Bool
   }
 
-  func move(dx: CGFloat, dy: CGFloat, timing: MoveTiming? = nil) {
+  func apply(_ frame: PointerAccumulator.Frame, timing: MoveTiming? = nil) {
     let scale = CGFloat(PreferencesStore.shared.sensitivity)
     queue.async {
+      guard let resolution = self.accumulator.resolve(frame) else {
+        // Nothing left to say: a duplicate, or a frame a newer one overtook.
+        LatencyMonitor.shared.recordStale()
+        return
+      }
       let current = self.originForNextMove()
-      let target = self.clampToScreens(CGPoint(x: current.x + dx * scale, y: current.y + dy * scale))
+      let target = self.clampToScreens(
+        CGPoint(
+          x: current.x + resolution.delta.x * scale,
+          y: current.y + resolution.delta.y * scale
+        )
+      )
       self.virtualPosition = target
       self.lastMoveAt = Date()
       self.postMove(to: target, dragging: self.isDragging)
@@ -70,7 +82,7 @@ final class CursorController {
           clientTimestamp: timing.clientTimestamp,
           arrival: timing.arrival,
           posted: LatencyMonitor.now(),
-          firstOfGesture: timing.firstOfGesture
+          firstOfGesture: resolution.startsGesture
         )
       }
     }

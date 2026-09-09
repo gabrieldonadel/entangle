@@ -17,10 +17,73 @@
 //     apps/desktop/modules/entangle-server/ios/Util/JSONNumber.swift
 //   ENTANGLE_DIAG_LOG_DIR=/tmp/diag-logs /tmp/diag-harness
 
+import CoreGraphics
 import Foundation
 
 let logDirectory = ProcessInfo.processInfo.environment["ENTANGLE_DIAG_LOG_DIR"]
   ?? NSHomeDirectory() + "/Library/Logs/Entangle"
+
+// ── PointerAccumulator checks ───────────────────────────────────────────────
+// Pure logic, so it can be asserted rather than eyeballed.
+
+var failures = 0
+
+func check(_ name: String, _ condition: Bool) {
+  print((condition ? "PASS  " : "FAIL  ") + name)
+  if !condition { failures += 1 }
+}
+
+func frame(
+  dx: CGFloat = 0, dy: CGFloat = 0,
+  cx: CGFloat? = nil, cy: CGFloat? = nil,
+  g: Int? = nil, seq: Int? = nil
+) -> PointerAccumulator.Frame {
+  PointerAccumulator.Frame(
+    dx: dx, dy: dy,
+    cumulative: cx == nil ? nil : CGPoint(x: cx!, y: cy ?? 0),
+    gesture: g, seq: seq
+  )
+}
+
+do {
+  // A phone that sends no total at all: fall back to per-frame deltas.
+  var accumulator = PointerAccumulator()
+  let first = accumulator.resolve(frame(dx: 3, dy: -2, seq: 1))
+  check("legacy frame applies its own delta", first?.delta == CGPoint(x: 3, y: -2))
+  check("legacy frame does not claim a gesture", first?.startsGesture == false)
+}
+
+do {
+  var accumulator = PointerAccumulator()
+  let opening = accumulator.resolve(frame(cx: 5, cy: 0, g: 1, seq: 1))
+  check("gesture opens", opening?.startsGesture == true)
+  check("opening total applies in full", opening?.delta == CGPoint(x: 5, y: 0))
+
+  let next = accumulator.resolve(frame(cx: 9, cy: 0, g: 1, seq: 2))
+  check("running total applies the difference", next?.delta == CGPoint(x: 4, y: 0))
+  check("later frame does not open a gesture", next?.startsGesture == false)
+
+  // A lost frame: seq 3 never arrives, seq 4 carries the whole truth.
+  let afterLoss = accumulator.resolve(frame(cx: 20, cy: 0, g: 1, seq: 4))
+  check("a lost frame costs nothing", afterLoss?.delta == CGPoint(x: 11, y: 0))
+
+  // Late duplicate of an already-applied frame.
+  check("an overtaken frame is dropped", accumulator.resolve(frame(cx: 9, g: 1, seq: 2)) == nil)
+  check("a duplicate is dropped", accumulator.resolve(frame(cx: 20, g: 1, seq: 4)) == nil)
+
+  // Next gesture restarts the total from zero.
+  let second = accumulator.resolve(frame(cx: 3, cy: 1, g: 2, seq: 5))
+  check("a new gesture restarts the total", second?.delta == CGPoint(x: 3, y: 1))
+  check("a new gesture is reported as one", second?.startsGesture == true)
+
+  // The phone relaunches: gesture 1 again, sequence back to 1. The watermark
+  // must not swallow everything from then on.
+  let restarted = accumulator.resolve(frame(cx: 2, cy: 0, g: 1, seq: 1))
+  check("a phone restart is not locked out", restarted?.delta == CGPoint(x: 2, y: 0))
+}
+
+print(failures == 0 ? "accumulator: all checks passed" : "accumulator: \(failures) FAILED")
+print()
 
 let monitor = LatencyMonitor.shared
 monitor.onSnapshot = { snapshot in
@@ -77,3 +140,5 @@ print(
   (try? String(contentsOfFile: logDirectory + "/pointer-diag.jsonl", encoding: .utf8))
     ?? "<missing>"
 )
+
+exit(failures == 0 ? 0 : 1)

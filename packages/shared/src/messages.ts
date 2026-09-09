@@ -38,8 +38,32 @@ export type KeyCode =
 export interface PointerMoveMessage {
   v: 1;
   t: 'p.move';
+  /**
+   * Movement since the previous frame. Kept for servers that predate `cx`/`cy`
+   * — a Mac that ignores the cumulative fields still tracks the cursor
+   * correctly from these.
+   */
   dx: number;
   dy: number;
+  /**
+   * Total movement since this gesture began. Authoritative when present: the
+   * server applies `cumulative - lastApplied`, so a frame that is lost,
+   * duplicated or delivered late costs nothing — the next frame carries the
+   * whole truth. Only meaningful alongside `g`.
+   */
+  cx?: number;
+  cy?: number;
+  /**
+   * Gesture counter, incremented for every new gesture. A change means the
+   * cumulative total restarted from zero. Sent on every frame rather than
+   * only the first, so the boundary survives a lost packet.
+   */
+  g?: number;
+  /**
+   * Frame counter, monotonic for the life of the connection. The server drops
+   * a frame whose `seq` it has already passed, so a duplicate or a late
+   * arrival cannot drag the cursor backwards.
+   */
   seq: number;
   /**
    * Client-monotonic send time in milliseconds, present only while
@@ -48,12 +72,6 @@ export interface PointerMoveMessage {
    * which measures delay variation without needing the two clocks to agree.
    */
   ts?: number;
-  /**
-   * True on the first frame of a gesture. The gap before it is the time the
-   * finger was off the glass, not a delivery gap, so the Mac restarts its
-   * pacing measurement here instead of recording a stall.
-   */
-  first?: boolean;
 }
 
 export interface PointerClickMessage {

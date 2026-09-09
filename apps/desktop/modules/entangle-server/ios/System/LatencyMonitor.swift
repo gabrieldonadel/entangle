@@ -39,6 +39,9 @@ final class LatencyMonitor {
   private var variations: [Double] = []
   private var stalls = 0
   private var gestures = 0
+  /// Frames the accumulator discarded as duplicates or overtaken. Zero over
+  /// TCP; the number to watch once pointer frames move to UDP.
+  private var stale = 0
   private var lastArrival: Double?
   private var lastClientTimestamp: Double?
 
@@ -58,6 +61,7 @@ final class LatencyMonitor {
   private var runPhoneRtt: [Double] = []
   private var runStalls = 0
   private var runGestures = 0
+  private var runStale = 0
   private var runSeconds = 0
   private var runTruncated = false
 
@@ -143,6 +147,13 @@ final class LatencyMonitor {
     phoneRttP95 = rttP95
   }
 
+  func recordStale() {
+    lock.lock()
+    defer { lock.unlock() }
+    guard isEnabled else { return }
+    stale += 1
+  }
+
   /// Milliseconds on a monotonic clock. Unlike `Date`, it cannot step
   /// backwards when the system clock is corrected mid-measurement.
   static func now() -> Double {
@@ -199,6 +210,7 @@ final class LatencyMonitor {
     variations.removeAll(keepingCapacity: true)
     stalls = 0
     gestures = 0
+    stale = 0
     // `lastArrival` deliberately survives the drain: the gap across a window
     // boundary is as real as any other.
     return snapshot
@@ -220,6 +232,7 @@ final class LatencyMonitor {
       "procP95": jsonNumber(snapshot.procP95),
       "stalls": snapshot.stalls,
       "gestures": gestures,
+      "stale": stale,
       "gaps": Self.histogram(gaps)
     ]
     if let sendRate = phoneSendRate { record["phoneSent"] = sendRate }
@@ -233,6 +246,7 @@ final class LatencyMonitor {
     runSeconds += 1
     runStalls += snapshot.stalls
     runGestures += gestures
+    runStale += stale
     if runGaps.count + gaps.count > Self.runSampleCap {
       runTruncated = true
     } else {
@@ -263,6 +277,7 @@ final class LatencyMonitor {
       "procMax": jsonNumber(runProcessing.max() ?? 0),
       "stalls": runStalls,
       "gestures": runGestures,
+      "stale": runStale,
       "gaps": Self.histogram(runGaps)
     ]
     if !runPhoneSendRates.isEmpty {
@@ -285,6 +300,7 @@ final class LatencyMonitor {
     runPhoneRtt.removeAll(keepingCapacity: true)
     runStalls = 0
     runGestures = 0
+    runStale = 0
     runSeconds = 0
     runTruncated = false
   }
@@ -296,6 +312,8 @@ final class LatencyMonitor {
     processing.removeAll(keepingCapacity: true)
     variations.removeAll(keepingCapacity: true)
     stalls = 0
+    gestures = 0
+    stale = 0
     lastArrival = nil
     lastClientTimestamp = nil
     phoneSendRate = nil

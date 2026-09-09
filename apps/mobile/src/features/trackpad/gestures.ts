@@ -207,12 +207,21 @@ let pendingDy = 0;
 let pendingSeq = 0;
 let lastSentAt = 0;
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
 /**
- * The next frame opens a gesture. The Mac uses this to restart its pacing
- * measurement, so time spent with the finger off the glass is not counted as
- * a delivery gap.
+ * Running total for the current gesture, and the gesture's number.
+ *
+ * Every frame carries the total, not just the change since the last one, so a
+ * frame that is lost, duplicated or delivered late costs nothing: the Mac
+ * applies `total - lastApplied` and the next frame carries the whole truth.
+ * The gesture number travels on every frame too, so the Mac still sees the
+ * boundary when the opening frame goes missing.
  */
-let nextMoveIsFirst = true;
+let gestureCx = 0;
+let gestureCy = 0;
+let gestureId = 0;
+/** Set when the next frame opens a new gesture. */
+let gestureStarting = true;
 
 function flushMove() {
   if (flushTimer != null) {
@@ -222,15 +231,15 @@ function flushMove() {
   if (pendingDx === 0 && pendingDy === 0) return;
   pendingSeq += 1;
   lastSentAt = now();
-  const isFirst = nextMoveIsFirst;
-  nextMoveIsFirst = false;
   sendMessage({
     v: PROTOCOL_VERSION,
     t: "p.move",
     dx: pendingDx,
     dy: pendingDy,
+    cx: gestureCx,
+    cy: gestureCy,
+    g: gestureId,
     seq: pendingSeq,
-    ...(isFirst ? { first: true } : null),
     // Only while diagnostics are on: the Mac uses the gap between successive
     // stamps to measure delay variation, so any monotonic clock will do.
     ...(diagEnabledRef.current ? { ts: lastSentAt } : null),
@@ -240,9 +249,9 @@ function flushMove() {
   pendingDy = 0;
 }
 
-/** Arms a gesture start, so the next flush marks itself as the first frame. */
+/** Arms a new gesture: the next frame restarts the running total. */
 function startMoveGesture() {
-  nextMoveIsFirst = true;
+  gestureStarting = true;
 }
 
 function now(): number {
@@ -252,9 +261,19 @@ function now(): number {
 }
 
 function accumulateMove(dx: number, dy: number) {
+  if (gestureStarting) {
+    gestureStarting = false;
+    gestureId += 1;
+    gestureCx = 0;
+    gestureCy = 0;
+  }
   const sensitivity = usePointerSensitivityRef.current;
-  pendingDx += dx * sensitivity;
-  pendingDy += dy * sensitivity;
+  const scaledDx = dx * sensitivity;
+  const scaledDy = dy * sensitivity;
+  pendingDx += scaledDx;
+  pendingDy += scaledDy;
+  gestureCx += scaledDx;
+  gestureCy += scaledDy;
   recordTouch();
 
   const elapsed = now() - lastSentAt;

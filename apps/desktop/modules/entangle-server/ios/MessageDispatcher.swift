@@ -71,16 +71,28 @@ enum MessageDispatcher {
     guard let deltaX = numeric(json["dx"]), let deltaY = numeric(json["dy"]) else {
       return false
     }
+    // `cx`/`cy` are the gesture's running total and take precedence; `dx`/`dy`
+    // are the fallback for a phone that predates them.
+    var cumulative: CGPoint?
+    if let totalX = numeric(json["cx"]), let totalY = numeric(json["cy"]) {
+      cumulative = CGPoint(x: totalX, y: totalY)
+    }
+    let frame = PointerAccumulator.Frame(
+      dx: CGFloat(deltaX),
+      dy: CGFloat(deltaY),
+      cumulative: cumulative,
+      gesture: numeric(json["g"]).map { Int($0) },
+      seq: numeric(json["seq"]).map { Int($0) }
+    )
     // Stamp the arrival before the queue hop, so the measured processing time
     // includes the hop rather than hiding it.
     let timing = LatencyMonitor.shared.enabled
       ? CursorController.MoveTiming(
           clientTimestamp: numeric(json["ts"]),
-          arrival: LatencyMonitor.now(),
-          firstOfGesture: json["first"] as? Bool ?? false
+          arrival: LatencyMonitor.now()
         )
       : nil
-    CursorController.shared.move(dx: CGFloat(deltaX), dy: CGFloat(deltaY), timing: timing)
+    CursorController.shared.apply(frame, timing: timing)
     return true
   }
 
