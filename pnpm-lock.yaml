@@ -43,8 +43,8 @@ importers:
         specifier: 0.81.6
         version: 0.81.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4)
       react-native-macos:
-        specifier: ^0.81.7
-        version: 0.81.7(@babel/core@7.29.0)(@types/react@19.2.14)(react-native@0.81.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)
+        specifier: ^0.81.9
+        version: 0.81.9(@babel/core@7.29.0)(@types/react@19.2.14)(react-native@0.81.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)
       react-native-safe-area-context:
         specifier: ^5.6.2
         version: 5.6.2(react-native@0.81.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)
@@ -1771,8 +1771,8 @@ packages:
       react: '*'
       react-native: '>=0.59'
 
-  '@react-native-macos/virtualized-lists@0.81.7':
-    resolution: {integrity: sha512-kD+MdpS+pLG2c4ghX5lD5a9GR0N/fKx77d2+fimTJMoJXp0qXwp1xJriZj8ZkL/Xqb3HgpxVcp0e5esgG3nBwg==}
+  '@react-native-macos/virtualized-lists@0.81.9':
+    resolution: {integrity: sha512-xqKxJeAea01b0GsTiYTVttuf6pZyN9EkZagWDr0dUyQ7AREHKiuPjOB6BB7M+s9DUSFZtMzwwjb/NHhX9NLXSQ==}
     engines: {node: '>= 20.19.4'}
     peerDependencies:
       '@types/react': ^19.1.4
@@ -2470,10 +2470,12 @@ packages:
   '@xmldom/xmldom@0.8.13':
     resolution: {integrity: sha512-KRYzxepc14G/CEpEGc3Yn+JKaAeT63smlDr+vjB8jRfgTBBI9wRj/nkQEO+ucV8p8I9bfKLWp37uHgFrbntPvw==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@xmldom/xmldom@0.9.10':
     resolution: {integrity: sha512-A9gOqLdi6cV4ibazAjcQufGj0B1y/vDqYrcuP6d/6x8P27gRS8643Dj9o1dEKtB6O7fwxb2FgBmJS2mX7gpvdw==}
     engines: {node: '>=14.6'}
+    deprecated: this version has critical issues, please update to the latest version
 
   abort-controller@3.0.0:
     resolution: {integrity: sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg==}
@@ -4480,26 +4482,13 @@ packages:
     resolution: {integrity: sha512-WSJIENlMcoSsuz66IfBHOkgfp3KJt2UW2TnEHPf1b8pIG2eEXNOVmo2+03A0H17WY2XGXWgxL0CG7FAopqgB1A==}
     engines: {node: '>=20.19.4'}
 
-  metro-runtime@0.83.6:
-    resolution: {integrity: sha512-WQPua1G2VgYbwRn6vSKxOhTX7CFbSf/JdUu6Nd8bZnPXckOf7HQ2y51NXNQHoEsiuawathrkzL8pBhv+zgZFmg==}
-    engines: {node: '>=20.19.4'}
-
   metro-runtime@0.83.7:
     resolution: {integrity: sha512-9GKkJURaB2iyYoEExKnedzAHzxmKtSi+k0tsZUvMoU27tBZJElchYt7JH/Ai/XzYAI9lCAaV7u5HZSI8J5Z+wQ==}
-    engines: {node: '>=20.19.4'}
-
-  metro-source-map@0.83.6:
-    resolution: {integrity: sha512-AqJbOMMpeyyM4iNI91pchqDIszzNuuHApEhg6OABqZ+9mjLEqzcIEQ/fboZ7x74fNU5DBd2K36FdUQYPqlGClA==}
     engines: {node: '>=20.19.4'}
 
   metro-source-map@0.83.7:
     resolution: {integrity: sha512-JgA1h7oc1a1jydBe1GhVFsUoMYo3wLPk7oRA32rjlDsq+sP2JLt9x2p2lWbNSxTm/u8NV4VRid3hvEJgcX8tKw==}
     engines: {node: '>=20.19.4'}
-
-  metro-symbolicate@0.83.6:
-    resolution: {integrity: sha512-4nvkmv9T7ozhprlPwk/+xm0SVPsxly5kYyMHdNaOlFemFz4df9BanvD46Ac6OISu/4Idinzfk2KVb++6OfzPAQ==}
-    engines: {node: '>=20.19.4'}
-    hasBin: true
 
   metro-symbolicate@0.83.7:
     resolution: {integrity: sha512-g4suyxw20WOHWI680c+Kq4wC/NF+Hx5pRH9afrMp+sMTxqLeKcPR1Xf4wMhsjlbvx7LbIREdke6q928jEjvJWw==}
@@ -4654,10 +4643,6 @@ packages:
 
   nullthrows@1.1.1:
     resolution: {integrity: sha512-2vPPEi+Z7WqML2jZYddDIfy5Dqb0r2fze2zTxNNknZaFpVHU3mFB3R+DWeJWGVx0ecvttSGlJTI+WG+8Z4cDWw==}
-
-  ob1@0.83.6:
-    resolution: {integrity: sha512-m/xZYkwcjo6UqLMrUICEB3iHk7Bjt3RSR7KXMi6Y1MO/kGkPhoRmfUDF6KAan3rLAZ7ABRqnQyKUTwaqZgUV4w==}
-    engines: {node: '>=20.19.4'}
 
   ob1@0.83.7:
     resolution: {integrity: sha512-9M5kpuOLyTPogMtZiQUIxdAZxl7Dxs6tVBbJErSumsqGMuhVSoUbkfeZ3XNPpLpwBBtqY5QDUzGwggLHX3slQg==}
@@ -4948,8 +4933,8 @@ packages:
       react: '*'
       react-native: '*'
 
-  react-native-macos@0.81.7:
-    resolution: {integrity: sha512-wV7jyw4aP7dD5h5Ik/+17hWC56xZQ26YhGs7okW7bAUCZmDKgCFcY5H6Vb2Wkr2yIl0oQIbatSOCPGAlHPk38A==}
+  react-native-macos@0.81.9:
+    resolution: {integrity: sha512-MG120BR4dFzH6v4IBhd4TZILTPvf4oUJHEM0y4ZedXUcGJqUYPIvBzLjPZddl/J3TMZzPaF0heLO3wXJoxqDLw==}
     engines: {node: '>= 20.19.4'}
     hasBin: true
     peerDependencies:
@@ -8163,7 +8148,7 @@ snapshots:
       react: 19.2.0
       react-native: 0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0)
 
-  '@react-native-macos/virtualized-lists@0.81.7(@types/react@19.2.14)(react-native@0.81.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)':
+  '@react-native-macos/virtualized-lists@0.81.9(@types/react@19.2.14)(react-native@0.81.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)':
     dependencies:
       invariant: 2.2.4
       nullthrows: 1.1.1
@@ -11751,29 +11736,10 @@ snapshots:
     dependencies:
       flow-enums-runtime: 0.0.6
 
-  metro-runtime@0.83.6:
-    dependencies:
-      '@babel/runtime': 7.29.2
-      flow-enums-runtime: 0.0.6
-
   metro-runtime@0.83.7:
     dependencies:
       '@babel/runtime': 7.29.2
       flow-enums-runtime: 0.0.6
-
-  metro-source-map@0.83.6:
-    dependencies:
-      '@babel/traverse': 7.29.0
-      '@babel/types': 7.29.0
-      flow-enums-runtime: 0.0.6
-      invariant: 2.2.4
-      metro-symbolicate: 0.83.6
-      nullthrows: 1.1.1
-      ob1: 0.83.6
-      source-map: 0.5.7
-      vlq: 1.0.1
-    transitivePeerDependencies:
-      - supports-color
 
   metro-source-map@0.83.7:
     dependencies:
@@ -11784,17 +11750,6 @@ snapshots:
       metro-symbolicate: 0.83.7
       nullthrows: 1.1.1
       ob1: 0.83.7
-      source-map: 0.5.7
-      vlq: 1.0.1
-    transitivePeerDependencies:
-      - supports-color
-
-  metro-symbolicate@0.83.6:
-    dependencies:
-      flow-enums-runtime: 0.0.6
-      invariant: 2.2.4
-      metro-source-map: 0.83.6
-      nullthrows: 1.1.1
       source-map: 0.5.7
       vlq: 1.0.1
     transitivePeerDependencies:
@@ -11984,10 +11939,6 @@ snapshots:
       boolbase: 1.0.0
 
   nullthrows@1.1.1: {}
-
-  ob1@0.83.6:
-    dependencies:
-      flow-enums-runtime: 0.0.6
 
   ob1@0.83.7:
     dependencies:
@@ -12313,10 +12264,10 @@ snapshots:
       react: 19.2.0
       react-native: 0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0)
 
-  react-native-macos@0.81.7(@babel/core@7.29.0)(@types/react@19.2.14)(react-native@0.81.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4):
+  react-native-macos@0.81.9(@babel/core@7.29.0)(@types/react@19.2.14)(react-native@0.81.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4):
     dependencies:
       '@jest/create-cache-key-function': 29.7.0
-      '@react-native-macos/virtualized-lists': 0.81.7(@types/react@19.2.14)(react-native@0.81.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)
+      '@react-native-macos/virtualized-lists': 0.81.9(@types/react@19.2.14)(react-native@0.81.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.1.4))(react@19.1.4)
       '@react-native/assets-registry': 0.81.6
       '@react-native/codegen': 0.81.6(@babel/core@7.29.0)
       '@react-native/community-cli-plugin': 0.81.6
@@ -12335,8 +12286,8 @@ snapshots:
       invariant: 2.2.4
       jest-environment-node: 29.7.0
       memoize-one: 5.2.1
-      metro-runtime: 0.83.6
-      metro-source-map: 0.83.6
+      metro-runtime: 0.83.7
+      metro-source-map: 0.83.7
       nullthrows: 1.1.1
       pretty-format: 29.7.0
       promise: 8.3.0
