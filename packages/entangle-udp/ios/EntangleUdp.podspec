@@ -9,7 +9,10 @@ Pod::Spec.new do |s|
   s.description    = 'Sends pointer frames over UDP, off the reliable stream that would hold them behind a retransmit.'
   s.author         = ''
   s.homepage       = 'https://github.com/gabrieldonadel/entangle'
-  s.platforms      = { :ios => '16.0' }
+  # Must not be above the app's deployment target. CocoaPods does not fail on a
+  # pod that requires a newer platform than the target — `use_expo_modules!`
+  # skips it with a yellow warning, and the app ships with the module missing.
+  s.platforms      = { :ios => '15.1' }
   s.source         = { :git => '' }
   s.static_framework = true
 
