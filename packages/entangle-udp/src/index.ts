@@ -44,12 +44,8 @@ export function installOnWorkletRuntime(): boolean {
 }
 
 /**
- * Sends from the UI thread. Reaches the module through the global registry
- * because `requireOptionalNativeModule` above is bound to the JS runtime.
+ * The UI thread reaches this module through `globalThis.expo.modules`, not
+ * through this file: a worklet cannot use the handle above, and a worklet
+ * defined in a workspace package depends on the babel plugin reaching across
+ * the symlink. The caller in `features/trackpad/uplink.ts` inlines it.
  */
-export function sendFromWorklet(text: string): boolean {
-  'worklet';
-  const module = (globalThis as any)?.expo?.modules?.EntangleUdp;
-  if (!module) return false;
-  return module.send(text) as boolean;
-}

@@ -1,6 +1,5 @@
 import { PROTOCOL_VERSION } from '@entangle/protocol';
 import type { PointerMoveMessage } from '@entangle/protocol';
-import { sendFromWorklet } from 'entangle-udp';
 import { makeMutable, runOnJS } from 'react-native-reanimated';
 
 /**
@@ -103,8 +102,15 @@ export function takeSyncFrame(): {
   return frame;
 }
 
-/** Arms a new gesture; the next movement restarts the running total. */
+/**
+ * Arms a new gesture; the next movement restarts the running total.
+ *
+ * Marked as a worklet because the drag gesture arms from the UI thread while
+ * the default handlers arm from JavaScript. A function without the directive
+ * throws when a worklet calls it, which is exactly what shipped.
+ */
 export function startPointerGesture(): void {
+  'worklet';
   gestureStarting.value = true;
 }
 
@@ -183,7 +189,14 @@ export function flushPointer(): void {
       seq +
       (ts != null ? ',"ts":' + ts : '') +
       '}';
-    if (sendFromWorklet('{"v":' + PROTOCOL_VERSION + ',"tk":"' + token + '","m":' + message + '}')) {
+    // Reached through the global registry rather than an import: this runs on
+    // the UI thread, where the module handle the JS side holds does not exist.
+    // `installOnUIRuntime` is what puts this here.
+    const socket = (globalThis as any)?.expo?.modules?.EntangleUdp;
+    if (
+      socket &&
+      socket.send('{"v":' + PROTOCOL_VERSION + ',"tk":"' + token + '","m":' + message + '}')
+    ) {
       return;
     }
     // The socket refused it; fall through to the JS path rather than drop it.

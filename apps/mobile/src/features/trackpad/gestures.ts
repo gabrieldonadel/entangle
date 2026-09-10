@@ -128,9 +128,9 @@ export function createTrackpadGestures(
           runOnJS(dragBeginOnJs)();
         }
       })
+      // Drag motion and pan motion are the same frames on the wire; the Mac
+      // knows the button is down.
       .onChange((event) => {
-        // Drag motion and pan motion are the same frames on the wire; the Mac
-        // knows the button is down.
         'worklet';
         accumulatePointer(event.changeX, event.changeY);
       })
