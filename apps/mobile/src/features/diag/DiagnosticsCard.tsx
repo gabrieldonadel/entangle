@@ -19,6 +19,8 @@ export function DiagnosticsCard() {
   const sendRate = useDiag((s) => s.sendRate);
   const touchRate = useDiag((s) => s.touchRate);
   const transport = useDiag((s) => s.transport);
+  const uiThreadPointer = useDiag((s) => s.uiThreadPointer);
+  const setUiThreadPointer = useDiag((s) => s.setUiThreadPointer);
   const rttP50 = useDiag((s) => s.rttP50);
   const rttP95 = useDiag((s) => s.rttP95);
   const mac = useDiag((s) => s.mac);
@@ -40,6 +42,17 @@ export function DiagnosticsCard() {
           </Text>
         </View>
         <Switch value={enabled} onValueChange={toggle} />
+      </View>
+
+      <View style={styles.toggleRow}>
+        <View style={styles.toggleLabels}>
+          <Text style={styles.toggleTitle}>UI-thread pointer</Text>
+          <Text style={styles.toggleSubtitle}>
+            Sends movement from the gesture thread instead of hopping to JavaScript.
+            Turn it off if the trackpad misbehaves — the touch rate should halve.
+          </Text>
+        </View>
+        <Switch value={uiThreadPointer} onValueChange={setUiThreadPointer} />
       </View>
 
       {enabled ? (
@@ -107,7 +120,12 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
   },
-  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginTop: 4,
+  },
   toggleLabels: { flex: 1 },
   toggleTitle: { color: '#fff', fontSize: 16, fontWeight: '600' },
   toggleSubtitle: {

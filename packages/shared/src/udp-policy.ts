@@ -49,46 +49,57 @@ export function noteUdpOk(state: UdpPolicyState, now: number): UdpPolicyState {
   return { ...state, phase: 'active', lastOkAt: now };
 }
 
-export function decideUdpSend(state: UdpPolicyState, now: number): UdpDecision {
-  if (state.phase === 'off') {
-    return { next: state, sendDatagram: false, sendStream: true };
-  }
-
-  let phase = state.phase;
-  let probeStartedAt = state.probeStartedAt;
-  let lastOkAt = state.lastOkAt;
+/**
+ * Applies the timeouts without recording a send.
+ *
+ * Separate from `decideUdpSend` because once frames are going out from the UI
+ * thread, no per-frame decision runs on the JS side at all — something still
+ * has to notice that the confirmations stopped.
+ */
+export function reviewUdpPath(state: UdpPolicyState, now: number): UdpPolicyState {
+  if (state.phase === 'off') return state;
 
   // Frames are going out and nothing is coming back. Note the check against
   // `lastSentAt`: silence while the pointer is idle proves nothing, because
   // the Mac only confirms what it receives.
   if (
-    phase === 'active' &&
-    now - lastOkAt > UDP_OK_TIMEOUT_MS &&
+    state.phase === 'active' &&
+    now - state.lastOkAt > UDP_OK_TIMEOUT_MS &&
     now - state.lastSentAt < UDP_OK_TIMEOUT_MS
   ) {
-    phase = 'probing';
-    probeStartedAt = now;
-    lastOkAt = 0;
+    return { ...state, phase: 'probing', probeStartedAt: now, lastOkAt: 0 };
   }
 
-  if (phase === 'probing') {
-    if (probeStartedAt === 0) {
-      probeStartedAt = now;
-    } else if (lastOkAt === 0 && now - probeStartedAt > UDP_PROBE_TIMEOUT_MS) {
-      // Sent for a while, never confirmed. Something is eating these.
-      return {
-        next: initialUdpState('off'),
-        sendDatagram: false,
-        sendStream: true,
-      };
-    }
+  if (
+    state.phase === 'probing' &&
+    state.probeStartedAt !== 0 &&
+    state.lastOkAt === 0 &&
+    now - state.probeStartedAt > UDP_PROBE_TIMEOUT_MS
+  ) {
+    // Sent for a while, never confirmed. Something is eating these.
+    return initialUdpState('off');
   }
+
+  return state;
+}
+
+export function decideUdpSend(state: UdpPolicyState, now: number): UdpDecision {
+  const reviewed = reviewUdpPath(state, now);
+  if (reviewed.phase === 'off') {
+    return { next: reviewed, sendDatagram: false, sendStream: true };
+  }
+
+  // The probation clock starts with the first frame, not with the offer.
+  const probeStartedAt =
+    reviewed.phase === 'probing' && reviewed.probeStartedAt === 0
+      ? now
+      : reviewed.probeStartedAt;
 
   return {
-    next: { phase, probeStartedAt, lastOkAt, lastSentAt: now },
+    next: { ...reviewed, probeStartedAt, lastSentAt: now },
     sendDatagram: true,
     // During probation the datagram may be going nowhere, so the stream
     // carries a copy. Duplicates are dropped by sequence number on arrival.
-    sendStream: phase !== 'active',
+    sendStream: reviewed.phase !== 'active',
   };
 }

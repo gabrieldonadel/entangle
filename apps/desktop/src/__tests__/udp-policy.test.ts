@@ -2,6 +2,7 @@ import {
   decideUdpSend,
   initialUdpState,
   noteUdpOk,
+  reviewUdpPath,
   UDP_OK_TIMEOUT_MS,
   UDP_PROBE_TIMEOUT_MS,
 } from '@entangle/protocol';
@@ -90,5 +91,38 @@ describe('noteUdpOk', () => {
     // Only a fresh `welcome` reopens the socket, so a stray confirmation must
     // not put frames back on a socket nobody is holding.
     expect(noteUdpOk(initialUdpState('off'), T0).phase).toBe('off');
+  });
+});
+
+describe('reviewUdpPath', () => {
+  // Once the UI thread is sending frames, no per-frame decision runs on the
+  // JS side. This is the only thing left that can notice a path going away.
+
+  it('demotes a confirmed path that stops being confirmed', () => {
+    const active = { ...noteUdpOk(initialUdpState('probing'), T0), lastSentAt: T0 + 500 };
+    const reviewed = reviewUdpPath(active, T0 + UDP_OK_TIMEOUT_MS + 100);
+    expect(reviewed.phase).toBe('probing');
+    expect(reviewed.lastOkAt).toBe(0);
+  });
+
+  it('leaves a confirmed path alone while the pointer is idle', () => {
+    // No sends recorded, so silence says nothing about the path.
+    const active = noteUdpOk(initialUdpState('probing'), T0);
+    expect(reviewUdpPath(active, T0 + UDP_OK_TIMEOUT_MS * 5).phase).toBe('active');
+  });
+
+  it('gives up on a probation that never got confirmed', () => {
+    const probing = decideUdpSend(initialUdpState('probing'), T0).next;
+    expect(reviewUdpPath(probing, T0 + UDP_PROBE_TIMEOUT_MS + 1).phase).toBe('off');
+  });
+
+  it('does not start the probation clock on its own', () => {
+    // Nothing has been sent yet, so there is nothing to time out.
+    const fresh = initialUdpState('probing');
+    expect(reviewUdpPath(fresh, T0 + UDP_PROBE_TIMEOUT_MS * 10).phase).toBe('probing');
+  });
+
+  it('leaves a dead path dead', () => {
+    expect(reviewUdpPath(initialUdpState('off'), T0).phase).toBe('off');
   });
 });

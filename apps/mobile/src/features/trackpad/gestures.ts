@@ -1,15 +1,18 @@
 import * as Haptics from "expo-haptics";
 import { Gesture } from "react-native-gesture-handler";
+import { runOnJS } from "react-native-reanimated";
 
 import { PROTOCOL_VERSION } from "@entangle/protocol";
-import type { ClientMessage } from "@entangle/protocol";
 
 import { sendMessage, sendPointerFrame } from "@/net/send";
-import { diagEnabledRef, recordSend, recordTouch } from "@/state/diag";
 import {
-  useNaturalScrollRef,
-  usePointerSensitivityRef,
-} from "@/state/settings";
+  accumulatePointer,
+  endPointerGesture,
+  setStreamSender,
+  startPointerGesture,
+  takeSyncFrame,
+} from "./uplink";
+import { useNaturalScrollRef } from "@/state/settings";
 import { Platform } from "react-native";
 
 // Trackpad gesture event hooks. The same gesture configuration (thresholds,
@@ -52,21 +55,57 @@ const PAN_MIN_DISTANCE = Platform.OS === "android" ? 4 : 0;
 // object reference is captured stably and `.value` is always read live.
 type DragState = { value: boolean };
 
-export function createTrackpadGestures(handlers: TrackpadHandlers) {
+export interface TrackpadGestureOptions {
+  /**
+   * Run pointer movement on the UI thread instead of hopping to JavaScript.
+   *
+   * Measured at ~60 gesture callbacks a second on a 120 Hz phone with the hop
+   * in place: half the touch stream was being lost before anything could
+   * accumulate it. Off for the onboarding lesson and the demo, which need
+   * their own JavaScript callbacks per event.
+   */
+  uiThread?: boolean;
+}
+
+export function createTrackpadGestures(
+  handlers: TrackpadHandlers,
+  options: TrackpadGestureOptions = {},
+) {
   const dragState: DragState = { value: false };
+  const uiThread = options.uiThread === true;
+
+  // Called back on the JS thread for the parts that cannot run on the UI one:
+  // haptics, and the messages that travel on the WebSocket.
+  const dragBeginOnJs = () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    handlers.onDragBegin?.();
+  };
+  const dragEndOnJs = () => {
+    handlers.onDragEnd?.();
+  };
 
   // Single-finger pan: cursor motion. No haptic on swipe.
-  const pan = Gesture.Pan()
-    .minPointers(1)
-    .maxPointers(1)
-    .minDistance(PAN_MIN_DISTANCE)
-    .onChange((event) => {
-      handlers.onMove?.(event.changeX, event.changeY);
-    })
-    .onEnd(() => {
-      handlers.onMoveEnd?.();
-    })
-    .runOnJS(true);
+  const pan = Gesture.Pan().minPointers(1).maxPointers(1).minDistance(PAN_MIN_DISTANCE);
+  if (uiThread) {
+    pan
+      .onChange((event) => {
+        'worklet';
+        accumulatePointer(event.changeX, event.changeY);
+      })
+      .onEnd(() => {
+        'worklet';
+        endPointerGesture();
+      });
+  } else {
+    pan
+      .onChange((event) => {
+        handlers.onMove?.(event.changeX, event.changeY);
+      })
+      .onEnd(() => {
+        handlers.onMoveEnd?.();
+      })
+      .runOnJS(true);
+  }
 
   // Long-press to arm a drag (e.g. text selection on macOS). When the user
   // holds the finger reasonably still for 450 ms, this gesture wins the race
@@ -77,36 +116,61 @@ export function createTrackpadGestures(handlers: TrackpadHandlers) {
   // trigger `pan` immediately), this gesture also wins — but the `onStart`
   // distance check below means we treat it as a regular pan: no haptic, no
   // drag-begin. Either way `onEnd` releases the drag cleanly if it was armed.
-  const dragPan = Gesture.Pan()
-    .minPointers(1)
-    .maxPointers(1)
-    .activateAfterLongPress(450)
-    .onStart((event) => {
-      const traveled = Math.hypot(event.translationX, event.translationY);
-      if (traveled <= DRAG_TRAVEL_TOLERANCE) {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        handlers.onDragBegin?.();
-        dragState.value = true;
-      }
-    })
-    .onChange((event) => {
-      if (dragState.value) {
-        handlers.onDragMove?.(event.changeX, event.changeY);
-      } else {
-        // The long-press fired but the finger had already moved past the
-        // tolerance, so we treat it as a continuation of regular panning.
-        handlers.onMove?.(event.changeX, event.changeY);
-      }
-    })
-    .onEnd(() => {
-      if (dragState.value) {
-        handlers.onDragEnd?.();
-        dragState.value = false;
-      } else {
-        handlers.onMoveEnd?.();
-      }
-    })
-    .runOnJS(true);
+  const dragPan = Gesture.Pan().minPointers(1).maxPointers(1).activateAfterLongPress(450);
+  if (uiThread) {
+    dragPan
+      .onStart((event) => {
+        'worklet';
+        const traveled = Math.hypot(event.translationX, event.translationY);
+        if (traveled <= DRAG_TRAVEL_TOLERANCE) {
+          dragState.value = true;
+          startPointerGesture();
+          runOnJS(dragBeginOnJs)();
+        }
+      })
+      .onChange((event) => {
+        // Drag motion and pan motion are the same frames on the wire; the Mac
+        // knows the button is down.
+        'worklet';
+        accumulatePointer(event.changeX, event.changeY);
+      })
+      .onEnd(() => {
+        'worklet';
+        endPointerGesture();
+        if (dragState.value) {
+          dragState.value = false;
+          runOnJS(dragEndOnJs)();
+        }
+      });
+  } else {
+    dragPan
+      .onStart((event) => {
+        const traveled = Math.hypot(event.translationX, event.translationY);
+        if (traveled <= DRAG_TRAVEL_TOLERANCE) {
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          handlers.onDragBegin?.();
+          dragState.value = true;
+        }
+      })
+      .onChange((event) => {
+        if (dragState.value) {
+          handlers.onDragMove?.(event.changeX, event.changeY);
+        } else {
+          // The long-press fired but the finger had already moved past the
+          // tolerance, so we treat it as a continuation of regular panning.
+          handlers.onMove?.(event.changeX, event.changeY);
+        }
+      })
+      .onEnd(() => {
+        if (dragState.value) {
+          handlers.onDragEnd?.();
+          dragState.value = false;
+        } else {
+          handlers.onMoveEnd?.();
+        }
+      })
+      .runOnJS(true);
+  }
 
   const scrollPan = Gesture.Pan()
     .minPointers(2)
@@ -193,122 +257,42 @@ export function createTrackpadGestures(handlers: TrackpadHandlers) {
 // These send the events to the connected Mac. Used by the production
 // TrackpadSurface; the onboarding lesson supplies its own handlers instead.
 
-// Pointer coalescing. Gesture events can arrive faster than is worth putting
-// on the wire, so deltas accumulate and go out at most every
-// MIN_SEND_INTERVAL_MS.
-//
-// This used to flush on `requestAnimationFrame`, which pinned the send rate to
-// RN's JS display link — 60 Hz in practice, even on a 120 Hz phone, and it
-// added up to a frame of quantization on top. A monotonic rate limit lets the
-// cadence follow touch delivery instead of the display clock.
-const MIN_SEND_INTERVAL_MS = 4;
+// The uplink hands frames back here when the datagram path is not carrying
+// them, which is also how the fallback in `net/udp` stays in charge.
+setStreamSender(sendPointerFrame);
 
-let pendingDx = 0;
-let pendingDy = 0;
-let pendingSeq = 0;
-let lastSentAt = 0;
-let flushTimer: ReturnType<typeof setTimeout> | null = null;
+// Pointer frames are accumulated and sent by `uplink`, which runs on the UI
+// thread when the surface asks for it. The functions below are the JS-side
+// pieces that cannot go there: the messages that travel on the WebSocket.
 
 /**
- * Running total for the current gesture, and the gesture's number.
+ * Puts the cursor's current position on the WebSocket before a message that
+ * acts on it — a click, a drag boundary, a scroll.
  *
- * Every frame carries the total, not just the change since the last one, so a
- * frame that is lost, duplicated or delivered late costs nothing: the Mac
- * applies `total - lastApplied` and the next frame carries the whole truth.
- * The gesture number travels on every frame too, so the Mac still sees the
- * boundary when the opening frame goes missing.
+ * Ordering only holds within one transport, so a click on the stream can
+ * overtake the datagram that positioned the cursor. The sync frame is
+ * cumulative and carries a fresh sequence number, so the Mac applies the
+ * difference: the movement if the datagram never arrived, nothing if it did.
  */
-let gestureCx = 0;
-let gestureCy = 0;
-let gestureId = 0;
-/** Set when the next frame opens a new gesture. */
-let gestureStarting = true;
-
-/** The last frame put on the wire, for the stream copy described below. */
-let lastFrame: ClientMessage | null = null;
-
-function flushMove(alsoStream = false) {
-  if (flushTimer != null) {
-    clearTimeout(flushTimer);
-    flushTimer = null;
-  }
-  if (pendingDx === 0 && pendingDy === 0) return;
-  pendingSeq += 1;
-  lastSentAt = now();
-  const frame: ClientMessage = {
-    v: PROTOCOL_VERSION,
-    t: "p.move",
-    dx: pendingDx,
-    dy: pendingDy,
-    cx: gestureCx,
-    cy: gestureCy,
-    g: gestureId,
-    seq: pendingSeq,
-    // Only while diagnostics are on: the Mac uses the gap between successive
-    // stamps to measure delay variation, so any monotonic clock will do.
-    ...(diagEnabledRef.current ? { ts: lastSentAt } : null),
-  };
-  lastFrame = frame;
-  sendPointerFrame(frame, alsoStream);
-  recordSend();
-  pendingDx = 0;
-  pendingDy = 0;
+function sendSyncFrame() {
+  const frame = takeSyncFrame();
+  if (!frame) return;
+  sendMessage({ v: PROTOCOL_VERSION, t: "p.move", ...frame });
 }
 
-/**
- * Flushes before a message that acts on the cursor's position — a click, a
- * drag boundary, a scroll — all of which travel on the WebSocket.
- *
- * Ordering only holds within one transport, so a click on the stream could
- * otherwise overtake the datagram that positioned the cursor and land in the
- * wrong place. Putting the positioning frame on the stream too fixes the
- * order; the duplicate costs nothing because the Mac drops whichever copy
- * arrives second.
- */
-function flushMoveBeforeAction() {
-  if (pendingDx !== 0 || pendingDy !== 0) {
-    flushMove(true);
-    return;
-  }
-  if (lastFrame != null) sendMessage(lastFrame);
+function sendDragBegin() {
+  sendSyncFrame();
+  sendMessage({ v: PROTOCOL_VERSION, t: "p.drag", phase: "begin" });
 }
 
-/** Arms a new gesture: the next frame restarts the running total. */
-function startMoveGesture() {
-  gestureStarting = true;
+function sendDragEnd() {
+  sendSyncFrame();
+  sendMessage({ v: PROTOCOL_VERSION, t: "p.drag", phase: "end" });
 }
 
-function now(): number {
-  return typeof performance !== "undefined" && typeof performance.now === "function"
-    ? performance.now()
-    : Date.now();
-}
-
-function accumulateMove(dx: number, dy: number) {
-  if (gestureStarting) {
-    gestureStarting = false;
-    gestureId += 1;
-    gestureCx = 0;
-    gestureCy = 0;
-  }
-  const sensitivity = usePointerSensitivityRef.current;
-  const scaledDx = dx * sensitivity;
-  const scaledDy = dy * sensitivity;
-  pendingDx += scaledDx;
-  pendingDy += scaledDy;
-  gestureCx += scaledDx;
-  gestureCy += scaledDy;
-  recordTouch();
-
-  const elapsed = now() - lastSentAt;
-  if (elapsed >= MIN_SEND_INTERVAL_MS) {
-    flushMove();
-    return;
-  }
-  // Too soon. Keep accumulating and make sure the tail still goes out.
-  if (flushTimer == null) {
-    flushTimer = setTimeout(flushMove, MIN_SEND_INTERVAL_MS - elapsed);
-  }
+function sendClick(button: "left" | "right") {
+  sendSyncFrame();
+  sendMessage({ v: PROTOCOL_VERSION, t: "p.click", button, phase: "tap" });
 }
 
 let pendingScrollDx = 0;
@@ -340,44 +324,21 @@ function accumulateScroll(dx: number, dy: number) {
 
 export function createDefaultTrackpadHandlers(): TrackpadHandlers {
   return {
-    onMove: accumulateMove,
-    onMoveEnd: () => {
-      // The last frame of a gesture goes on the stream too, so whatever the
-      // user does next is ordered behind the cursor's final position.
-      flushMove(true);
-      startMoveGesture();
-    },
-    onTap: () => {
-      flushMoveBeforeAction();
-      sendMessage({
-        v: PROTOCOL_VERSION,
-        t: "p.click",
-        button: "left",
-        phase: "tap",
-      });
-    },
-    onRightClick: () => {
-      flushMoveBeforeAction();
-      sendMessage({
-        v: PROTOCOL_VERSION,
-        t: "p.click",
-        button: "right",
-        phase: "tap",
-      });
-    },
+    onMove: accumulatePointer,
+    onMoveEnd: endPointerGesture,
+    onTap: () => sendClick("left"),
+    onRightClick: () => sendClick("right"),
     onDragBegin: () => {
-      flushMoveBeforeAction();
-      startMoveGesture();
-      sendMessage({ v: PROTOCOL_VERSION, t: "p.drag", phase: "begin" });
+      startPointerGesture();
+      sendDragBegin();
     },
-    onDragMove: accumulateMove,
+    onDragMove: accumulatePointer,
     onDragEnd: () => {
-      flushMove(true);
-      startMoveGesture();
-      sendMessage({ v: PROTOCOL_VERSION, t: "p.drag", phase: "end" });
+      endPointerGesture();
+      sendDragEnd();
     },
     onScrollBegin: () => {
-      flushMoveBeforeAction();
+      sendSyncFrame();
       sendMessage({
         v: PROTOCOL_VERSION,
         t: "s.wheel",

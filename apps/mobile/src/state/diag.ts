@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { summarize } from '@entangle/protocol';
+
+import { syncPointerConfig } from '@/features/trackpad/uplink';
 import type { DiagStateMessage } from '@entangle/protocol';
 
 /**
@@ -11,8 +13,9 @@ import type { DiagStateMessage } from '@entangle/protocol';
  */
 
 /**
- * Read on every pointer flush, so it is a plain ref rather than a store read.
- * Mirrors the pattern in `settings.ts`.
+ * Checked when a round trip lands, so it is a plain ref rather than a store
+ * read. The pointer path has its own copy as a shared value, because it runs
+ * on the UI thread where this one is not visible.
  */
 export const diagEnabledRef = { current: false };
 
@@ -30,6 +33,13 @@ export type Transport = 'off' | 'probing' | 'active';
 
 interface DiagState {
   enabled: boolean;
+  /**
+   * Run pointer movement on the UI thread. On by default; the switch exists
+   * so a bad interaction can be turned off without a new build, and so the
+   * two paths can be compared inside one session.
+   */
+  uiThreadPointer: boolean;
+  setUiThreadPointer: (enabled: boolean) => void;
   /** Which wire pointer frames are currently taking. */
   transport: Transport;
   /** Raw gesture callbacks in the last second, before coalescing. */
@@ -48,15 +58,13 @@ interface DiagState {
   reset: () => void;
 }
 
-/** Sends since the last tick. A plain counter: no re-render per frame. */
-let sentSinceTick = 0;
-/** Gesture callbacks since the last tick. */
-let touchesSinceTick = 0;
 /** Round trips since the last tick. */
 let rttSamples: number[] = [];
 
 export const useDiag = create<DiagState>((set) => ({
   enabled: false,
+  uiThreadPointer: true,
+  setUiThreadPointer: (enabled) => set({ uiThreadPointer: enabled }),
   transport: 'off',
   logPath: null,
   touchRate: 0,
@@ -66,8 +74,7 @@ export const useDiag = create<DiagState>((set) => ({
   mac: null,
   setEnabled: (enabled) => {
     diagEnabledRef.current = enabled;
-    sentSinceTick = 0;
-    touchesSinceTick = 0;
+    syncPointerConfig({ diagEnabled: enabled });
     rttSamples = [];
     set({
       enabled,
@@ -94,8 +101,7 @@ export const useDiag = create<DiagState>((set) => ({
     })),
   reset: () => {
     diagEnabledRef.current = false;
-    sentSinceTick = 0;
-    touchesSinceTick = 0;
+    syncPointerConfig({ diagEnabled: false });
     rttSamples = [];
     set({
       enabled: false,
@@ -108,21 +114,6 @@ export const useDiag = create<DiagState>((set) => ({
     });
   },
 }));
-
-/** Called from the pointer flush. Deliberately does not touch the store. */
-export function recordSend() {
-  if (!diagEnabledRef.current) return;
-  sentSinceTick += 1;
-}
-
-/**
- * Called from the gesture callback, before coalescing. Also deliberately
- * store-free: this is the hottest callback in the app.
- */
-export function recordTouch() {
-  if (!diagEnabledRef.current) return;
-  touchesSinceTick += 1;
-}
 
 export function recordRtt(ms: number) {
   if (!diagEnabledRef.current) return;
@@ -144,12 +135,13 @@ export interface PhoneStats {
  * numbers and the reported ones are always the same second — and so this
  * store never has to import the socket.
  */
-export function tickPhoneStats(): PhoneStats {
-  const sendRate = sentSinceTick;
-  const touchRate = touchesSinceTick;
+export function tickPhoneStats(counters: {
+  touches: number;
+  sends: number;
+}): PhoneStats {
+  const sendRate = counters.sends;
+  const touchRate = counters.touches;
   const samples = rttSamples;
-  sentSinceTick = 0;
-  touchesSinceTick = 0;
   rttSamples = [];
   const { p50, p95 } = summarize(samples);
   const state = useDiag.getState();

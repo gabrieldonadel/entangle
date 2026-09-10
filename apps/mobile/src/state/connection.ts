@@ -18,6 +18,7 @@ import {
 } from '@entangle/protocol';
 import type { ClientMessage, DockApp, Message } from '@entangle/protocol';
 
+import { drainPointerCounters, syncPointerConfig } from '@/features/trackpad/uplink';
 import * as udp from '@/net/udp';
 
 import { useAudio } from './audio';
@@ -144,6 +145,7 @@ export const useConnection = create<ConnectionState>((set, get) => ({
     useDisplay.getState().reset();
     useDiag.getState().reset();
     udp.reset();
+    syncPointerConfig({ datagramToken: '', diagEnabled: false });
     set({
       phase: 'idle',
       target: null,
@@ -264,6 +266,7 @@ function openSocket() {
     clearTimers();
     // The token dies with the socket that issued it.
     udp.reset();
+    syncPointerConfig({ datagramToken: '' });
     if (manuallyDisconnected) return;
     if (useConnection.getState().phase === 'pairing') return;
     scheduleReconnect();
@@ -322,6 +325,7 @@ function handleMessage(msg: Message) {
   }
   if (isUdpOk(msg)) {
     udp.noteOk();
+    syncPointerConfig({ datagramToken: udp.activeToken() ?? '' });
     return;
   }
   switch (msg.t) {
@@ -448,12 +452,18 @@ function startHeartbeat() {
     sendPing();
   }, DIAG_PING_INTERVAL_MS);
 
-  // One tick owns both the displayed phone figures and the ones the Mac writes
-  // to its log, so the two can never disagree.
+  // One tick owns the counters, the datagram watchdog and the phone's half of
+  // the diagnostics, so none of them can disagree about the same second.
   clearInterval(diagReportTimer ?? undefined);
   diagReportTimer = setInterval(() => {
+    const counters = drainPointerCounters();
+    udp.reviewPath(counters.sends);
+    // Only a confirmed path is handed to the UI thread; anything else keeps
+    // frames on the JS path, where the probation copy is sent.
+    syncPointerConfig({ datagramToken: udp.activeToken() ?? '' });
+
     if (!useDiag.getState().enabled) return;
-    const stats = tickPhoneStats();
+    const stats = tickPhoneStats(counters);
     useDiag.setState({ transport: udp.getState() });
     if (!socket || socket.readyState !== WebSocket.OPEN) return;
     socket.send(encode({ v: PROTOCOL_VERSION, t: 'diag.report', ...stats }));

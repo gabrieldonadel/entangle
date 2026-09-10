@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 
+import { useDiag } from '@/state/diag';
+
 import { createDefaultTrackpadHandlers, createTrackpadGestures } from './gestures';
 
 export type LocalGestureEvent =
@@ -21,9 +23,15 @@ export interface TrackpadSurfaceProps {
 }
 
 export function TrackpadSurface({ onLocalGesture }: TrackpadSurfaceProps = {}) {
+  const uiThreadPointer = useDiag((s) => s.uiThreadPointer);
+
   const gesture = useMemo(() => {
     const defaults = createDefaultTrackpadHandlers();
-    if (!onLocalGesture) return createTrackpadGestures(defaults);
+    // Demo mode needs a JavaScript callback per event to animate its own
+    // cursor, so it keeps the JS path; the real trackpad does not.
+    if (!onLocalGesture) {
+      return createTrackpadGestures(defaults, { uiThread: uiThreadPointer });
+    }
     return createTrackpadGestures({
       ...defaults,
       onMove: (dx, dy) => {
@@ -47,7 +55,7 @@ export function TrackpadSurface({ onLocalGesture }: TrackpadSurfaceProps = {}) {
         onLocalGesture({ type: 'rightClick' });
       },
     });
-  }, [onLocalGesture]);
+  }, [onLocalGesture, uiThreadPointer]);
 
   return (
     <GestureDetector gesture={gesture}>

@@ -3,6 +3,7 @@ import {
   encodeDatagram,
   initialUdpState,
   noteUdpOk,
+  reviewUdpPath,
 } from '@entangle/protocol';
 import type { ClientMessage, UdpOffer, UdpPolicyState } from '@entangle/protocol';
 import * as EntangleUdp from 'entangle-udp';
@@ -22,6 +23,9 @@ export function configure(host: string, offer?: UdpOffer): void {
   reset();
   if (!offer || !EntangleUdp.isAvailable) return;
   if (!EntangleUdp.open(host, offer.port)) return;
+  // Makes the socket reachable from the UI thread. Failure is not fatal: the
+  // pointer keeps going through the JS path.
+  EntangleUdp.installOnWorkletRuntime();
   token = offer.token;
   policy = initialUdpState('probing');
 }
@@ -65,4 +69,33 @@ export function needsStreamCopy(): boolean {
 
 export function getState(): UdpPolicyState['phase'] {
   return policy.phase;
+}
+
+/**
+ * The token to hand the UI thread, or null while frames should stay on the
+ * JS path. Only a confirmed path is worth sending to directly, because the
+ * probation copy has to come from the JS side.
+ */
+export function activeToken(): string | null {
+  return policy.phase === 'active' ? token : null;
+}
+
+/**
+ * Re-applies the timeouts once a second.
+ *
+ * While the UI thread is sending, no per-frame decision runs here, so this is
+ * the only thing that can notice the confirmations stopping. `sends` is how
+ * many frames went out in the last second — silence with no sends proves
+ * nothing.
+ */
+export function reviewPath(sends: number): void {
+  if (policy.phase === 'off' || token == null) return;
+  const now = Date.now();
+  if (sends > 0) {
+    policy = { ...policy, lastSentAt: now };
+  }
+  const next = reviewUdpPath(policy, now);
+  if (next === policy) return;
+  policy = next;
+  if (policy.phase === 'off') reset();
 }
