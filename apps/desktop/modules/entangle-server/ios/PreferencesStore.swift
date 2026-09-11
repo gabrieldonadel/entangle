@@ -13,6 +13,7 @@ import ServiceManagement
     static let sensitivity = "entangle.pref.sensitivity"
     static let naturalScroll = "entangle.pref.naturalScroll"
     static let tapToClick = "entangle.pref.tapToClick"
+    static let highlightPointer = "entangle.pref.highlightPointer"
     static let openAtLogin = "entangle.pref.openAtLogin"
     static let showMenuBarIcon = "entangle.pref.showMenuBarIcon"
     static let hideDockIcon = "entangle.pref.hideDockIcon"
@@ -25,6 +26,7 @@ import ServiceManagement
       Key.sensitivity: 1.5,
       Key.naturalScroll: true,
       Key.tapToClick: true,
+      Key.highlightPointer: true,
       Key.openAtLogin: false,
       Key.showMenuBarIcon: true,
       Key.hideDockIcon: true,
@@ -64,6 +66,12 @@ import ServiceManagement
   var tapToClick: Bool {
     get { defaults.bool(forKey: Key.tapToClick) }
     set { defaults.set(newValue, forKey: Key.tapToClick) }
+  }
+
+  /// Ring the pointer while a phone is connected, so it is easier to spot.
+  var highlightPointer: Bool {
+    get { defaults.bool(forKey: Key.highlightPointer) }
+    set { defaults.set(newValue, forKey: Key.highlightPointer) }
   }
 
   // MARK: - Launch
@@ -115,6 +123,7 @@ import ServiceManagement
       "sensitivity": sensitivity,
       "naturalScroll": naturalScroll,
       "tapToClick": tapToClick,
+      "highlightPointer": highlightPointer,
       "openAtLogin": openAtLogin,
       "showMenuBarIcon": showMenuBarIcon,
       "hideDockIcon": hideDockIcon,
@@ -129,6 +138,7 @@ import ServiceManagement
     if let v = patch["sensitivity"] as? Int { sensitivity = Double(v) }
     if let v = patch["naturalScroll"] as? Bool { naturalScroll = v }
     if let v = patch["tapToClick"] as? Bool { tapToClick = v }
+    if let v = patch["highlightPointer"] as? Bool { highlightPointer = v }
     if let v = patch["openAtLogin"] as? Bool { openAtLogin = v }
     if let v = patch["showMenuBarIcon"] as? Bool { showMenuBarIcon = v }
     if let v = patch["hideDockIcon"] as? Bool { hideDockIcon = v }

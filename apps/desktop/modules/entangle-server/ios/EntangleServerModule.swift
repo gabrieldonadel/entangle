@@ -50,6 +50,7 @@ public class EntangleServerModule: Module {
       DisplayController.shared.onChange = nil
       LatencyMonitor.shared.setEnabled(false)
       LatencyMonitor.shared.onSnapshot = nil
+      PointerHighlight.shared.setEnabled(false)
       self.datagrams.stop()
       self.server?.stop()
       self.server = nil
@@ -67,6 +68,7 @@ public class EntangleServerModule: Module {
       DisplayController.shared.onChange = nil
       LatencyMonitor.shared.setEnabled(false)
       LatencyMonitor.shared.onSnapshot = nil
+      PointerHighlight.shared.setEnabled(false)
       self.datagrams.stop()
       self.datagramPort = 0
       self.server?.stop()
@@ -157,6 +159,7 @@ public class EntangleServerModule: Module {
       PreferencesStore.shared.apply(patch)
       let after = PreferencesStore.shared.snapshot()
       self.sendEvent("preferencesChanged", after)
+      self.refreshPointerHighlight()
       let needsRestart =
         ((before["port"] as? Int) != (after["port"] as? Int)) ||
         ((before["serverName"] as? String) != (after["serverName"] as? String)) ||
@@ -256,6 +259,7 @@ public class EntangleServerModule: Module {
     server.onClientConnected = { [weak self, weak server] id, host in
       guard let self = self else { return }
       self.connectedClients.insert(id.uuidString)
+      self.refreshPointerHighlight()
       var payload: [String: Any] = ["id": id.uuidString, "host": host]
       // The datagram token is issued here and travels to the phone inside
       // `welcome`, which JavaScript builds.
@@ -284,6 +288,7 @@ public class EntangleServerModule: Module {
       self?.clearDatagramCount(for: id)
       self?.connectedClients.remove(id.uuidString)
       self?.sendEvent("clientDisconnected", ["id": id.uuidString])
+      self?.refreshPointerHighlight()
       // Nobody left to read the numbers, and they are not free to collect.
       if self?.connectedClients.isEmpty == true {
         LatencyMonitor.shared.setEnabled(false)
@@ -332,6 +337,19 @@ public class EntangleServerModule: Module {
       server.broadcast(payload)
     }
     DisplayController.shared.startWatching()
+  }
+
+  /// The ring is only wanted while a phone is actually driving the pointer.
+  ///
+  /// Reads `connectedClients`, which the callbacks update before calling this
+  /// and which is already the module's answer to "is anyone connected". The
+  /// original version asked the server for a count, and needed the server
+  /// passed in because the connect callback can fire before `startServer` has
+  /// finished assigning `self.server`; this has neither problem.
+  private func refreshPointerHighlight() {
+    PointerHighlight.shared.setEnabled(
+      !connectedClients.isEmpty && PreferencesStore.shared.highlightPointer
+    )
   }
 
   private func wireDiagnostics(_ server: WebSocketServer) {
