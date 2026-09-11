@@ -127,6 +127,7 @@ enum MessageDispatcher {
     LatencyMonitor.shared.recordPhoneReport(
       sendRate: Int(sendRate),
       touchRate: Int(numeric(json["touchRate"]) ?? sendRate),
+      uiThread: json["uiThread"] as? Bool,
       rttP50: rttP50,
       rttP95: rttP95
     )

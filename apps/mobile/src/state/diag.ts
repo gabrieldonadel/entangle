@@ -125,6 +125,7 @@ export interface PhoneStats {
   touchRate: number;
   rttP50: number;
   rttP95: number;
+  uiThread: boolean;
 }
 
 /**
@@ -150,5 +151,5 @@ export function tickPhoneStats(counters: {
   const rttP50 = samples.length > 0 ? p50 : state.rttP50;
   const rttP95 = samples.length > 0 ? p95 : state.rttP95;
   useDiag.setState({ sendRate, touchRate, rttP50, rttP95 });
-  return { sendRate, touchRate, rttP50, rttP95 };
+  return { sendRate, touchRate, rttP50, rttP95, uiThread: state.uiThreadPointer };
 }

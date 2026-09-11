@@ -39,6 +39,7 @@ describe('diagnostics messages', () => {
       t: 'diag.report',
       sendRate: 117,
       touchRate: 119,
+      uiThread: true,
       rttP50: 11,
       rttP95: 23,
     };

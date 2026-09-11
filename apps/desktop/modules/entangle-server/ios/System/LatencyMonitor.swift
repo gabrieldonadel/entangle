@@ -65,6 +65,9 @@ final class LatencyMonitor {
   /// The phone's own figures, as of its last `diag.report`.
   private var phoneSendRate: Int?
   private var phoneTouchRate: Int?
+  /// Which thread the phone is sending from, so an A/B is readable without
+  /// inferring it from the numbers being compared.
+  private var phoneUiThread: Bool?
   private var phoneRttP50: Double?
   private var phoneRttP95: Double?
 
@@ -180,12 +183,19 @@ final class LatencyMonitor {
     processing.append(posted - arrival)
   }
 
-  func recordPhoneReport(sendRate: Int, touchRate: Int, rttP50: Double, rttP95: Double) {
+  func recordPhoneReport(
+    sendRate: Int,
+    touchRate: Int,
+    uiThread: Bool?,
+    rttP50: Double,
+    rttP95: Double
+  ) {
     lock.lock()
     defer { lock.unlock() }
     guard isEnabled else { return }
     phoneSendRate = sendRate
     phoneTouchRate = touchRate
+    phoneUiThread = uiThread
     phoneRttP50 = rttP50
     phoneRttP95 = rttP95
   }
@@ -293,6 +303,7 @@ final class LatencyMonitor {
     ]
     if let sendRate = phoneSendRate { record["phoneSent"] = sendRate }
     if let touchRate = phoneTouchRate { record["phoneTouches"] = touchRate }
+    if let uiThread = phoneUiThread { record["phoneUiThread"] = uiThread }
     if let rtt = phoneRttP50 { record["phoneRttP50"] = jsonNumber(rtt) }
     if let rtt = phoneRttP95 { record["phoneRttP95"] = jsonNumber(rtt) }
     DiagLog.shared.write(record)
@@ -350,6 +361,7 @@ final class LatencyMonitor {
       let total = runPhoneSendRates.reduce(0, +)
       record["phoneSentAvg"] = jsonNumber(Double(total) / Double(runPhoneSendRates.count))
     }
+    if let uiThread = phoneUiThread { record["phoneUiThread"] = uiThread }
     if !runPhoneRtt.isEmpty {
       record["phoneRttP50"] = jsonNumber(Self.percentile(runPhoneRtt, 0.5))
       record["phoneRttWorst"] = jsonNumber(runPhoneRtt.max() ?? 0)
@@ -394,6 +406,7 @@ final class LatencyMonitor {
     lastClientTimestamp = nil
     phoneSendRate = nil
     phoneTouchRate = nil
+    phoneUiThread = nil
     phoneRttP50 = nil
     phoneRttP95 = nil
     resetRunLocked()

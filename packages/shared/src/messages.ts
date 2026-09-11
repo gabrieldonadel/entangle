@@ -184,6 +184,12 @@ export interface DiagReportMessage {
   touchRate: number;
   rttP50: number;
   rttP95: number;
+  /**
+   * Whether pointer frames are leaving from the UI thread. In the log next to
+   * everything else, because working out which half of an A/B a line belongs
+   * to from the numbers themselves is guesswork.
+   */
+  uiThread: boolean;
 }
 
 export interface DockListRequestMessage {
