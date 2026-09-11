@@ -65,6 +65,15 @@ export interface TrackpadGestureOptions {
    * their own JavaScript callbacks per event.
    */
   uiThread?: boolean;
+  /**
+   * Called with true when a finger lands and false when the gesture is over.
+   *
+   * Used to hold the display at its maximum refresh rate while the user is
+   * swiping: iOS delivers touches in step with the screen, and a static
+   * screen lets ProMotion idle at 60 Hz — which is where the touch stream has
+   * been pinned all along.
+   */
+  onTouchActivity?: (active: boolean) => void;
 }
 
 export function createTrackpadGestures(
@@ -73,6 +82,7 @@ export function createTrackpadGestures(
 ) {
   const dragState: DragState = { value: false };
   const uiThread = options.uiThread === true;
+  const onTouchActivity = options.onTouchActivity;
 
   // Called back on the JS thread for the parts that cannot run on the UI one:
   // haptics, and the messages that travel on the WebSocket.
@@ -88,6 +98,14 @@ export function createTrackpadGestures(
   const pan = Gesture.Pan().minPointers(1).maxPointers(1).minDistance(PAN_MIN_DISTANCE);
   if (uiThread) {
     pan
+      .onBegin(() => {
+        'worklet';
+        if (onTouchActivity) runOnJS(onTouchActivity)(true);
+      })
+      .onFinalize(() => {
+        'worklet';
+        if (onTouchActivity) runOnJS(onTouchActivity)(false);
+      })
       .onChange((event) => {
         'worklet';
         accumulatePointer(event.changeX, event.changeY);
@@ -98,6 +116,12 @@ export function createTrackpadGestures(
       });
   } else {
     pan
+      .onBegin(() => {
+        onTouchActivity?.(true);
+      })
+      .onFinalize(() => {
+        onTouchActivity?.(false);
+      })
       .onChange((event) => {
         handlers.onMove?.(event.changeX, event.changeY);
       })

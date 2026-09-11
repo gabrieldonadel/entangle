@@ -190,6 +190,8 @@ export interface DiagReportMessage {
    * to from the numbers themselves is guesswork.
    */
   uiThread: boolean;
+  /** Whether the phone is holding the display at its maximum refresh rate. */
+  highRefresh: boolean;
 }
 
 export interface DockListRequestMessage {

@@ -40,6 +40,13 @@ interface DiagState {
    */
   uiThreadPointer: boolean;
   setUiThreadPointer: (enabled: boolean) => void;
+  /**
+   * Hold the display at its maximum refresh rate while a finger is down.
+   * iOS delivers touches in step with the screen, and a static screen lets
+   * ProMotion idle at 60 Hz.
+   */
+  highRefresh: boolean;
+  setHighRefresh: (enabled: boolean) => void;
   /** Which wire pointer frames are currently taking. */
   transport: Transport;
   /** Raw gesture callbacks in the last second, before coalescing. */
@@ -65,6 +72,8 @@ export const useDiag = create<DiagState>((set) => ({
   enabled: false,
   uiThreadPointer: true,
   setUiThreadPointer: (enabled) => set({ uiThreadPointer: enabled }),
+  highRefresh: true,
+  setHighRefresh: (enabled) => set({ highRefresh: enabled }),
   transport: 'off',
   logPath: null,
   touchRate: 0,
@@ -126,6 +135,7 @@ export interface PhoneStats {
   rttP50: number;
   rttP95: number;
   uiThread: boolean;
+  highRefresh: boolean;
 }
 
 /**
@@ -151,5 +161,12 @@ export function tickPhoneStats(counters: {
   const rttP50 = samples.length > 0 ? p50 : state.rttP50;
   const rttP95 = samples.length > 0 ? p95 : state.rttP95;
   useDiag.setState({ sendRate, touchRate, rttP50, rttP95 });
-  return { sendRate, touchRate, rttP50, rttP95, uiThread: state.uiThreadPointer };
+  return {
+    sendRate,
+    touchRate,
+    rttP50,
+    rttP95,
+    uiThread: state.uiThreadPointer,
+    highRefresh: state.highRefresh,
+  };
 }

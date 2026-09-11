@@ -128,6 +128,7 @@ enum MessageDispatcher {
       sendRate: Int(sendRate),
       touchRate: Int(numeric(json["touchRate"]) ?? sendRate),
       uiThread: json["uiThread"] as? Bool,
+      highRefresh: json["highRefresh"] as? Bool,
       rttP50: rttP50,
       rttP95: rttP95
     )

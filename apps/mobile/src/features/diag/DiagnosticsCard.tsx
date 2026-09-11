@@ -21,6 +21,8 @@ export function DiagnosticsCard() {
   const transport = useDiag((s) => s.transport);
   const uiThreadPointer = useDiag((s) => s.uiThreadPointer);
   const setUiThreadPointer = useDiag((s) => s.setUiThreadPointer);
+  const highRefresh = useDiag((s) => s.highRefresh);
+  const setHighRefresh = useDiag((s) => s.setHighRefresh);
   const rttP50 = useDiag((s) => s.rttP50);
   const rttP95 = useDiag((s) => s.rttP95);
   const mac = useDiag((s) => s.mac);
@@ -53,6 +55,17 @@ export function DiagnosticsCard() {
           </Text>
         </View>
         <Switch value={uiThreadPointer} onValueChange={setUiThreadPointer} />
+      </View>
+
+      <View style={styles.toggleRow}>
+        <View style={styles.toggleLabels}>
+          <Text style={styles.toggleTitle}>Hold 120 Hz while swiping</Text>
+          <Text style={styles.toggleSubtitle}>
+            iOS delivers touches in step with the screen, and a still screen idles at
+            60 Hz. This keeps the display at its maximum while a finger is down.
+          </Text>
+        </View>
+        <Switch value={highRefresh} onValueChange={setHighRefresh} />
       </View>
 
       {enabled ? (

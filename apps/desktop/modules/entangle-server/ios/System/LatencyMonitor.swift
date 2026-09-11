@@ -68,6 +68,7 @@ final class LatencyMonitor {
   /// Which thread the phone is sending from, so an A/B is readable without
   /// inferring it from the numbers being compared.
   private var phoneUiThread: Bool?
+  private var phoneHighRefresh: Bool?
   private var phoneRttP50: Double?
   private var phoneRttP95: Double?
 
@@ -187,6 +188,7 @@ final class LatencyMonitor {
     sendRate: Int,
     touchRate: Int,
     uiThread: Bool?,
+    highRefresh: Bool?,
     rttP50: Double,
     rttP95: Double
   ) {
@@ -196,6 +198,7 @@ final class LatencyMonitor {
     phoneSendRate = sendRate
     phoneTouchRate = touchRate
     phoneUiThread = uiThread
+    phoneHighRefresh = highRefresh
     phoneRttP50 = rttP50
     phoneRttP95 = rttP95
   }
@@ -304,6 +307,7 @@ final class LatencyMonitor {
     if let sendRate = phoneSendRate { record["phoneSent"] = sendRate }
     if let touchRate = phoneTouchRate { record["phoneTouches"] = touchRate }
     if let uiThread = phoneUiThread { record["phoneUiThread"] = uiThread }
+    if let highRefresh = phoneHighRefresh { record["phoneHighRefresh"] = highRefresh }
     if let rtt = phoneRttP50 { record["phoneRttP50"] = jsonNumber(rtt) }
     if let rtt = phoneRttP95 { record["phoneRttP95"] = jsonNumber(rtt) }
     DiagLog.shared.write(record)
@@ -362,6 +366,7 @@ final class LatencyMonitor {
       record["phoneSentAvg"] = jsonNumber(Double(total) / Double(runPhoneSendRates.count))
     }
     if let uiThread = phoneUiThread { record["phoneUiThread"] = uiThread }
+    if let highRefresh = phoneHighRefresh { record["phoneHighRefresh"] = highRefresh }
     if !runPhoneRtt.isEmpty {
       record["phoneRttP50"] = jsonNumber(Self.percentile(runPhoneRtt, 0.5))
       record["phoneRttWorst"] = jsonNumber(runPhoneRtt.max() ?? 0)
@@ -407,6 +412,7 @@ final class LatencyMonitor {
     phoneSendRate = nil
     phoneTouchRate = nil
     phoneUiThread = nil
+    phoneHighRefresh = nil
     phoneRttP50 = nil
     phoneRttP95 = nil
     resetRunLocked()
