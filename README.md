@@ -37,6 +37,7 @@ You're across the room. The Mac is plugged into the TV. The keyboard is buried u
 | --- | ----------------------- | ------------------------------------------------------------------ |
 | 🖱   | **Trackpad mode**       | Smooth, sub‑frame pointer with two‑finger scroll & tap‑to‑click.   |
 | ⌨️  | **Keyboard relay**      | Type from your phone. Modifier keys, arrows, the works.            |
+| 💤  | **Wake the screen**     | Mac's display asleep? Tap the trackpad and it lights back up.      |
 | 🔒  | **LAN‑only by default** | No accounts, no cloud, no telemetry. Pairs over the local network. |
 | 📡  | **Auto‑discovery**      | Bonjour / mDNS finds your Mac the moment the app opens.            |
 | 🌓  | **Native everywhere**   | React Native macOS on desktop, Expo on mobile. One repo.           |
@@ -150,6 +151,8 @@ pnpm mobile <cmd>                       # forward any command into apps/mobile
 - [x] Keyboard relay
 - [x] mDNS auto‑discovery
 - [x] Dock enumeration & app activation
+- [x] Wake the Mac's display from the phone
+- [ ] Wake the whole Mac from sleep (Wake‑on‑LAN)
 - [ ] Media keys & system shortcuts
 - [ ] Windows desktop client
 - [ ] Apple Watch quick‑actions

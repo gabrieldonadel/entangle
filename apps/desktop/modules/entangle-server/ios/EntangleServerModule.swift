@@ -31,6 +31,8 @@ public class EntangleServerModule: Module {
       DockEnumerator.shared.onUpdate = nil
       VolumeController.shared.stopWatching()
       VolumeController.shared.onChange = nil
+      DisplayController.shared.stopWatching()
+      DisplayController.shared.onChange = nil
       self.server?.stop()
       self.server = nil
     }
@@ -42,6 +44,8 @@ public class EntangleServerModule: Module {
     AsyncFunction("stopServer") { (promise: Promise) in
       VolumeController.shared.stopWatching()
       VolumeController.shared.onChange = nil
+      DisplayController.shared.stopWatching()
+      DisplayController.shared.onChange = nil
       self.server?.stop()
       self.server = nil
       self.serverPort = 0
@@ -188,6 +192,7 @@ public class EntangleServerModule: Module {
     wireServerEvents(server, name: name, promise: promise)
     wireDockEvents(server)
     wireVolumeEvents(server)
+    wireDisplayEvents(server)
 
     do {
       try server.start()
@@ -231,6 +236,13 @@ public class EntangleServerModule: Module {
          ) {
         server?.send(payload, to: id)
       }
+      // Same for the screen: a phone that connects to a sleeping Mac should
+      // offer to wake it right away, not after the next sleep/wake edge.
+      if let payload = MessageDispatcher.encodeDisplayState(
+        asleep: DisplayController.shared.isAsleep()
+      ) {
+        server?.send(payload, to: id)
+      }
     }
     server.onClientDisconnected = { [weak self] id in
       self?.sendEvent("clientDisconnected", ["id": id.uuidString])
@@ -261,6 +273,16 @@ public class EntangleServerModule: Module {
       server.broadcast(payload)
     }
     VolumeController.shared.startWatching()
+  }
+
+  private func wireDisplayEvents(_ server: WebSocketServer) {
+    DisplayController.shared.onChange = { [weak server] asleep in
+      guard let server = server,
+            let payload = MessageDispatcher.encodeDisplayState(asleep: asleep)
+      else { return }
+      server.broadcast(payload)
+    }
+    DisplayController.shared.startWatching()
   }
 
   private func wireDockEvents(_ server: WebSocketServer) {

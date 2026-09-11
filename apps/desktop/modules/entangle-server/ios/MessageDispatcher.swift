@@ -46,6 +46,9 @@ enum MessageDispatcher {
     case "a.set": return handleAudioSet(json)
     case "a.step": return handleAudioStep(json)
     case "a.mute": return handleAudioMute(json)
+    case "sys.wake":
+      DisplayController.shared.wake()
+      return true
     case "d.list": return handleDockList(respond: respond)
     case "d.activate": return handleDockActivate(json)
     case "g.space": return handleSpaceGesture(json)
@@ -195,6 +198,18 @@ enum MessageDispatcher {
       "t": "state.audio",
       "level": Double(level),
       "muted": muted
+    ]
+    guard let data = try? JSONSerialization.data(withJSONObject: payload) else {
+      return nil
+    }
+    return String(data: data, encoding: .utf8)
+  }
+
+  static func encodeDisplayState(asleep: Bool) -> String? {
+    let payload: [String: Any] = [
+      "v": 1,
+      "t": "state.display",
+      "asleep": asleep
     ]
     guard let data = try? JSONSerialization.data(withJSONObject: payload) else {
       return nil

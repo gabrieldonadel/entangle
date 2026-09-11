@@ -8,6 +8,7 @@ import type {
   DockListResponseMessage,
   DockUpdateMessage,
   AudioStateMessage,
+  DisplayStateMessage,
   PongMessage,
 } from './messages';
 
@@ -23,6 +24,7 @@ const CLIENT_TAGS = new Set<ClientMessage['t']>([
   'a.set',
   'a.step',
   'a.mute',
+  'sys.wake',
   'd.list',
   'd.activate',
   'hello',
@@ -39,6 +41,7 @@ const SERVER_TAGS = new Set<ServerMessage['t']>([
   'd.update',
   'state.mods',
   'state.audio',
+  'state.display',
   'pair.accepted',
   'pair.rejected',
 ]);
@@ -90,4 +93,8 @@ export function isDockUpdate(msg: Message): msg is DockUpdateMessage {
 
 export function isAudioState(msg: Message): msg is AudioStateMessage {
   return msg.t === 'state.audio';
+}
+
+export function isDisplayState(msg: Message): msg is DisplayStateMessage {
+  return msg.t === 'state.display';
 }
