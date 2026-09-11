@@ -95,10 +95,6 @@ jobs:
       - name: Install monorepo deps
         run: pnpm install --frozen-lockfile
 
-      - name: Install JS deps
-        working-directory: apps/desktop
-        run: pnpm install --ignore-workspace --frozen-lockfile
-
       - name: Setup Ruby + Bundler
         uses: ruby/setup-ruby@v1
         with:
