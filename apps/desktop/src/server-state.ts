@@ -4,6 +4,7 @@ import EntangleServer, {
   type AccessibilityChangedEvent,
   type ClientConnectedEvent,
   type ClientDisconnectedEvent,
+  type MessageStatsEvent,
   type PairingStartedEvent,
   type PairingWindow,
   type ServerErrorEvent,
@@ -14,15 +15,11 @@ import EntangleServer, {
 import { decode, encode, PROTOCOL_VERSION } from '@entangle/protocol';
 import type { Message, WelcomeMessage } from '@entangle/protocol';
 
-export type ClientInfo = {
-  id: string;
-  host: string;
-  connectedAt: number;
-  lastMessageAt: number;
-  messageCount: number;
-  inboundSinceTick: number;
-  messageRate: number;
-};
+import { foldMessageStats } from './stats';
+import type { ClientInfo } from './stats';
+
+export type { ClientInfo };
+
 
 type ServerPhase = 'idle' | 'starting' | 'running' | 'paused' | 'error';
 
@@ -54,8 +51,6 @@ interface ServerState {
   renameClient: (id: string, name: string | null) => Promise<void>;
 }
 
-let inboundSinceTick = 0;
-let rateTimer: ReturnType<typeof setInterval> | null = null;
 
 export const useServerStore = create<ServerState>((set, get) => ({
   phase: 'idle',
@@ -124,19 +119,12 @@ export const useServerStore = create<ServerState>((set, get) => ({
         lanHost: lanHost ?? EntangleServer.getLanHost(),
         startedAt: Date.now(),
       });
-      if (!rateTimer) {
-        rateTimer = setInterval(tickStats, 1000);
-      }
     } catch (error: any) {
       set({ phase: 'error', lastError: error?.message ?? String(error) });
     }
   },
   stop: async () => {
     await EntangleServer.stopServer();
-    if (rateTimer) {
-      clearInterval(rateTimer);
-      rateTimer = null;
-    }
     set({
       phase: 'paused',
       port: null,
@@ -150,23 +138,9 @@ export const useServerStore = create<ServerState>((set, get) => ({
   },
 }));
 
-function tickStats() {
-  useServerStore.setState((state) => {
-    const tick = inboundSinceTick;
-    inboundSinceTick = 0;
-    const history = [...state.rateHistory.slice(1), tick];
-    const startedAt = state.startedAt;
-    const uptimeSeconds = startedAt ? Math.floor((Date.now() - startedAt) / 1000) : 0;
-    const clients: Record<string, ClientInfo> = {};
-    for (const [id, c] of Object.entries(state.clients)) {
-      clients[id] = {
-        ...c,
-        messageRate: c.inboundSinceTick,
-        inboundSinceTick: 0,
-      };
-    }
-    return { messageRate: tick, rateHistory: history, uptimeSeconds, clients };
-  });
+function applyStats(event: MessageStatsEvent) {
+  const now = Date.now();
+  useServerStore.setState((state) => foldMessageStats(state, event, now));
 }
 
 /** Strip the trailing `:port` so we key by IP/hostname only — must match
@@ -199,7 +173,6 @@ eventEmitter.addListener('clientConnected', (event: ClientConnectedEvent) => {
         connectedAt: now,
         lastMessageAt: now,
         messageCount: 0,
-        inboundSinceTick: 0,
         messageRate: 0,
       },
     },
@@ -215,27 +188,15 @@ eventEmitter.addListener('clientDisconnected', (event: ClientDisconnectedEvent) 
   });
 });
 
+// Only messages the native side did not handle arrive here — the handshake,
+// pings and pairing. The hot path (pointer, scroll, keys, dock) stays in Swift.
 eventEmitter.addListener('message', (event: ServerMessageEvent) => {
-  inboundSinceTick += 1;
   const msg = decode(event.text);
-  useServerStore.setState((state) => {
-    const existing = state.clients[event.id];
-    if (!existing) return state;
-    return {
-      clients: {
-        ...state.clients,
-        [event.id]: {
-          ...existing,
-          lastMessageAt: Date.now(),
-          messageCount: existing.messageCount + 1,
-          inboundSinceTick: existing.inboundSinceTick + 1,
-        },
-      },
-    };
-  });
   if (!msg) return;
   handleMessage(event.id, msg);
 });
+
+eventEmitter.addListener('messageStats', applyStats);
 
 eventEmitter.addListener('error', (event: ServerErrorEvent) => {
   useServerStore.setState({ lastError: event.message });

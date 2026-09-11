@@ -14,7 +14,8 @@
           "_entangle._tcp.",
           "_entangle._tcp."
         ],
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CADisableMinimumFrameDuration": true
       },
       "bundleIdentifier": "com.gabrieldonadel.entangle-mobile",
       "appleTeamId": "3VRHBFMBRL",
