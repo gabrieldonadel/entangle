@@ -38,9 +38,40 @@ export type KeyCode =
 export interface PointerMoveMessage {
   v: 1;
   t: 'p.move';
+  /**
+   * Movement since the previous frame. Kept for servers that predate `cx`/`cy`
+   * — a Mac that ignores the cumulative fields still tracks the cursor
+   * correctly from these.
+   */
   dx: number;
   dy: number;
+  /**
+   * Total movement since this gesture began. Authoritative when present: the
+   * server applies `cumulative - lastApplied`, so a frame that is lost,
+   * duplicated or delivered late costs nothing — the next frame carries the
+   * whole truth. Only meaningful alongside `g`.
+   */
+  cx?: number;
+  cy?: number;
+  /**
+   * Gesture counter, incremented for every new gesture. A change means the
+   * cumulative total restarted from zero. Sent on every frame rather than
+   * only the first, so the boundary survives a lost packet.
+   */
+  g?: number;
+  /**
+   * Frame counter, monotonic for the life of the connection. The server drops
+   * a frame whose `seq` it has already passed, so a duplicate or a late
+   * arrival cannot drag the cursor backwards.
+   */
   seq: number;
+  /**
+   * Client-monotonic send time in milliseconds, present only while
+   * diagnostics are on. The Mac never compares it against its own clock —
+   * only successive `ts` differences against successive arrival differences,
+   * which measures delay variation without needing the two clocks to agree.
+   */
+  ts?: number;
 }
 
 export interface PointerClickMessage {
@@ -124,6 +155,45 @@ export interface SystemWakeMessage {
   t: 'sys.wake';
 }
 
+/**
+ * Turn per-move instrumentation on or off. Off by default: it costs a
+ * timestamp on every pointer frame and a `state.diag` push every second.
+ */
+export interface DiagSetMessage {
+  v: 1;
+  t: 'diag.set';
+  on: boolean;
+}
+
+/**
+ * The phone's own half of the diagnostics, once a second while they are on.
+ *
+ * Sent so both sides land in the same log line on the Mac: the phone is the
+ * only one that can measure how often it sends and what the round trip is.
+ */
+export interface DiagReportMessage {
+  v: 1;
+  t: 'diag.report';
+  /** Pointer messages put on the wire in the last second. */
+  sendRate: number;
+  /**
+   * Raw gesture callbacks in the last second, before coalescing. Sending
+   * fewer than this means the phone is discarding touch samples; sending the
+   * same means the wire is carrying everything the OS reports.
+   */
+  touchRate: number;
+  rttP50: number;
+  rttP95: number;
+  /**
+   * Whether pointer frames are leaving from the UI thread. In the log next to
+   * everything else, because working out which half of an A/B a line belongs
+   * to from the numbers themselves is guesswork.
+   */
+  uiThread: boolean;
+  /** Whether the phone is holding the display at its maximum refresh rate. */
+  highRefresh: boolean;
+}
+
 export interface DockListRequestMessage {
   v: 1;
   t: 'd.list';
@@ -176,6 +246,8 @@ export type ClientMessage =
   | AudioStepMessage
   | AudioMuteMessage
   | SystemWakeMessage
+  | DiagSetMessage
+  | DiagReportMessage
   | DockListRequestMessage
   | DockActivateMessage
   | HelloMessage
@@ -192,11 +264,28 @@ export interface DockApp {
   path?: string;
 }
 
+/**
+ * How to reach this Mac's datagram socket, offered in `welcome`.
+ *
+ * Absent on a Mac that has no UDP listener, in which case the phone keeps
+ * sending pointer frames over the WebSocket.
+ */
+export interface UdpOffer {
+  port: number;
+  /**
+   * Session token. Every datagram carries it, and it dies with the socket
+   * that issued it — a LAN datagram is otherwise trivially spoofable, and
+   * this is an input device.
+   */
+  token: string;
+}
+
 export interface WelcomeMessage {
   v: 1;
   t: 'welcome';
   server: { name: string; version: string; host: string };
   caps: string[];
+  udp?: UdpOffer;
 }
 
 export interface PongMessage {
@@ -255,6 +344,54 @@ export interface DisplayStateMessage {
   asleep: boolean;
 }
 
+/**
+ * One second of pointer-path measurements from the Mac. Pushed only while
+ * diagnostics are on.
+ *
+ * Every figure is measured on the Mac's own clock, so none of them depend on
+ * the two devices agreeing about the time. Round-trip time is the phone's to
+ * measure.
+ */
+export interface DiagStateMessage {
+  v: 1;
+  t: 'state.diag';
+  /** Pointer moves applied in the last second. */
+  rate: number;
+  /** Gap between consecutive moves, milliseconds. */
+  gapP50: number;
+  gapP95: number;
+  /**
+   * Mean absolute one-way delay variation, milliseconds: how much the gap
+   * between two arrivals differed from the gap between the two sends. Zero
+   * means the stream arrived exactly as evenly as it was sent.
+   */
+  jitter: number;
+  /** Arrival to CGEvent posted, milliseconds. */
+  procP50: number;
+  procP95: number;
+  /** Gaps longer than 50 ms in the last second — the "freeze then jump". */
+  stalls: number;
+  /**
+   * Where the Mac is appending the log, so the phone can say where to look.
+   * Absent if the log could not be opened.
+   */
+  logPath?: string;
+}
+
+/**
+ * Sent about once a second while datagrams are actually arriving.
+ *
+ * This is the phone's only proof that the datagram path works. A blocked port
+ * looks exactly like a working one from the sending side, so without this the
+ * pointer would die silently the first time a firewall got in the way.
+ */
+export interface UdpOkMessage {
+  v: 1;
+  t: 'udp.ok';
+  /** Datagrams received since the last one of these. */
+  frames: number;
+}
+
 export interface PairAcceptedMessage {
   v: 1;
   t: 'pair.accepted';
@@ -275,7 +412,22 @@ export type ServerMessage =
   | ModStateMessage
   | AudioStateMessage
   | DisplayStateMessage
+  | DiagStateMessage
+  | UdpOkMessage
   | PairAcceptedMessage
   | PairRejectedMessage;
 
 export type Message = ClientMessage | ServerMessage;
+
+/**
+ * A pointer frame on the datagram path.
+ *
+ * The token lives in the envelope rather than in the message so the
+ * authentication boundary stays visible and the message shapes stay identical
+ * on both transports.
+ */
+export interface Datagram {
+  v: 1;
+  tk: string;
+  m: ClientMessage;
+}

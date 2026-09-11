@@ -1,13 +1,18 @@
 import * as Haptics from "expo-haptics";
 import { Gesture } from "react-native-gesture-handler";
+import { runOnJS } from "react-native-reanimated";
 
 import { PROTOCOL_VERSION } from "@entangle/protocol";
 
-import { sendMessage } from "@/net/send";
+import { sendMessage, sendPointerFrame } from "@/net/send";
 import {
-  useNaturalScrollRef,
-  usePointerSensitivityRef,
-} from "@/state/settings";
+  accumulatePointer,
+  endPointerGesture,
+  setStreamSender,
+  startPointerGesture,
+  takeSyncFrame,
+} from "./uplink";
+import { useNaturalScrollRef } from "@/state/settings";
 import { Platform } from "react-native";
 
 // Trackpad gesture event hooks. The same gesture configuration (thresholds,
@@ -50,21 +55,81 @@ const PAN_MIN_DISTANCE = Platform.OS === "android" ? 4 : 0;
 // object reference is captured stably and `.value` is always read live.
 type DragState = { value: boolean };
 
-export function createTrackpadGestures(handlers: TrackpadHandlers) {
+export interface TrackpadGestureOptions {
+  /**
+   * Run pointer movement on the UI thread instead of hopping to JavaScript.
+   *
+   * Measured at ~60 gesture callbacks a second on a 120 Hz phone with the hop
+   * in place: half the touch stream was being lost before anything could
+   * accumulate it. Off for the onboarding lesson and the demo, which need
+   * their own JavaScript callbacks per event.
+   */
+  uiThread?: boolean;
+  /**
+   * Called with true when a finger lands and false when the gesture is over.
+   *
+   * Used to hold the display at its maximum refresh rate while the user is
+   * swiping: iOS delivers touches in step with the screen, and a static
+   * screen lets ProMotion idle at 60 Hz — which is where the touch stream has
+   * been pinned all along.
+   */
+  onTouchActivity?: (active: boolean) => void;
+}
+
+export function createTrackpadGestures(
+  handlers: TrackpadHandlers,
+  options: TrackpadGestureOptions = {},
+) {
   const dragState: DragState = { value: false };
+  const uiThread = options.uiThread === true;
+  const onTouchActivity = options.onTouchActivity;
+
+  // Called back on the JS thread for the parts that cannot run on the UI one:
+  // haptics, and the messages that travel on the WebSocket.
+  const dragBeginOnJs = () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    handlers.onDragBegin?.();
+  };
+  const dragEndOnJs = () => {
+    handlers.onDragEnd?.();
+  };
 
   // Single-finger pan: cursor motion. No haptic on swipe.
-  const pan = Gesture.Pan()
-    .minPointers(1)
-    .maxPointers(1)
-    .minDistance(PAN_MIN_DISTANCE)
-    .onChange((event) => {
-      handlers.onMove?.(event.changeX, event.changeY);
-    })
-    .onEnd(() => {
-      handlers.onMoveEnd?.();
-    })
-    .runOnJS(true);
+  const pan = Gesture.Pan().minPointers(1).maxPointers(1).minDistance(PAN_MIN_DISTANCE);
+  if (uiThread) {
+    pan
+      .onBegin(() => {
+        'worklet';
+        if (onTouchActivity) runOnJS(onTouchActivity)(true);
+      })
+      .onFinalize(() => {
+        'worklet';
+        if (onTouchActivity) runOnJS(onTouchActivity)(false);
+      })
+      .onChange((event) => {
+        'worklet';
+        accumulatePointer(event.changeX, event.changeY);
+      })
+      .onEnd(() => {
+        'worklet';
+        endPointerGesture();
+      });
+  } else {
+    pan
+      .onBegin(() => {
+        onTouchActivity?.(true);
+      })
+      .onFinalize(() => {
+        onTouchActivity?.(false);
+      })
+      .onChange((event) => {
+        handlers.onMove?.(event.changeX, event.changeY);
+      })
+      .onEnd(() => {
+        handlers.onMoveEnd?.();
+      })
+      .runOnJS(true);
+  }
 
   // Long-press to arm a drag (e.g. text selection on macOS). When the user
   // holds the finger reasonably still for 450 ms, this gesture wins the race
@@ -75,36 +140,61 @@ export function createTrackpadGestures(handlers: TrackpadHandlers) {
   // trigger `pan` immediately), this gesture also wins — but the `onStart`
   // distance check below means we treat it as a regular pan: no haptic, no
   // drag-begin. Either way `onEnd` releases the drag cleanly if it was armed.
-  const dragPan = Gesture.Pan()
-    .minPointers(1)
-    .maxPointers(1)
-    .activateAfterLongPress(450)
-    .onStart((event) => {
-      const traveled = Math.hypot(event.translationX, event.translationY);
-      if (traveled <= DRAG_TRAVEL_TOLERANCE) {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        handlers.onDragBegin?.();
-        dragState.value = true;
-      }
-    })
-    .onChange((event) => {
-      if (dragState.value) {
-        handlers.onDragMove?.(event.changeX, event.changeY);
-      } else {
-        // The long-press fired but the finger had already moved past the
-        // tolerance, so we treat it as a continuation of regular panning.
-        handlers.onMove?.(event.changeX, event.changeY);
-      }
-    })
-    .onEnd(() => {
-      if (dragState.value) {
-        handlers.onDragEnd?.();
-        dragState.value = false;
-      } else {
-        handlers.onMoveEnd?.();
-      }
-    })
-    .runOnJS(true);
+  const dragPan = Gesture.Pan().minPointers(1).maxPointers(1).activateAfterLongPress(450);
+  if (uiThread) {
+    dragPan
+      .onStart((event) => {
+        'worklet';
+        const traveled = Math.hypot(event.translationX, event.translationY);
+        if (traveled <= DRAG_TRAVEL_TOLERANCE) {
+          dragState.value = true;
+          startPointerGesture();
+          runOnJS(dragBeginOnJs)();
+        }
+      })
+      // Drag motion and pan motion are the same frames on the wire; the Mac
+      // knows the button is down.
+      .onChange((event) => {
+        'worklet';
+        accumulatePointer(event.changeX, event.changeY);
+      })
+      .onEnd(() => {
+        'worklet';
+        endPointerGesture();
+        if (dragState.value) {
+          dragState.value = false;
+          runOnJS(dragEndOnJs)();
+        }
+      });
+  } else {
+    dragPan
+      .onStart((event) => {
+        const traveled = Math.hypot(event.translationX, event.translationY);
+        if (traveled <= DRAG_TRAVEL_TOLERANCE) {
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          handlers.onDragBegin?.();
+          dragState.value = true;
+        }
+      })
+      .onChange((event) => {
+        if (dragState.value) {
+          handlers.onDragMove?.(event.changeX, event.changeY);
+        } else {
+          // The long-press fired but the finger had already moved past the
+          // tolerance, so we treat it as a continuation of regular panning.
+          handlers.onMove?.(event.changeX, event.changeY);
+        }
+      })
+      .onEnd(() => {
+        if (dragState.value) {
+          handlers.onDragEnd?.();
+          dragState.value = false;
+        } else {
+          handlers.onMoveEnd?.();
+        }
+      })
+      .runOnJS(true);
+  }
 
   const scrollPan = Gesture.Pan()
     .minPointers(2)
@@ -191,35 +281,42 @@ export function createTrackpadGestures(handlers: TrackpadHandlers) {
 // These send the events to the connected Mac. Used by the production
 // TrackpadSurface; the onboarding lesson supplies its own handlers instead.
 
-// Pointer coalescing: gesture events fire faster than we want to send. RAF
-// batches them into one wire message per frame.
-let pendingDx = 0;
-let pendingDy = 0;
-let pendingSeq = 0;
-let moveRaf: number | null = null;
+// The uplink hands frames back here when the datagram path is not carrying
+// them, which is also how the fallback in `net/udp` stays in charge.
+setStreamSender(sendPointerFrame);
 
-function flushMove() {
-  moveRaf = null;
-  if (pendingDx === 0 && pendingDy === 0) return;
-  pendingSeq += 1;
-  sendMessage({
-    v: PROTOCOL_VERSION,
-    t: "p.move",
-    dx: pendingDx,
-    dy: pendingDy,
-    seq: pendingSeq,
-  });
-  pendingDx = 0;
-  pendingDy = 0;
+// Pointer frames are accumulated and sent by `uplink`, which runs on the UI
+// thread when the surface asks for it. The functions below are the JS-side
+// pieces that cannot go there: the messages that travel on the WebSocket.
+
+/**
+ * Puts the cursor's current position on the WebSocket before a message that
+ * acts on it — a click, a drag boundary, a scroll.
+ *
+ * Ordering only holds within one transport, so a click on the stream can
+ * overtake the datagram that positioned the cursor. The sync frame is
+ * cumulative and carries a fresh sequence number, so the Mac applies the
+ * difference: the movement if the datagram never arrived, nothing if it did.
+ */
+function sendSyncFrame() {
+  const frame = takeSyncFrame();
+  if (!frame) return;
+  sendMessage({ v: PROTOCOL_VERSION, t: "p.move", ...frame });
 }
 
-function accumulateMove(dx: number, dy: number) {
-  const sensitivity = usePointerSensitivityRef.current;
-  pendingDx += dx * sensitivity;
-  pendingDy += dy * sensitivity;
-  if (moveRaf == null) {
-    moveRaf = requestAnimationFrame(flushMove);
-  }
+function sendDragBegin() {
+  sendSyncFrame();
+  sendMessage({ v: PROTOCOL_VERSION, t: "p.drag", phase: "begin" });
+}
+
+function sendDragEnd() {
+  sendSyncFrame();
+  sendMessage({ v: PROTOCOL_VERSION, t: "p.drag", phase: "end" });
+}
+
+function sendClick(button: "left" | "right") {
+  sendSyncFrame();
+  sendMessage({ v: PROTOCOL_VERSION, t: "p.click", button, phase: "tap" });
 }
 
 let pendingScrollDx = 0;
@@ -251,17 +348,21 @@ function accumulateScroll(dx: number, dy: number) {
 
 export function createDefaultTrackpadHandlers(): TrackpadHandlers {
   return {
-    onMove: accumulateMove,
-    onMoveEnd: flushMove,
+    onMove: accumulatePointer,
+    onMoveEnd: endPointerGesture,
+    onTap: () => sendClick("left"),
+    onRightClick: () => sendClick("right"),
     onDragBegin: () => {
-      sendMessage({ v: PROTOCOL_VERSION, t: "p.drag", phase: "begin" });
+      startPointerGesture();
+      sendDragBegin();
     },
-    onDragMove: accumulateMove,
+    onDragMove: accumulatePointer,
     onDragEnd: () => {
-      flushMove();
-      sendMessage({ v: PROTOCOL_VERSION, t: "p.drag", phase: "end" });
+      endPointerGesture();
+      sendDragEnd();
     },
     onScrollBegin: () => {
+      sendSyncFrame();
       sendMessage({
         v: PROTOCOL_VERSION,
         t: "s.wheel",
@@ -279,22 +380,6 @@ export function createDefaultTrackpadHandlers(): TrackpadHandlers {
         dx: 0,
         dy: 0,
         phase: "end",
-      });
-    },
-    onTap: () => {
-      sendMessage({
-        v: PROTOCOL_VERSION,
-        t: "p.click",
-        button: "left",
-        phase: "tap",
-      });
-    },
-    onRightClick: () => {
-      sendMessage({
-        v: PROTOCOL_VERSION,
-        t: "p.click",
-        button: "right",
-        phase: "tap",
       });
     },
     onSpaceSwipe: (dir) => {

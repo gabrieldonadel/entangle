@@ -1,6 +1,9 @@
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
+import { useFrameCallback } from 'react-native-reanimated';
+
+import { useDiag } from '@/state/diag';
 
 import { createDefaultTrackpadHandlers, createTrackpadGestures } from './gestures';
 
@@ -20,10 +23,66 @@ export interface TrackpadSurfaceProps {
   onLocalGesture?: (event: LocalGestureEvent) => void;
 }
 
+/** Keeps the display awake for a moment after the finger lifts, so a flurry
+ *  of short swipes does not ramp the panel up and down between each one. */
+const REFRESH_IDLE_MS = 1000;
+
 export function TrackpadSurface({ onLocalGesture }: TrackpadSurfaceProps = {}) {
+  const uiThreadPointer = useDiag((s) => s.uiThreadPointer);
+  const highRefresh = useDiag((s) => s.highRefresh);
+
+  // An empty frame callback, purely to hold the display link open. Worklets
+  // runs its link at CAFrameRateRange(60, 120, 120) on a ProMotion screen and
+  // steps down when callbacks get expensive — this one costs nothing, so the
+  // panel stays at its maximum while a finger is down, and iOS delivers
+  // touches in step with the panel.
+  const frameCallback = useFrameCallback(() => {
+    'worklet';
+  }, false);
+
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const setTouchActive = useCallback(
+    (active: boolean) => {
+      if (idleTimer.current) {
+        clearTimeout(idleTimer.current);
+        idleTimer.current = null;
+      }
+      if (active) {
+        if (highRefresh && !frameCallback.isActive) frameCallback.setActive(true);
+        return;
+      }
+      idleTimer.current = setTimeout(() => {
+        idleTimer.current = null;
+        if (frameCallback.isActive) frameCallback.setActive(false);
+      }, REFRESH_IDLE_MS);
+    },
+    [frameCallback, highRefresh],
+  );
+
+  // Turning the switch off mid-session should let the display settle back
+  // down rather than wait for the next gesture.
+  useEffect(() => {
+    if (!highRefresh && frameCallback.isActive) frameCallback.setActive(false);
+  }, [highRefresh, frameCallback]);
+
+  useEffect(() => {
+    return () => {
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+      if (frameCallback.isActive) frameCallback.setActive(false);
+    };
+  }, [frameCallback]);
+
   const gesture = useMemo(() => {
     const defaults = createDefaultTrackpadHandlers();
-    if (!onLocalGesture) return createTrackpadGestures(defaults);
+    // Demo mode needs a JavaScript callback per event to animate its own
+    // cursor, so it keeps the JS path; the real trackpad does not.
+    if (!onLocalGesture) {
+      return createTrackpadGestures(defaults, {
+        uiThread: uiThreadPointer,
+        onTouchActivity: setTouchActive,
+      });
+    }
     return createTrackpadGestures({
       ...defaults,
       onMove: (dx, dy) => {
@@ -47,7 +106,7 @@ export function TrackpadSurface({ onLocalGesture }: TrackpadSurfaceProps = {}) {
         onLocalGesture({ type: 'rightClick' });
       },
     });
-  }, [onLocalGesture]);
+  }, [onLocalGesture, uiThreadPointer, setTouchActive]);
 
   return (
     <GestureDetector gesture={gesture}>

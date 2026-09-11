@@ -118,6 +118,9 @@ importers:
       '@react-navigation/native':
         specifier: ^7.1.33
         version: 7.2.2(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
+      entangle-udp:
+        specifier: workspace:*
+        version: link:../../packages/entangle-udp
       expo:
         specifier: ~55.0.26
         version: 55.0.26(@babel/core@7.29.0)(@expo/dom-webview@55.0.5)(@expo/metro-runtime@55.0.10)(expo-router@55.0.16)(react-dom@19.2.0(react@19.2.0))(react-native-worklets@0.7.4(@babel/core@7.29.0)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)(typescript@5.9.3)
@@ -243,6 +246,8 @@ importers:
       vite:
         specifier: ^6.0.7
         version: 6.4.2(@types/node@25.6.0)(lightningcss@1.32.0)(terser@5.46.2)(yaml@2.8.3)
+
+  packages/entangle-udp: {}
 
   packages/shared: {}
 

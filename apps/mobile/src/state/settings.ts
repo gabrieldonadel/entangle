@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+import { syncPointerConfig } from '@/features/trackpad/uplink';
+
 interface SettingsState {
   pointerSensitivity: number;
   naturalScroll: boolean;
@@ -15,6 +17,8 @@ export const useSettings = create<SettingsState>((set) => ({
   naturalScroll: true,
   setPointerSensitivity: (value) => {
     usePointerSensitivityRef.current = value;
+    // The uplink scales on the UI thread, where it cannot read this store.
+    syncPointerConfig({ sensitivity: value });
     set({ pointerSensitivity: value });
   },
   setNaturalScroll: (value) => {

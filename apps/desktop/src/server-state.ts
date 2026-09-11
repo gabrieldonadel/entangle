@@ -162,8 +162,14 @@ export function formatUptime(seconds: number): string {
   return remH === 0 ? `${d}d` : `${d}d ${remH}h`;
 }
 
+/** Datagram offers handed over by the native module, keyed by client id. */
+const udpOffers = new Map<string, { port: number; token: string }>();
+
 eventEmitter.addListener('clientConnected', (event: ClientConnectedEvent) => {
   const now = Date.now();
+  if (event.udpPort != null && event.udpToken != null) {
+    udpOffers.set(event.id, { port: event.udpPort, token: event.udpToken });
+  }
   useServerStore.setState((state) => ({
     clients: {
       ...state.clients,
@@ -181,6 +187,7 @@ eventEmitter.addListener('clientConnected', (event: ClientConnectedEvent) => {
 });
 
 eventEmitter.addListener('clientDisconnected', (event: ClientDisconnectedEvent) => {
+  udpOffers.delete(event.id);
   useServerStore.setState((state) => {
     const next = { ...state.clients };
     delete next[event.id];
@@ -234,6 +241,9 @@ function handleMessage(clientId: string, msg: Message) {
       sendWelcome(clientId);
       return;
     case 'ping':
+      // Normally answered in Swift so the phone's round-trip measurement does
+      // not include a lap through here. This is the fallback for a ping the
+      // native dispatcher could not parse.
       EntangleServer.sendToClient(clientId, encode({ v: PROTOCOL_VERSION, t: 'pong', id: msg.id }));
       return;
     default:
@@ -244,6 +254,13 @@ function handleMessage(clientId: string, msg: Message) {
 
 function sendWelcome(clientId: string) {
   const { serviceName, port } = useServerStore.getState();
+  const caps = ['pointer', 'scroll', 'keyboard', 'dock', 'gestures', 'audio', 'wake', 'diag'];
+  const udp = udpOffers.get(clientId);
+  // Only advertise the datagram path when there is actually a listener behind
+  // it — the phone falls back to this socket when the offer is absent.
+  if (udp) {
+    caps.push('udp');
+  }
   const welcome: WelcomeMessage = {
     v: PROTOCOL_VERSION,
     t: 'welcome',
@@ -252,7 +269,8 @@ function sendWelcome(clientId: string) {
       version: '0.0.1',
       host: serviceName ?? '',
     },
-    caps: ['pointer', 'scroll', 'keyboard', 'dock', 'gestures', 'audio', 'wake'],
+    caps,
+    ...(udp ? { udp } : null),
   };
   if (port != null) {
     EntangleServer.sendToClient(clientId, encode(welcome));

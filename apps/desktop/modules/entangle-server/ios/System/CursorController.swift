@@ -27,6 +27,9 @@ final class CursorController {
   /// layout changes, not once per pointer sample.
   private var cachedScreenBounds: CGRect?
 
+  /// Resolves each frame's movement. Only touched on `queue`.
+  private var accumulator = PointerAccumulator()
+
   // Click-count tracking for double / triple click recognition. macOS expects
   // mouseDown events with `mouseEventClickState = 2/3` for the 2nd/3rd click
   // in a series, otherwise apps see only single clicks.
@@ -41,21 +44,53 @@ final class CursorController {
     self.eventSource = CGEventSource(stateID: .hidSystemState)
     NotificationCenter.default.addObserver(
       forName: NSApplication.didChangeScreenParametersNotification,
-      object: nil,
-      queue: nil
+      object: .none,
+      queue: .main
     ) { [weak self] _ in
-      self?.queue.async { self?.cachedScreenBounds = nil }
+      self?.refreshScreenBounds()
     }
+    // Warm the cache off the pointer path. Building it lazily meant the first
+    // move of a session paid for `NSScreen.screens` — one 31 ms frame showed
+    // up in a real session's `procMax`, against a p95 of 0.18 ms.
+    refreshScreenBounds()
   }
 
-  func move(dx: CGFloat, dy: CGFloat) {
+  /// When the frame was sent and when it reached us. Carried only while
+  /// diagnostics are on, so the measurement can span the queue hop that
+  /// separates arrival from the posted CGEvent.
+  struct MoveTiming {
+    let clientTimestamp: Double?
+    let arrival: Double
+    let viaDatagram: Bool
+  }
+
+  func apply(_ frame: PointerAccumulator.Frame, timing: MoveTiming? = nil) {
     let scale = CGFloat(PreferencesStore.shared.sensitivity)
     queue.async {
+      guard let resolution = self.accumulator.resolve(frame) else {
+        // Nothing left to say: a duplicate, or a frame a newer one overtook.
+        LatencyMonitor.shared.recordStale()
+        return
+      }
       let current = self.originForNextMove()
-      let target = self.clampToScreens(CGPoint(x: current.x + dx * scale, y: current.y + dy * scale))
+      let target = self.clampToScreens(
+        CGPoint(
+          x: current.x + resolution.delta.x * scale,
+          y: current.y + resolution.delta.y * scale
+        )
+      )
       self.virtualPosition = target
       self.lastMoveAt = Date()
       self.postMove(to: target, dragging: self.isDragging)
+      if let timing = timing {
+        LatencyMonitor.shared.record(
+          clientTimestamp: timing.clientTimestamp,
+          arrival: timing.arrival,
+          posted: LatencyMonitor.now(),
+          firstOfGesture: resolution.startsGesture,
+          viaDatagram: timing.viaDatagram
+        )
+      }
     }
   }
 
@@ -149,9 +184,27 @@ final class CursorController {
     return CGPoint(x: x, y: y)
   }
 
+  /// Recomputes the cached union on the main thread, where AppKit wants to be
+  /// asked about screens.
+  private func refreshScreenBounds() {
+    if Thread.isMainThread {
+      let bounds = Self.unionOfScreens()
+      queue.async { self.cachedScreenBounds = bounds }
+    } else {
+      DispatchQueue.main.async { self.refreshScreenBounds() }
+    }
+  }
+
   private func screenBounds() -> CGRect? {
     if let cached = cachedScreenBounds { return cached }
+    // Cold: the warm-up has not landed yet. Pay for it once here rather than
+    // let the pointer escape the display.
+    let bounds = Self.unionOfScreens()
+    cachedScreenBounds = bounds
+    return bounds
+  }
 
+  private static func unionOfScreens() -> CGRect? {
     let screens = NSScreen.screens
     guard !screens.isEmpty else { return nil }
 
@@ -169,7 +222,6 @@ final class CursorController {
       unionRect = unionRect.isNull ? converted : unionRect.union(converted)
     }
 
-    cachedScreenBounds = unionRect
     return unionRect
   }
 

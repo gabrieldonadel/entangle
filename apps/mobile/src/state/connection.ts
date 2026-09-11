@@ -10,13 +10,19 @@ import {
   HEARTBEAT_TIMEOUT_MS,
   PROTOCOL_VERSION,
   isAudioState,
+  isDiagState,
+  isUdpOk,
   isDisplayState,
   isDockListResponse,
   isDockUpdate,
 } from '@entangle/protocol';
 import type { ClientMessage, DockApp, Message } from '@entangle/protocol';
 
+import { drainPointerCounters, syncPointerConfig } from '@/features/trackpad/uplink';
+import * as udp from '@/net/udp';
+
 import { useAudio } from './audio';
+import { recordRtt, tickPhoneStats, useDiag } from './diag';
 import { useDisplay } from './display';
 import { useDock } from './dock';
 import { DEMO_DOCK_APPS } from './demo';
@@ -77,9 +83,15 @@ let pingTimer: ReturnType<typeof setInterval> | null = null;
 let pongTimeout: ReturnType<typeof setTimeout> | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let connectTimeout: ReturnType<typeof setTimeout> | null = null;
+let diagPingTimer: ReturnType<typeof setInterval> | null = null;
+let diagReportTimer: ReturnType<typeof setInterval> | null = null;
 let reconnectAttempt = 0;
 let pingId = 0;
-let pingSentAt = 0;
+/** Ping id → send time. Matching the pong by id keeps the round-trip figure
+ *  honest when diagnostics add pings of their own. */
+const pendingPings = new Map<number, number>();
+/** The id of the ping the heartbeat timeout is currently waiting on. */
+let heartbeatPingId = 0;
 let manuallyDisconnected = false;
 let pendingPairCode: string | null = null;
 let pendingPairToken: string | null = null;
@@ -131,6 +143,9 @@ export const useConnection = create<ConnectionState>((set, get) => ({
     useDock.getState().clear();
     useAudio.getState().reset();
     useDisplay.getState().reset();
+    useDiag.getState().reset();
+    udp.reset();
+    syncPointerConfig({ datagramToken: '', diagEnabled: false });
     set({
       phase: 'idle',
       target: null,
@@ -228,6 +243,11 @@ function openSocket() {
       },
     };
     ws.send(encode(hello));
+    // A reconnect gives us a fresh server-side monitor; re-arm it if the user
+    // left diagnostics on.
+    if (useDiag.getState().enabled) {
+      ws.send(encode({ v: PROTOCOL_VERSION, t: 'diag.set', on: true }));
+    }
     startHeartbeat();
   };
 
@@ -244,6 +264,9 @@ function openSocket() {
   ws.onclose = () => {
     socket = null;
     clearTimers();
+    // The token dies with the socket that issued it.
+    udp.reset();
+    syncPointerConfig({ datagramToken: '' });
     if (manuallyDisconnected) return;
     if (useConnection.getState().phase === 'pairing') return;
     scheduleReconnect();
@@ -296,23 +319,42 @@ function handleMessage(msg: Message) {
     useDisplay.getState().applyRemote(msg.asleep);
     return;
   }
+  if (isDiagState(msg)) {
+    useDiag.getState().applyRemote(msg);
+    return;
+  }
+  if (isUdpOk(msg)) {
+    udp.noteOk();
+    syncPointerConfig({ datagramToken: udp.activeToken() ?? '' });
+    return;
+  }
   switch (msg.t) {
-    case 'welcome':
+    case 'welcome': {
       useConnection.setState({
         serverName: msg.server.name,
         serverVersion: msg.server.version,
         serverCaps: msg.caps,
       });
+      // The offer carries the port and this session's token. Absent means the
+      // Mac has no datagram listener, and pointer frames stay on this socket.
+      const { target } = useConnection.getState();
+      if (target) udp.configure(target.host, msg.udp);
       return;
-    case 'pong':
-      if (pongTimeout) {
+    }
+    case 'pong': {
+      if (msg.id === heartbeatPingId && pongTimeout) {
         clearTimeout(pongTimeout);
         pongTimeout = null;
       }
-      if (pingSentAt > 0) {
-        useConnection.setState({ latencyMs: Date.now() - pingSentAt });
+      const sentAt = pendingPings.get(msg.id);
+      if (sentAt != null) {
+        pendingPings.delete(msg.id);
+        const rtt = Date.now() - sentAt;
+        useConnection.setState({ latencyMs: rtt });
+        recordRtt(rtt);
       }
       return;
+    }
     case 'pair.accepted': {
       const { target, trustedTokens } = useConnection.getState();
       if (target && pendingPairToken) {
@@ -370,13 +412,32 @@ function applyDockUpdate(msg: {
   useDock.getState().setApps(Array.from(byId.values()));
 }
 
+/** Ping cadence while diagnostics are on, so the round trip is sampled during
+ *  a gesture rather than every few seconds. */
+const DIAG_PING_INTERVAL_MS = 500;
+
+function sendPing(): number | null {
+  if (!socket || socket.readyState !== WebSocket.OPEN) return null;
+  pingId += 1;
+  const id = pingId;
+  pendingPings.set(id, Date.now());
+  // A pong that never arrives would otherwise keep its entry forever.
+  if (pendingPings.size > 32) {
+    const cutoff = Date.now() - 10_000;
+    for (const [pending, sentAt] of pendingPings) {
+      if (sentAt < cutoff) pendingPings.delete(pending);
+    }
+  }
+  socket.send(encode({ v: PROTOCOL_VERSION, t: 'ping', id }));
+  return id;
+}
+
 function startHeartbeat() {
   clearInterval(pingTimer ?? undefined);
   pingTimer = setInterval(() => {
-    if (!socket || socket.readyState !== WebSocket.OPEN) return;
-    pingId += 1;
-    pingSentAt = Date.now();
-    socket.send(encode({ v: PROTOCOL_VERSION, t: 'ping', id: pingId }));
+    const id = sendPing();
+    if (id == null) return;
+    heartbeatPingId = id;
     if (pongTimeout) clearTimeout(pongTimeout);
     pongTimeout = setTimeout(() => {
       try {
@@ -384,6 +445,29 @@ function startHeartbeat() {
       } catch {}
     }, HEARTBEAT_TIMEOUT_MS);
   }, HEARTBEAT_INTERVAL_MS);
+
+  clearInterval(diagPingTimer ?? undefined);
+  diagPingTimer = setInterval(() => {
+    if (!useDiag.getState().enabled) return;
+    sendPing();
+  }, DIAG_PING_INTERVAL_MS);
+
+  // One tick owns the counters, the datagram watchdog and the phone's half of
+  // the diagnostics, so none of them can disagree about the same second.
+  clearInterval(diagReportTimer ?? undefined);
+  diagReportTimer = setInterval(() => {
+    const counters = drainPointerCounters();
+    udp.reviewPath(counters.sends);
+    // Only a confirmed path is handed to the UI thread; anything else keeps
+    // frames on the JS path, where the probation copy is sent.
+    syncPointerConfig({ datagramToken: udp.activeToken() ?? '' });
+
+    if (!useDiag.getState().enabled) return;
+    const stats = tickPhoneStats(counters);
+    useDiag.setState({ transport: udp.getState() });
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+    socket.send(encode({ v: PROTOCOL_VERSION, t: 'diag.report', ...stats }));
+  }, 1000);
 }
 
 function scheduleReconnect() {
@@ -395,9 +479,18 @@ function scheduleReconnect() {
 
 function clearTimers() {
   clearConnectTimeout();
+  pendingPings.clear();
   if (pingTimer) {
     clearInterval(pingTimer);
     pingTimer = null;
+  }
+  if (diagPingTimer) {
+    clearInterval(diagPingTimer);
+    diagPingTimer = null;
+  }
+  if (diagReportTimer) {
+    clearInterval(diagReportTimer);
+    diagReportTimer = null;
   }
   if (pongTimeout) {
     clearTimeout(pongTimeout);

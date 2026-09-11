@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { PROTOCOL_VERSION } from '@entangle/protocol';
 
+import { DiagnosticsCard } from '@/features/diag/DiagnosticsCard';
 import { C } from '@/features/onboarding/atoms';
 import { useConnection } from '@/state/connection';
 import { useSettings } from '@/state/settings';
@@ -87,6 +88,10 @@ export default function SettingsScreen() {
           <ShortcutRow gesture="Next Space" shortcut="⌃→" action="Next Space" />
           <ShortcutRow gesture="Mission" shortcut="⌃↑" action="Mission Control" />
         </View>
+
+        {/* Older Macs do not measure anything, so hide the panel rather than
+            show a toggle that reports nothing. */}
+        {serverCaps.includes('diag') ? <DiagnosticsCard /> : null}
 
         <Pressable style={styles.disconnect} onPress={disconnect}>
           <Text style={styles.disconnectText}>Disconnect</Text>
