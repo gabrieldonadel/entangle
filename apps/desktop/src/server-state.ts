@@ -67,7 +67,10 @@ export const useServerStore = create<ServerState>((set, get) => ({
   pairing: null,
   clientNames: EntangleServer.getClientNames(),
   requestAccessibility: async () => {
-    const trusted = await EntangleServer.promptAccessibility();
+    // promptAccessibility may show the system sheet; always re-read trust via
+    // isAccessibilityTrusted so a false prompt-flow result can't stick the gate.
+    await EntangleServer.promptAccessibility();
+    const trusted = EntangleServer.isAccessibilityTrusted();
     set({ accessibilityTrusted: trusted });
     return trusted;
   },
@@ -171,6 +174,7 @@ eventEmitter.addListener('clientConnected', (event: ClientConnectedEvent) => {
     udpOffers.set(event.id, { port: event.udpPort, token: event.udpToken });
   }
   useServerStore.setState((state) => ({
+    lastError: null,
     clients: {
       ...state.clients,
       [event.id]: {

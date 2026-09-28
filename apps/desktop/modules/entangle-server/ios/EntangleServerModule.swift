@@ -207,11 +207,16 @@ public class EntangleServerModule: Module {
 
     let prefs = PreferencesStore.shared
     let name = prefs.serverName
+    // Prefs "auto" (0) used to bind an ephemeral port, which breaks phone
+    // reconnect after a Mac restart. Prefer the protocol default; if that
+    // port is taken, WebSocketServer falls back to an ephemeral bind.
+    let preferredPort: UInt16 = prefs.port == 0 ? 49827 : prefs.port
     let server = WebSocketServer(
       serviceType: "_entangle._tcp.",
       serviceName: name,
-      preferredPort: prefs.port,
-      advertiseService: prefs.discoverable
+      preferredPort: preferredPort,
+      advertiseService: prefs.discoverable,
+      fallbackToEphemeral: prefs.port == 0
     )
     self.serviceName = name
 

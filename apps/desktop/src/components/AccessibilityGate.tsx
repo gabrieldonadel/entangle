@@ -29,7 +29,7 @@ export function AccessibilityGate({ children }: { children: React.ReactNode }) {
         <View style={styles.steps}>
           <Step n={1} text="Click “Open System Settings” below." />
           <Step n={2} text="Find Entangle in the Accessibility list and toggle it on." />
-          <Step n={3} text="Return to this app — it unlocks automatically." />
+          <Step n={3} text="Return here and press Re-check — or quit and reopen the app." />
         </View>
         <View style={styles.actions}>
           <Pressable

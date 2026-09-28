@@ -19,6 +19,8 @@ type ZeroconfService = {
 };
 
 const SCANNING_INDICATOR_MS = 5000;
+/** How long a reconnect may wait for Bonjour to re-advertise the Mac. */
+const RESOLVE_TIMEOUT_MS = 2500;
 
 const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
 
@@ -42,6 +44,61 @@ export function pickHost(service: ZeroconfService): string | undefined {
   );
   if (ipv6) return `[${ipv6}]`;
   return service.host;
+}
+
+function toDiscovered(service: ZeroconfService): DiscoveredService | null {
+  const host = pickHost(service);
+  if (!host || !service.port) return null;
+  return {
+    name: service.name,
+    host,
+    port: service.port,
+    fullName: service.fullName,
+  };
+}
+
+/**
+ * One-shot Bonjour lookup for a Mac by advertised instance name (or any
+ * `_entangle` instance when `serviceName` is omitted). Used on reconnect so a
+ * Mac that rebound to a new port is still reachable without a trip back to
+ * the Connect screen.
+ */
+export function resolveMac(
+  serviceName?: string | null,
+  timeoutMs = RESOLVE_TIMEOUT_MS,
+): Promise<DiscoveredService | null> {
+  return new Promise((resolve) => {
+    const zeroconf = new Zeroconf();
+    let settled = false;
+
+    const finish = (result: DiscoveredService | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try {
+        zeroconf.stop();
+        zeroconf.removeDeviceListeners();
+      } catch {}
+      resolve(result);
+    };
+
+    const timer = setTimeout(() => finish(null), timeoutMs);
+
+    zeroconf.on('resolved', (service: ZeroconfService) => {
+      if (serviceName && service.name !== serviceName) return;
+      const found = toDiscovered(service);
+      if (found) finish(found);
+    });
+    zeroconf.on('error', () => {
+      // Keep waiting until timeout — a transient browse error is not fatal.
+    });
+
+    try {
+      zeroconf.scan(BONJOUR_SERVICE_NAME, BONJOUR_PROTOCOL, BONJOUR_DOMAIN);
+    } catch {
+      finish(null);
+    }
+  });
 }
 
 export function useDiscovery() {

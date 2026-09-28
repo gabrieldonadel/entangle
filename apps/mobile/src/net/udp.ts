@@ -18,8 +18,24 @@ import * as EntangleUdp from 'entangle-udp';
 
 let policy: UdpPolicyState = initialUdpState('off');
 let token: string | null = null;
+/** Host last handed to `EntangleUdp.open` — used to skip no-op reconfigures. */
+let configuredHost: string | null = null;
+/** Port last handed to `EntangleUdp.open`. */
+let configuredPort: number | null = null;
 
 export function configure(host: string, offer?: UdpOffer): void {
+  // Prefs / cap refreshes re-send welcome with the same UDP offer. Resetting
+  // here would drop a confirmed datagram path back to probing for no reason.
+  if (
+    offer &&
+    EntangleUdp.isAvailable &&
+    token === offer.token &&
+    configuredHost === host &&
+    configuredPort === offer.port &&
+    policy.phase !== 'off'
+  ) {
+    return;
+  }
   reset();
   if (!offer || !EntangleUdp.isAvailable) return;
   if (!EntangleUdp.open(host, offer.port)) return;
@@ -27,6 +43,8 @@ export function configure(host: string, offer?: UdpOffer): void {
   // pointer keeps going through the JS path.
   EntangleUdp.installOnWorkletRuntime();
   token = offer.token;
+  configuredHost = host;
+  configuredPort = offer.port;
   policy = initialUdpState('probing');
 }
 
@@ -34,6 +52,8 @@ export function reset(): void {
   if (policy.phase !== 'off') EntangleUdp.close();
   policy = initialUdpState('off');
   token = null;
+  configuredHost = null;
+  configuredPort = null;
 }
 
 /** The Mac says datagrams are landing. */
