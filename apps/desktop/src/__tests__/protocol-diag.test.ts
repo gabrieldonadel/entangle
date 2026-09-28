@@ -93,6 +93,17 @@ describe('udp handshake messages', () => {
     expect(decode(encode(welcome))).toEqual(welcome);
   });
 
+  it('round-trips a welcome carrying app icons', () => {
+    const welcome: WelcomeMessage = {
+      v: PROTOCOL_VERSION,
+      t: 'welcome',
+      server: { name: 'Mac', version: '0.0.1', host: 'Mac' },
+      caps: ['pointer', 'cursor'],
+      icons: { cursor: 'iVBORw0KGgo=' },
+    };
+    expect(decode(encode(welcome))).toEqual(welcome);
+  });
+
   it('round-trips a udp.ok, and recognises it', () => {
     const ok: UdpOkMessage = { v: PROTOCOL_VERSION, t: 'udp.ok', frames: 57 };
     const decoded = decode(encode(ok));

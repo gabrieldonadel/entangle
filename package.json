@@ -11,6 +11,7 @@
     "mobile:start": "pnpm --filter entangle-mobile run start",
     "mobile:ios": "pnpm --filter entangle-mobile run ios",
     "mobile:android": "pnpm --filter entangle-mobile run android",
+    "cursor-host:build": "pnpm --filter cursor-agent-host run build",
     "lint": "pnpm -r run lint"
   },
   "engines": {

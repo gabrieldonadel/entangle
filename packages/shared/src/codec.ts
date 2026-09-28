@@ -12,6 +12,7 @@ import type {
   DiagStateMessage,
   PongMessage,
   UdpOkMessage,
+  ClipboardPushMessage,
 } from './messages';
 
 const CLIENT_TAGS = new Set<ClientMessage['t']>([
@@ -35,6 +36,26 @@ const CLIENT_TAGS = new Set<ClientMessage['t']>([
   'ping',
   'pair.request',
   'pair.qr',
+  'cursor.prompt',
+  'cursor.cancel',
+  'cursor.resume',
+  'cursor.get',
+  'cursor.models',
+  'cursor.setModel',
+  'cursor.usage',
+  'cursor.me',
+  'cursor.list',
+  'cursor.open',
+  'cursor.new',
+  'cursor.workspaces',
+  'cursor.setWorkspace',
+  'cursor.file.get',
+  'cursor.file.list',
+  'cursor.keep',
+  'cursor.discard',
+  'cursor.diffs',
+  'cb.sync',
+  'cb.push',
 ]);
 
 const SERVER_TAGS = new Set<ServerMessage['t']>([
@@ -50,6 +71,19 @@ const SERVER_TAGS = new Set<ServerMessage['t']>([
   'udp.ok',
   'pair.accepted',
   'pair.rejected',
+  'cursor.status',
+  'cursor.delta',
+  'cursor.snapshot',
+  'cursor.models',
+  'cursor.usage',
+  'cursor.account',
+  'cursor.agents',
+  'cursor.workspaces',
+  'cursor.files',
+  'cursor.diffs',
+  'cursor.file',
+  'cursor.file.listing',
+  'cb.push',
 ]);
 
 const ALL_TAGS = new Set<string>([...CLIENT_TAGS, ...SERVER_TAGS]);
@@ -119,4 +153,8 @@ export function isDiagState(msg: Message): msg is DiagStateMessage {
 
 export function isUdpOk(msg: Message): msg is UdpOkMessage {
   return msg.t === 'udp.ok';
+}
+
+export function isClipboardPush(msg: Message): msg is ClipboardPushMessage {
+  return msg.t === 'cb.push';
 }

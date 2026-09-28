@@ -15,8 +15,9 @@ import {
   isDisplayState,
   isDockListResponse,
   isDockUpdate,
+  isClipboardPush,
 } from '@entangle/protocol';
-import type { ClientMessage, DockApp, Message } from '@entangle/protocol';
+import type { ClientMessage, DockApp, Message, WelcomeIcons } from '@entangle/protocol';
 
 import { drainPointerCounters, syncPointerConfig } from '@/features/trackpad/uplink';
 import { resolveMac } from '@/net/discovery';
@@ -24,6 +25,8 @@ import * as udp from '@/net/udp';
 import { getSocket, setSocket } from '@/net/socket';
 
 import { useAudio } from './audio';
+import { useClipboard } from './clipboard';
+import { useCursor } from './cursor';
 import { recordRtt, tickPhoneStats, useDiag } from './diag';
 import { useDisplay } from './display';
 import { useDock } from './dock';
@@ -61,6 +64,8 @@ interface ConnectionState {
   serverName: string | null;
   serverVersion: string | null;
   serverCaps: string[];
+  /** App icons from `welcome.icons` (base64 PNG, same as dock). */
+  serverIcons: WelcomeIcons;
   lastError: string | null;
   latencyMs: number | null;
   pairingError: string | null;
@@ -105,6 +110,7 @@ export const useConnection = create<ConnectionState>((set, get) => ({
   serverName: null,
   serverVersion: null,
   serverCaps: [],
+  serverIcons: {},
   lastError: null,
   latencyMs: null,
   pairingError: null,
@@ -150,6 +156,8 @@ export const useConnection = create<ConnectionState>((set, get) => ({
     useAudio.getState().reset();
     useDisplay.getState().reset();
     useDiag.getState().reset();
+    useCursor.getState().reset();
+    useClipboard.getState().stop();
     udp.reset();
     syncPointerConfig({ datagramToken: '', diagEnabled: false });
     set({
@@ -158,7 +166,8 @@ export const useConnection = create<ConnectionState>((set, get) => ({
       serverName: null,
       serverVersion: null,
       serverCaps: [],
-          latencyMs: null,
+      serverIcons: {},
+      latencyMs: null,
       pairingError: null,
       demo: false,
     });
@@ -185,7 +194,8 @@ export const useConnection = create<ConnectionState>((set, get) => ({
       serverName: 'Demo Mac',
       serverVersion: 'demo',
       serverCaps: [],
-          lastError: null,
+      serverIcons: {},
+      lastError: null,
       latencyMs: null,
       pairingError: null,
       demo: true,
@@ -301,6 +311,7 @@ async function openSocket() {
     // The token dies with the socket that issued it.
     udp.reset();
     syncPointerConfig({ datagramToken: '' });
+    useClipboard.getState().stop();
     if (manuallyDisconnected) return;
     if (useConnection.getState().phase === 'pairing') return;
     scheduleReconnect();
@@ -362,17 +373,122 @@ function handleMessage(msg: Message) {
     syncPointerConfig({ datagramToken: udp.activeToken() ?? '' });
     return;
   }
+  if (isClipboardPush(msg)) {
+    useClipboard.getState().applyRemote(msg);
+    return;
+  }
   switch (msg.t) {
+    case 'cursor.status': {
+      useCursor.getState().applyStatus(msg);
+      return;
+    }
+    case 'cursor.delta': {
+      useCursor.getState().applyDelta(msg);
+      return;
+    }
+    case 'cursor.snapshot': {
+      useCursor.getState().applySnapshot(msg);
+      return;
+    }
+    case 'cursor.models': {
+      if ('models' in msg) {
+        useCursor.getState().applyModels(msg.models);
+      }
+      return;
+    }
+    case 'cursor.agents': {
+      // fetchAgents clears the list first; fetchMore keeps it → append.
+      useCursor.getState().applyAgents(msg.items, msg.nextCursor, {
+        append: useCursor.getState().agents.length > 0,
+      });
+      return;
+    }
+    case 'cursor.workspaces': {
+      if ('workspaces' in msg) {
+        useCursor.getState().applyWorkspaces(msg.workspaces, msg.active);
+      }
+      return;
+    }
+    case 'cursor.account': {
+      useCursor.getState().applyAccount({
+        apiKeyName: msg.apiKeyName,
+        userEmail: msg.userEmail,
+        error: 'error' in msg && typeof msg.error === 'string' ? msg.error : undefined,
+      });
+      return;
+    }
+    case 'cursor.usage': {
+      if ('usage' in msg) {
+        useCursor.getState().applyUsage({
+          agentId: msg.agentId,
+          usage: msg.usage,
+          costCents: msg.costCents,
+          runs: msg.runs,
+          error: 'error' in msg && typeof msg.error === 'string' ? msg.error : undefined,
+        });
+      }
+      return;
+    }
+    case 'cursor.files': {
+      useCursor.getState().applyFiles(
+        (msg.files ?? []).map((f) => ({
+          path: f.path,
+          op: f.op === 'read' || f.op === 'write' ? f.op : 'other',
+        })),
+      );
+      return;
+    }
+    case 'cursor.diffs': {
+      if (!('files' in msg)) return;
+      useCursor.getState().applyDiffs({
+        files: (msg.files ?? []).map((f) => ({
+          path: f.path,
+          diff: f.diff,
+          linesAdded: f.linesAdded ?? 0,
+          linesRemoved: f.linesRemoved ?? 0,
+        })),
+        kept: msg.kept,
+        discarded: msg.discarded,
+        error: msg.error,
+      });
+      return;
+    }
+    case 'cursor.file': {
+      useCursor.getState().applyFile({
+        path: msg.path,
+        text: msg.text,
+        truncated: msg.truncated,
+        binary: msg.binary,
+        bytes: msg.bytes,
+        error: msg.error,
+        imageBase64: msg.imageBase64,
+        mimeType: msg.mimeType,
+      });
+      return;
+    }
+    case 'cursor.file.listing': {
+      useCursor.getState().applyListing({
+        path: msg.path,
+        entries: msg.entries ?? [],
+        error: msg.error,
+      });
+      return;
+    }
     case 'welcome': {
       useConnection.setState({
         serverName: msg.server.name,
         serverVersion: msg.server.version,
         serverCaps: msg.caps,
+        serverIcons: msg.icons ?? {},
       });
       // The offer carries the port and this session's token. Absent means the
       // Mac has no datagram listener, and pointer frames stay on this socket.
       const { target } = useConnection.getState();
       if (target) udp.configure(target.host, msg.udp);
+      useClipboard.getState().syncWithSession({
+        connected: true,
+        hasCap: msg.caps.includes('clipboard'),
+      });
       return;
     }
     case 'pong': {

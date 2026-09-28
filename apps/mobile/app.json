@@ -29,7 +29,8 @@
       "permissions": [
         "android.permission.CHANGE_WIFI_MULTICAST_STATE",
         "android.permission.ACCESS_NETWORK_STATE",
-        "android.permission.ACCESS_WIFI_STATE"
+        "android.permission.ACCESS_WIFI_STATE",
+        "android.permission.READ_MEDIA_IMAGES"
       ],
       "predictiveBackGestureEnabled": false,
       "intentFilters": [
@@ -51,7 +52,7 @@
       ]
     },
     "web": {
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
@@ -72,12 +73,20 @@
         "expo-build-properties",
         {
           "android": {
-            "usesCleartextTraffic": true
+            "usesCleartextTraffic": true,
+            "ndkVersion": "27.0.12077973",
+            "buildToolsVersion": "36.1.0"
           }
         }
       ],
       "expo-image",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Entangle to attach photos to Cursor chat."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

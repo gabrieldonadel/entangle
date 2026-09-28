@@ -12,7 +12,17 @@ interface PreferencesState extends Preferences {
   patch: (next: Partial<Preferences>) => Promise<void>;
 }
 
-const initial: Preferences = EntangleServer.getPreferences();
+const raw = EntangleServer.getPreferences();
+const initial: Preferences = {
+  cursorAllowPhones: false,
+  cursorWorkspacePath: '',
+  cursorWorkspaceAllowlist: [],
+  cursorModel: 'composer-2.5',
+  cursorHasApiKey: false,
+  cursorReady: false,
+  clipboardSync: false,
+  ...raw,
+};
 
 export const usePreferencesStore = create<PreferencesState>((set, get) => ({
   ...initial,
@@ -31,6 +41,23 @@ export const usePreferencesStore = create<PreferencesState>((set, get) => ({
   },
 }));
 
+/** Pref keys that change which caps / icons the phone sees in `welcome`. */
+const WELCOME_CAP_KEYS: (keyof Preferences)[] = [
+  'cursorAllowPhones',
+  'cursorWorkspacePath',
+  'cursorWorkspaceAllowlist',
+  'cursorHasApiKey',
+  'cursorReady',
+  'clipboardSync',
+];
+
 eventEmitter.addListener('preferencesChanged', (event: PreferencesChangedEvent) => {
+  const prev = usePreferencesStore.getState();
   usePreferencesStore.setState(event);
+  const capsChanged = WELCOME_CAP_KEYS.some((key) => prev[key] !== event[key]);
+  if (!capsChanged) return;
+  // Lazy import to avoid a circular init edge with server-state.
+  void import('./server-state').then((mod) => {
+    mod.refreshWelcomeCaps?.();
+  });
 });

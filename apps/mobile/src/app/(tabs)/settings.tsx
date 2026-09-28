@@ -6,6 +6,7 @@ import { PROTOCOL_VERSION } from '@entangle/protocol';
 
 import { DiagnosticsCard } from '@/features/diag/DiagnosticsCard';
 import { C } from '@/features/onboarding/atoms';
+import { useClipboard } from '@/state/clipboard';
 import { useConnection } from '@/state/connection';
 import { useSettings } from '@/state/settings';
 
@@ -27,6 +28,9 @@ export default function SettingsScreen() {
   const setPointerSensitivity = useSettings((s) => s.setPointerSensitivity);
   const naturalScroll = useSettings((s) => s.naturalScroll);
   const setNaturalScroll = useSettings((s) => s.setNaturalScroll);
+  const clipboardEnabled = useClipboard((s) => s.enabled);
+  const setClipboardEnabled = useClipboard((s) => s.setEnabled);
+  const clipboardCap = serverCaps.includes('clipboard');
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
@@ -76,6 +80,23 @@ export default function SettingsScreen() {
             <Switch value={naturalScroll} onValueChange={setNaturalScroll} />
           </View>
         </View>
+
+        {clipboardCap ? (
+          <View style={styles.card}>
+            <View style={styles.toggleRow}>
+              <View style={styles.toggleLabels}>
+                <Text style={styles.toggleTitle}>Clipboard sync</Text>
+                <Text style={styles.toggleSubtitle}>
+                  Keep text and images in sync with your Mac while connected.
+                </Text>
+              </View>
+              <Switch
+                value={clipboardEnabled}
+                onValueChange={setClipboardEnabled}
+              />
+            </View>
+          </View>
+        ) : null}
 
         <View style={styles.card}>
           <Text style={styles.title}>Spaces &amp; Mission Control</Text>

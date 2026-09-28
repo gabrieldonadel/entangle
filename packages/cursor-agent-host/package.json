@@ -1,0 +1,23 @@
+{
+  "name": "cursor-agent-host",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "cursor-agent-host": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "@cursor/sdk": "^1.0.32"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "5.9.3"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}

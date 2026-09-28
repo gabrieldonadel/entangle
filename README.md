@@ -38,6 +38,7 @@ You're across the room. The Mac is plugged into the TV. The keyboard is buried u
 | 🖱   | **Trackpad mode**       | Smooth, sub‑frame pointer with two‑finger scroll & tap‑to‑click.   |
 | ⌨️  | **Keyboard relay**      | Type from your phone. Modifier keys, arrows, the works.            |
 | 💤  | **Wake the screen**     | Mac's display asleep? Tap the trackpad and it lights back up.      |
+| 🤖  | **Cursor Apps**         | Prompt a local Cursor agent on your Mac from the phone (API key).  |
 | 🔒  | **LAN‑only by default** | No accounts, no cloud, no telemetry. Pairs over the local network. |
 | 📡  | **Auto‑discovery**      | Bonjour / mDNS finds your Mac the moment the app opens.            |
 | 🌓  | **Native everywhere**   | React Native macOS on desktop, Expo on mobile. One repo.           |
@@ -93,17 +94,30 @@ pnpm mobile:android   # Android emulator / device
 
 That's it. The phone will find the Mac on its own — pick it from the discovered list and start moving the pointer. macOS will ask for **Accessibility** permission the first time; the desktop UI is gated until you grant it.
 
+### Cursor Apps (optional)
+
+Prompt a **local** Cursor agent on your Mac from the phone (Apps tab → Cursor). This does not drive the Cursor IDE UI; it runs `@cursor/sdk` against a workspace folder you choose.
+
+1. Install **Node.js ≥ 22.13** on the Mac (`node -v`).
+2. From the repo root: `pnpm --filter cursor-agent-host build`
+3. Mint a user API key at [cursor.com/dashboard/api](https://cursor.com/dashboard/api).
+4. In the Entangle macOS app → **Preferences → Cursor**: paste the key, choose a workspace folder, set the model (default `composer-2.5`), turn on **Allow phones**.
+5. On the phone, open **Apps → Cursor** and send a prompt.
+
+The Mac stores the key in Keychain. The phone never sees it — prompts travel over the existing LAN WebSocket.
+
 <br>
 
 #### 🧰 Requirements
 
 |                   |                                                                                  |
 | ----------------- | -------------------------------------------------------------------------------- |
-| **Node.js**       | ≥ 18                                                                             |
+| **Node.js**       | ≥ 18 (Cursor Apps on the Mac needs **≥ 22.13** for `@cursor/sdk`) |
 | **pnpm**          | 10.x                                                                             |
 | **Xcode**         | 15+ (for iOS & macOS builds)                                                     |
 | **CocoaPods**     | `bundle install && bundle exec pod install` inside `apps/desktop/macos`          |
 | **Accessibility** | macOS Accessibility permission — required to synthesize pointer / keyboard input |
+| **Cursor API key**| Optional — [Dashboard → API Keys](https://cursor.com/dashboard/api) for Apps → Cursor |
 
 <br>
 
@@ -116,7 +130,9 @@ entangle-monorepo/
 │  ├─ mobile/       ← Expo 55 + Expo Router + RN 0.83    (iOS / Android client)
 │  └─ website/      ← Vite + React 18                    (marketing site)
 ├─ packages/
-│  └─ shared/       ← @entangle/protocol — shared wire format (TypeScript)
+│  ├─ shared/            ← @entangle/protocol — shared wire format (TypeScript)
+│  ├─ entangle-udp/      ← Expo module: datagram socket (iOS / Android)
+│  └─ cursor-agent-host/ ← Node sidecar for local Cursor agents (`@cursor/sdk`)
 ├─ pnpm-workspace.yaml
 └─ pnpm-lock.yaml
 ```
@@ -139,6 +155,7 @@ pnpm desktop test                       # jest (desktop unit tests)
 pnpm desktop test -- path/to/file.test  # single test file
 pnpm desktop <cmd>                      # forward any command into apps/desktop
 pnpm mobile <cmd>                       # forward any command into apps/mobile
+pnpm cursor-host:build                  # build the Node Cursor agent sidecar
 ```
 
 [`packages/shared`](packages/shared) is the source of truth for messages on the wire — touch it once, both clients update. All wire messages carry `v: 1`; bump `PROTOCOL_VERSION` for breaking changes and the server will close mismatched clients with code `4001`.
@@ -152,6 +169,8 @@ pnpm mobile <cmd>                       # forward any command into apps/mobile
 - [x] mDNS auto‑discovery
 - [x] Dock enumeration & app activation
 - [x] Wake the Mac's display from the phone
+- [x] Cursor Apps — local agent prompt / stream from the phone
+- [x] Cursor phone settings — model/params, usage, past chats, richer stream
 - [ ] Wake the whole Mac from sleep (Wake‑on‑LAN)
 - [ ] Media keys & system shortcuts
 - [ ] Windows desktop client

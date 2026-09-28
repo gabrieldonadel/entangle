@@ -95,3 +95,7 @@ To learn more about React Native, take a look at the following resources:
 - [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
 - [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
 - [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+
+## Cursor agent
+
+Preferences → Cursor stores a User API key in Keychain and a workspace folder. Paired phones can prompt a local `@cursor/sdk` agent, change model/params, inspect usage, and resume past chats for that workspace. Build the host with `pnpm cursor-host:build`. Sidecar stderr lands in `~/Library/Logs/Entangle/cursor-host.log`.
