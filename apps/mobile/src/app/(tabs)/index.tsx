@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -22,6 +23,7 @@ import { ModifierBar } from "@/features/keyboard/ModifierBar";
 import { SpecialKeys } from "@/features/keyboard/SpecialKeys";
 import { TrackpadSurface } from "@/features/trackpad/TrackpadSurface";
 import type { LocalGestureEvent } from "@/features/trackpad/TrackpadSurface";
+import { getTrackpadLayout } from "@/features/trackpad/layout";
 import { useConnection } from "@/state/connection";
 import { useDisplay } from "@/state/display";
 import { useModifiers } from "@/state/modifiers";
@@ -32,6 +34,8 @@ const CURSOR_W = 14;
 const CURSOR_H = 20;
 
 export default function TrackpadScreen() {
+  const { width, height } = useWindowDimensions();
+  const trackpadLayout = getTrackpadLayout(width, height);
   const serverName = useConnection((s) => s.serverName);
   const phase = useConnection((s) => s.phase);
   const latency = useConnection((s) => s.latencyMs);
@@ -114,22 +118,50 @@ export default function TrackpadScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.root}>
+    <SafeAreaView
+      style={[
+        styles.root,
+        { paddingVertical: trackpadLayout.rootPaddingVertical },
+      ]}
+    >
       {demo ? (
         <View style={styles.bannerWrap}>
           <PracticeBanner />
         </View>
       ) : null}
 
-      <View style={styles.header}>
-        <View style={styles.headerInfo}>
-          <Text style={styles.connected}>
-            {demo ? "Practice mode" : "Connected to"}
-          </Text>
-          <Text style={styles.serverName} numberOfLines={1}>
+      <View
+        style={[
+          styles.header,
+          { paddingVertical: trackpadLayout.headerPaddingVertical },
+        ]}
+      >
+        <View
+          style={[
+            styles.headerInfo,
+            trackpadLayout.isLandscape && styles.headerInfoLandscape,
+          ]}
+        >
+          {!trackpadLayout.isLandscape ? (
+            <Text style={styles.connected}>
+              {demo ? "Practice mode" : "Connected to"}
+            </Text>
+          ) : null}
+          <Text
+            style={[
+              styles.serverName,
+              { fontSize: trackpadLayout.serverNameFontSize },
+            ]}
+            numberOfLines={1}
+          >
             {serverName ?? "…"}
           </Text>
-          <Text style={styles.meta}>
+          <Text
+            style={[
+              styles.meta,
+              trackpadLayout.isLandscape && styles.metaLandscape,
+            ]}
+          >
             {demo
               ? "not a real connection"
               : `${phase}${latency != null ? ` · ${latency}ms` : ""}`}
@@ -219,7 +251,7 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: C.bg,
-    padding: 16,
+    paddingHorizontal: 16,
   },
   header: {
     paddingVertical: 8,
@@ -231,13 +263,17 @@ const styles = StyleSheet.create({
   headerInfo: {
     flexShrink: 1,
   },
+  headerInfoLandscape: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   connected: {
     color: "#8e8e93",
     fontSize: 13,
   },
   serverName: {
     color: "#fff",
-    fontSize: 22,
     fontWeight: "700",
     marginTop: 2,
   },
@@ -245,6 +281,9 @@ const styles = StyleSheet.create({
     color: "#8e8e93",
     fontSize: 12,
     marginTop: 4,
+  },
+  metaLandscape: {
+    marginTop: 2,
   },
   kbButton: {
     width: 44,
