@@ -30,6 +30,8 @@ export default function RootLayout() {
   useEffect(() => {
     if (!onboardingHydrated) return;
     if (phase === "open") {
+      // Stay on /cursor (stack sibling of tabs) while connected.
+      if (currentRoute === "cursor") return;
       router.replace("/(tabs)");
     } else if (phase === "pairing") {
       router.replace("/pair");
@@ -59,6 +61,7 @@ export default function RootLayout() {
           <Stack.Screen name="connect" />
           <Stack.Screen name="pair" />
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="cursor" />
         </Stack>
       </ThemeProvider>
     </GestureHandlerRootView>

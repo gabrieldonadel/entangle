@@ -1,11 +1,14 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+
+import EntangleServer from 'entangle-server';
 
 import {usePreferencesStore} from '../preferences-state';
 import {fonts, tokens} from '../theme';
@@ -16,24 +19,135 @@ type Props = {
   onClose: () => void;
 };
 
+type ModelOption = {id: string; displayName: string; description?: string};
+
+const FALLBACK_MODELS: ModelOption[] = [
+  {id: 'default', displayName: 'Default (Auto)'},
+  {id: 'composer-2.5', displayName: 'Composer 2.5'},
+  {id: 'auto', displayName: 'Auto'},
+];
+
 export function PreferencesSheet({visible, onClose}: Props) {
   const prefs = usePreferencesStore();
+  const [apiKeyError, setApiKeyError] = useState<string | null>(null);
+  const [apiKeySaving, setApiKeySaving] = useState(false);
+  const [readyDetail, setReadyDetail] = useState('');
+  const [models, setModels] = useState<ModelOption[]>(FALLBACK_MODELS);
+  const [modelsError, setModelsError] = useState<string | null>(null);
+  const [modelsLoading, setModelsLoading] = useState(false);
+  const [modelPickerOpen, setModelPickerOpen] = useState(false);
+
+  useEffect(() => {
+    if (!visible) {
+      setModelPickerOpen(false);
+      return;
+    }
+    try {
+      setReadyDetail(EntangleServer.cursorReadinessDetail());
+    } catch {
+      setReadyDetail('');
+    }
+    if (!prefs.cursorHasApiKey) {
+      setModels(FALLBACK_MODELS);
+      setModelsError(null);
+      return;
+    }
+    let cancelled = false;
+    setModelsLoading(true);
+    setModelsError(null);
+    void EntangleServer.listCursorModels()
+      .then(next => {
+        if (cancelled) return;
+        if (next?.length) {
+          setModels(
+            next.map(m => ({
+              id: m.id,
+              displayName: m.displayName || m.id,
+              description: m.description,
+            })),
+          );
+        } else {
+          setModels(FALLBACK_MODELS);
+        }
+      })
+      .catch(err => {
+        if (cancelled) return;
+        const message =
+          err instanceof Error ? err.message : 'Could not load models';
+        setModelsError(message);
+        setModels(FALLBACK_MODELS);
+      })
+      .finally(() => {
+        if (!cancelled) setModelsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, prefs.cursorHasApiKey]);
 
   if (!visible) return null;
 
+  const pasteAndSaveKey = async (): Promise<boolean> => {
+    setApiKeySaving(true);
+    setApiKeyError(null);
+    try {
+      const next = await EntangleServer.setCursorApiKeyFromClipboard();
+      usePreferencesStore.setState(next);
+      try {
+        setReadyDetail(
+          next.cursorReady ? 'Ready' : EntangleServer.cursorReadinessDetail(),
+        );
+      } catch {
+        setReadyDetail(next.cursorReady ? 'Ready' : '');
+      }
+      if (!next.cursorHasApiKey) {
+        setApiKeyError('Keychain did not keep the key');
+        return false;
+      }
+      return true;
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Could not save API key';
+      setApiKeyError(message);
+      try {
+        setReadyDetail(EntangleServer.cursorReadinessDetail());
+      } catch {
+        setReadyDetail('');
+      }
+      return false;
+    } finally {
+      setApiKeySaving(false);
+    }
+  };
+
+  const selectModel = (id: string) => {
+    void prefs.set('cursorModel', id);
+    setModelPickerOpen(false);
+  };
+
+  const close = () => onClose();
+
+  const selectedLabel =
+    models.find(m => m.id === prefs.cursorModel)?.displayName ??
+    prefs.cursorModel ??
+    'Select model';
+
   return (
     <View style={styles.overlay} pointerEvents="auto">
-      <Pressable style={styles.dismissCatcher} onPress={onClose} />
+      <Pressable style={styles.dismissCatcher} onPress={close} />
       <View style={styles.backdrop} pointerEvents="box-none">
         <View style={styles.sheet}>
           <View style={styles.headerRow}>
             <Text style={styles.title}>Preferences</Text>
-            <Pressable onPress={onClose} style={styles.close}>
+            <Pressable onPress={close} style={styles.close}>
               <Text style={styles.closeLabel}>✕</Text>
             </Pressable>
           </View>
 
-          <View style={styles.body}>
+          <ScrollView
+            style={styles.bodyScroll}
+            contentContainerStyle={styles.body}
+            nestedScrollEnabled>
             <SectionHeader label="Server" />
             <Field
               label="Server name"
@@ -126,6 +240,16 @@ export function PreferencesSheet({visible, onClose}: Props) {
                   onChange={v => prefs.set('highlightPointer', v)}
                 />
               }
+            />
+            <Field
+              label="Clipboard sync"
+              hint="Allow paired phones to sync text and images with this Mac"
+              control={
+                <Toggle
+                  on={prefs.clipboardSync}
+                  onChange={v => prefs.set('clipboardSync', v)}
+                />
+              }
               last
             />
 
@@ -159,10 +283,178 @@ export function PreferencesSheet({visible, onClose}: Props) {
               }
               last
             />
-          </View>
+
+            <SectionHeader label="Cursor" />
+            <Field
+              label="Allow phones"
+              hint="Advertise Cursor agent to paired phones. Needs Node 22.13+."
+              control={
+                <Toggle
+                  on={prefs.cursorAllowPhones}
+                  onChange={v => prefs.set('cursorAllowPhones', v)}
+                />
+              }
+            />
+            <Field
+              label="API key"
+              hint={
+                apiKeyError
+                  ? apiKeyError
+                  : prefs.cursorHasApiKey
+                    ? 'Stored in Keychain. Use a User key — Scope: Admin is not supported by the SDK.'
+                    : 'Copy a User API key (not Admin) from cursor.com/dashboard/api, then Paste & Save'
+              }
+              control={
+                <Pressable
+                  style={[styles.browse, apiKeySaving && {opacity: 0.5}]}
+                  disabled={apiKeySaving}
+                  onPress={() => {
+                    void pasteAndSaveKey();
+                  }}>
+                  <Text style={styles.browseLabel}>
+                    {apiKeySaving
+                      ? 'Saving…'
+                      : prefs.cursorHasApiKey
+                        ? 'Paste & Replace'
+                        : 'Paste & Save'}
+                  </Text>
+                </Pressable>
+              }
+            />
+            <Field
+              label="Workspaces"
+              hint="Folders or .code-workspace files phones may switch between. Tap a row to make it active."
+              control={
+                <Pressable
+                  style={styles.browse}
+                  onPress={() => {
+                    void EntangleServer.pickCursorWorkspace().then(next => {
+                      usePreferencesStore.setState(next);
+                    });
+                  }}>
+                  <Text style={styles.browseLabel}>Add…</Text>
+                </Pressable>
+              }
+            />
+            {(prefs.cursorWorkspaceAllowlist?.length
+              ? prefs.cursorWorkspaceAllowlist
+              : prefs.cursorWorkspacePath
+                ? [prefs.cursorWorkspacePath]
+                : []
+            ).map((path, index, list) => {
+              const active = path === prefs.cursorWorkspacePath;
+              const last = index === list.length - 1;
+              const base = path.split('/').filter(Boolean).pop() || path;
+              const name = base.toLowerCase().endsWith('.code-workspace')
+                ? base.slice(0, -'.code-workspace'.length) || base
+                : base;
+              const kind = base.toLowerCase().endsWith('.code-workspace')
+                ? 'Multi-root workspace'
+                : 'Folder';
+              return (
+                <View
+                  key={path}
+                  style={[styles.workspaceRow, !last && styles.fieldBorder]}>
+                  <Pressable
+                    style={styles.workspaceMain}
+                    onPress={() => {
+                      void EntangleServer.setActiveCursorWorkspace(path).then(next => {
+                        usePreferencesStore.setState(next);
+                      });
+                    }}>
+                    <Text
+                      style={[
+                        styles.workspaceName,
+                        active && styles.workspaceNameActive,
+                      ]}
+                      numberOfLines={1}>
+                      {active ? '● ' : '○ '}
+                      {name}
+                    </Text>
+                    <Text style={styles.workspacePath} numberOfLines={1}>
+                      {kind} · {path}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.workspaceRemove}
+                    onPress={() => {
+                      void EntangleServer.removeCursorWorkspace(path).then(next => {
+                        usePreferencesStore.setState(next);
+                      });
+                    }}>
+                    <Text style={styles.workspaceRemoveLabel}>Remove</Text>
+                  </Pressable>
+                </View>
+              );
+            })}
+            <Field
+              label="Model"
+              hint={
+                modelsError
+                  ? modelsError
+                  : modelsLoading
+                    ? 'Loading account models…'
+                    : 'Tap to choose'
+              }
+              control={
+                <Pressable
+                  style={[styles.browse, {minWidth: 180}]}
+                  onPress={() => setModelPickerOpen(open => !open)}>
+                  <Text style={styles.browseLabel} numberOfLines={1}>
+                    {selectedLabel}
+                    {modelPickerOpen ? ' ▴' : ' ▾'}
+                  </Text>
+                </Pressable>
+              }
+            />
+            {modelPickerOpen ? (
+              <View style={styles.modelList}>
+                <ScrollView nestedScrollEnabled style={{maxHeight: 200}}>
+                  {models.map(model => {
+                    const selected = model.id === prefs.cursorModel;
+                    return (
+                      <Pressable
+                        key={model.id}
+                        style={[
+                          styles.modelRow,
+                          selected && styles.modelRowSelected,
+                        ]}
+                        onPress={() => selectModel(model.id)}>
+                        <Text
+                          style={[
+                            styles.modelName,
+                            selected && styles.modelNameSelected,
+                          ]}>
+                          {model.displayName || model.id}
+                        </Text>
+                        {model.displayName &&
+                        model.displayName !== model.id ? (
+                          <Text style={styles.modelId}>{model.id}</Text>
+                        ) : null}
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            ) : null}
+            <Field
+              label="Ready"
+              hint={
+                prefs.cursorReady
+                  ? 'Phones will see the Cursor app'
+                  : readyDetail || 'Needs allow + key + workspace + Node'
+              }
+              control={
+                <Text style={styles.readyValue}>
+                  {prefs.cursorReady ? 'Yes' : 'No'}
+                </Text>
+              }
+              last
+            />
+          </ScrollView>
 
           <View style={styles.footer}>
-            <Pressable style={styles.done} onPress={onClose}>
+            <Pressable style={styles.done} onPress={close}>
               <Text style={styles.doneLabel}>Done</Text>
             </Pressable>
           </View>
@@ -299,8 +591,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 11,
   },
+  bodyScroll: {
+    flexGrow: 0,
+    flexShrink: 1,
+    maxHeight: 520,
+  },
   body: {
-    flex: 0,
+    paddingBottom: 8,
   },
   section: {
     paddingTop: 10,
@@ -410,6 +707,91 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     color: tokens.text,
     minWidth: 32,
+  },
+  browse: {
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    alignSelf: 'flex-start',
+  },
+  browseLabel: {
+    fontSize: 12.5,
+    color: tokens.textHigh,
+    fontWeight: '500',
+  },
+  workspaceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  workspaceMain: {
+    flex: 1,
+    minWidth: 0,
+  },
+  workspaceName: {
+    fontSize: 12.5,
+    color: tokens.textMid,
+    fontWeight: '500',
+  },
+  workspaceNameActive: {
+    color: tokens.textHigh,
+  },
+  workspacePath: {
+    fontSize: 10.5,
+    color: tokens.textDim,
+    marginTop: 2,
+    fontFamily: fonts.mono,
+  },
+  workspaceRemove: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  workspaceRemoveLabel: {
+    fontSize: 11.5,
+    color: tokens.textDim,
+  },
+  modelList: {
+    marginHorizontal: 20,
+    marginBottom: 8,
+    marginLeft: 200,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    overflow: 'hidden',
+  },
+  modelRow: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+  },
+  modelRowSelected: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  modelName: {
+    fontSize: 12.5,
+    color: tokens.textHigh,
+    fontWeight: '500',
+  },
+  modelNameSelected: {
+    color: '#fff',
+  },
+  modelId: {
+    marginTop: 2,
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    color: tokens.textDim,
+  },
+  readyValue: {
+    fontFamily: fonts.mono,
+    fontSize: 12,
+    color: tokens.textMid,
   },
   footer: {
     flexDirection: 'row',

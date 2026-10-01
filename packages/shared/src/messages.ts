@@ -265,6 +265,211 @@ export interface PairQRMessage {
   token: string;
 }
 
+export type CursorAgentStatus =
+  | 'idle'
+  | 'starting'
+  | 'running'
+  | 'finished'
+  | 'error'
+  | 'cancelled';
+
+export type CursorDeltaKind = 'assistant' | 'thinking' | 'tool' | 'shell' | 'result';
+
+export type CursorTokenUsage = {
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
+  reasoningTokens?: number;
+};
+
+export type CursorModelParam = {
+  id: string;
+  type?: string;
+  displayName?: string;
+  description?: string;
+  values?: { id: string; label?: string }[];
+};
+
+export type CursorModelInfo = {
+  id: string;
+  displayName: string;
+  description?: string;
+  params?: CursorModelParam[];
+};
+
+export type CursorAgentListItem = {
+  agentId: string;
+  name: string;
+  summary: string;
+  lastModified: number;
+  status?: string;
+};
+
+/** Start a new local Cursor agent run, or send a follow-up on an existing agent. */
+/** Image attachment for a Cursor prompt (base64, no data: prefix). */
+export type CursorPromptImage = {
+  data: string;
+  mimeType: string;
+};
+
+export interface CursorPromptMessage {
+  v: 1;
+  t: 'cursor.prompt';
+  text: string;
+  /** When set, continue this agent; otherwise the Mac starts a fresh one. */
+  agentId?: string;
+  /** Optional images attached to this turn (SDK `SDKUserMessage.images`). */
+  images?: CursorPromptImage[];
+}
+
+/** Cancel the in-flight Cursor run on the Mac. */
+export interface CursorCancelMessage {
+  v: 1;
+  t: 'cursor.cancel';
+}
+
+/** Reattach to the last persisted local agent on the Mac (if any). */
+export interface CursorResumeMessage {
+  v: 1;
+  t: 'cursor.resume';
+}
+
+/** Ask the Mac for the current Cursor status + transcript snapshot. */
+export interface CursorGetMessage {
+  v: 1;
+  t: 'cursor.get';
+}
+
+/** Request models available to the Mac's API key. */
+export interface CursorModelsRequestMessage {
+  v: 1;
+  t: 'cursor.models';
+}
+
+/** Change the model (and optional params) used for the next prompt. */
+export interface CursorSetModelMessage {
+  v: 1;
+  t: 'cursor.setModel';
+  modelId: string;
+  params?: { id: string; value: string }[];
+}
+
+/** Request billed usage for the active or named agent. */
+export interface CursorUsageRequestMessage {
+  v: 1;
+  t: 'cursor.usage';
+  agentId?: string;
+}
+
+/** Request account info for the Mac's API key. */
+export interface CursorMeMessage {
+  v: 1;
+  t: 'cursor.me';
+}
+
+/** List past local agents for this workspace (IDE-like chat history). */
+export interface CursorListMessage {
+  v: 1;
+  t: 'cursor.list';
+  cursor?: string;
+  limit?: number;
+}
+
+/** Open / resume a past local agent and load its transcript. */
+export interface CursorOpenMessage {
+  v: 1;
+  t: 'cursor.open';
+  agentId: string;
+}
+
+/** Start a fresh chat (dispose current agent, clear transcript). */
+export interface CursorNewMessage {
+  v: 1;
+  t: 'cursor.new';
+}
+
+/** Ask the Mac for the allowlisted workspaces phones may use. */
+export interface CursorWorkspacesRequestMessage {
+  v: 1;
+  t: 'cursor.workspaces';
+}
+
+/**
+ * Switch the active Cursor workspace (must be on the Mac allowlist).
+ * Chats / agents are scoped to the new cwd after this.
+ */
+export interface CursorSetWorkspaceMessage {
+  v: 1;
+  t: 'cursor.setWorkspace';
+  path: string;
+}
+
+export type CursorFileOp = 'read' | 'write' | 'other';
+
+/** Ask the Mac for the UTF-8 contents of a workspace file. */
+export interface CursorFileGetMessage {
+  v: 1;
+  t: 'cursor.file.get';
+  /** Workspace-relative or absolute path under the Cursor workspace. */
+  path: string;
+}
+
+/** List files/folders under a workspace directory (default: workspace root). */
+export interface CursorFileListMessage {
+  v: 1;
+  t: 'cursor.file.list';
+  /** Relative or absolute directory under the workspace. Empty / omit = root. */
+  path?: string;
+}
+
+/** Keep (accept) pending agent edits. Omit / empty paths = keep all. */
+export interface CursorKeepMessage {
+  v: 1;
+  t: 'cursor.keep';
+  paths?: string[];
+}
+
+/** Discard (revert) pending agent edits. Omit / empty paths = discard all. */
+export interface CursorDiscardMessage {
+  v: 1;
+  t: 'cursor.discard';
+  paths?: string[];
+}
+
+/** Refresh the pending-diff list from the Mac. */
+export interface CursorDiffsRequestMessage {
+  v: 1;
+  t: 'cursor.diffs';
+}
+
+export type ClipboardKind = 'text' | 'image' | 'empty';
+
+/**
+ * Phone opts into automatic clipboard sync for this session.
+ * Mac only auto-pushes to clients with sync on, and only applies pushes from them.
+ */
+export interface ClipboardSyncMessage {
+  v: 1;
+  t: 'cb.sync';
+  on: boolean;
+}
+
+/**
+ * Clipboard payload in either direction. Image wins when both text and image
+ * are present. `gen` is monotonic per sender; receivers ignore stale/duplicate gens.
+ */
+export interface ClipboardPushMessage {
+  v: 1;
+  t: 'cb.push';
+  kind: ClipboardKind;
+  text?: string;
+  /** Raw base64 PNG (same convention as dock `iconPng`). */
+  imagePng?: string;
+  gen: number;
+}
+
 export type ClientMessage =
   | PointerMoveMessage
   | PointerClickMessage
@@ -285,7 +490,27 @@ export type ClientMessage =
   | HelloMessage
   | PingMessage
   | PairRequestMessage
-  | PairQRMessage;
+  | PairQRMessage
+  | CursorPromptMessage
+  | CursorCancelMessage
+  | CursorResumeMessage
+  | CursorGetMessage
+  | CursorModelsRequestMessage
+  | CursorSetModelMessage
+  | CursorUsageRequestMessage
+  | CursorMeMessage
+  | CursorListMessage
+  | CursorOpenMessage
+  | CursorNewMessage
+  | CursorWorkspacesRequestMessage
+  | CursorSetWorkspaceMessage
+  | CursorFileGetMessage
+  | CursorFileListMessage
+  | CursorKeepMessage
+  | CursorDiscardMessage
+  | CursorDiffsRequestMessage
+  | ClipboardSyncMessage
+  | ClipboardPushMessage;
 
 export interface DockApp {
   bundleId: string;
@@ -312,12 +537,21 @@ export interface UdpOffer {
   token: string;
 }
 
+/**
+ * Optional app icons (raw base64 PNG, same convention as dock `iconPng`)
+ * keyed by integration id. Present when the Mac can resolve the .app on disk.
+ */
+export type WelcomeIcons = {
+  cursor?: string;
+};
+
 export interface WelcomeMessage {
   v: 1;
   t: 'welcome';
   server: { name: string; version: string; host: string };
   caps: string[];
   udp?: UdpOffer;
+  icons?: WelcomeIcons;
 }
 
 export interface PongMessage {
@@ -435,6 +669,160 @@ export interface PairRejectedMessage {
   reason: string;
 }
 
+export interface CursorStatusMessage {
+  v: 1;
+  t: 'cursor.status';
+  status: CursorAgentStatus;
+  agentId?: string;
+  runId?: string;
+  cwd?: string;
+  model?: string;
+  error?: string;
+  /** Token counts for the turn that just finished, when available. */
+  usage?: CursorTokenUsage;
+}
+
+export interface CursorDeltaMessage {
+  v: 1;
+  t: 'cursor.delta';
+  kind: CursorDeltaKind;
+  text: string;
+  agentId: string;
+  runId: string;
+}
+
+export interface CursorTranscriptItem {
+  role: 'user' | 'assistant' | 'thinking' | 'tool' | 'shell' | 'result';
+  text: string;
+}
+
+export interface CursorSnapshotMessage {
+  v: 1;
+  t: 'cursor.snapshot';
+  status: CursorAgentStatus;
+  agentId?: string;
+  runId?: string;
+  cwd?: string;
+  model?: string;
+  error?: string;
+  transcript: CursorTranscriptItem[];
+}
+
+export interface CursorModelsMessage {
+  v: 1;
+  t: 'cursor.models';
+  models: CursorModelInfo[];
+}
+
+export interface CursorUsageMessage {
+  v: 1;
+  t: 'cursor.usage';
+  agentId?: string;
+  usage: CursorTokenUsage;
+  costCents?: number;
+  runs?: {
+    runId: string;
+    usage: CursorTokenUsage;
+    costCents?: number;
+  }[];
+  /** Set when billed usage could not be loaded (e.g. feature_unavailable). */
+  error?: string;
+}
+
+export interface CursorAccountMessage {
+  v: 1;
+  t: 'cursor.account';
+  apiKeyName?: string;
+  userEmail?: string;
+  userId?: number | null;
+  /** Set when the Mac could not load account details. */
+  error?: string;
+}
+
+export interface CursorAgentsMessage {
+  v: 1;
+  t: 'cursor.agents';
+  items: CursorAgentListItem[];
+  nextCursor?: string;
+}
+
+/** One folder the Mac has allowlisted for phone Cursor use. */
+export type CursorWorkspaceInfo = {
+  path: string;
+  /** Basename for display (e.g. `entangle` or `Partners` for a `.code-workspace`). */
+  name: string;
+  /** Present when the Mac distinguishes folders from multi-root workspace files. */
+  kind?: 'folder' | 'code-workspace';
+};
+
+/** Allowlisted workspaces + which one is active. */
+export interface CursorWorkspacesMessage {
+  v: 1;
+  t: 'cursor.workspaces';
+  workspaces: CursorWorkspaceInfo[];
+  /** Absolute path of the active workspace, when set. */
+  active?: string;
+}
+
+/** Mac notifies the phone that the agent touched workspace paths. */
+export interface CursorFilesMessage {
+  v: 1;
+  t: 'cursor.files';
+  files: { path: string; op: CursorFileOp }[];
+  agentId?: string;
+  runId?: string;
+}
+
+/** One pending file change awaiting Keep / Discard. */
+export type CursorPendingDiff = {
+  path: string;
+  /** Unified diff text (---/+++ / @@ / ± lines). */
+  diff: string;
+  linesAdded: number;
+  linesRemoved: number;
+};
+
+/** Pending review set for agent edits (like desktop Keep All / Discard). */
+export interface CursorDiffsMessage {
+  v: 1;
+  t: 'cursor.diffs';
+  files: CursorPendingDiff[];
+  agentId?: string;
+  runId?: string;
+  /** Paths just kept, when this update follows a keep. */
+  kept?: string[];
+  /** Paths just discarded, when this update follows a discard. */
+  discarded?: string[];
+  error?: string;
+}
+
+/** Response to `cursor.file.get`. */
+export interface CursorFileMessage {
+  v: 1;
+  t: 'cursor.file';
+  path: string;
+  /** Present when the file was read as text. */
+  text?: string;
+  truncated?: boolean;
+  binary?: boolean;
+  bytes?: number;
+  error?: string;
+  /** When the file is a previewable image under the size cap. */
+  imageBase64?: string;
+  mimeType?: string;
+}
+
+export type CursorDirEntryKind = 'file' | 'dir';
+
+/** Response to `cursor.file.list`. */
+export interface CursorFileListingMessage {
+  v: 1;
+  t: 'cursor.file.listing';
+  path: string;
+  entries: { name: string; kind: CursorDirEntryKind; size?: number }[];
+  error?: string;
+}
+
 export type ServerMessage =
   | WelcomeMessage
   | PongMessage
@@ -447,7 +835,20 @@ export type ServerMessage =
   | DiagStateMessage
   | UdpOkMessage
   | PairAcceptedMessage
-  | PairRejectedMessage;
+  | PairRejectedMessage
+  | CursorStatusMessage
+  | CursorDeltaMessage
+  | CursorSnapshotMessage
+  | CursorModelsMessage
+  | CursorUsageMessage
+  | CursorAccountMessage
+  | CursorAgentsMessage
+  | CursorWorkspacesMessage
+  | CursorFilesMessage
+  | CursorDiffsMessage
+  | CursorFileMessage
+  | CursorFileListingMessage
+  | ClipboardPushMessage;
 
 export type Message = ClientMessage | ServerMessage;
 

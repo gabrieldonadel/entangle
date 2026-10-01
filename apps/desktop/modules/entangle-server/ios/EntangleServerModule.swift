@@ -1,3 +1,4 @@
+import AppKit
 import ExpoModulesCore
 import Foundation
 
@@ -29,13 +30,36 @@ public class EntangleServerModule: Module {
     Events(
       "clientConnected", "clientDisconnected", "message", "error", "serverReady",
       "accessibilityChanged", "pairingExpired", "pairingStarted", "pairingStopped",
-      "preferencesChanged", "pairRejected", "messageStats"
+      "preferencesChanged", "pairRejected", "messageStats",
+      "cursorStatus", "cursorDelta", "cursorSnapshot", "cursorError", "cursorFiles"
     )
 
     OnCreate {
       self.lastAccessibilityState = AccessibilityCheck.isTrusted()
       self.startAccessibilityPolling()
       DockEnumerator.shared.start()
+      CursorAgentHost.shared.onEvent = { [weak self] event in
+        // Host stdout is read off-main; Expo bridge events must hop to main.
+        DispatchQueue.main.async {
+          guard let self = self, let type = event["type"] as? String else { return }
+          switch type {
+          case "status":
+            self.sendEvent("cursorStatus", event)
+          case "delta":
+            self.sendEvent("cursorDelta", event)
+          case "snapshot":
+            self.sendEvent("cursorSnapshot", event)
+          case "files":
+            self.sendEvent("cursorFiles", event)
+          case "diffs":
+            self.sendEvent("cursorDiffs", event)
+          case "error":
+            self.sendEvent("cursorError", event)
+          default:
+            break
+          }
+        }
+      }
     }
 
     OnDestroy {
@@ -51,6 +75,8 @@ public class EntangleServerModule: Module {
       LatencyMonitor.shared.setEnabled(false)
       LatencyMonitor.shared.onSnapshot = nil
       PointerHighlight.shared.setEnabled(false)
+      CursorAgentHost.shared.onEvent = nil
+      CursorAgentHost.shared.shutdown()
       self.datagrams.stop()
       self.server?.stop()
       self.server = nil
@@ -160,6 +186,20 @@ public class EntangleServerModule: Module {
       let after = PreferencesStore.shared.snapshot()
       self.sendEvent("preferencesChanged", after)
       self.refreshPointerHighlight()
+      let cursorConfigChanged =
+        ((before["cursorWorkspacePath"] as? String) != (after["cursorWorkspacePath"] as? String)) ||
+        ((before["cursorWorkspaceAllowlist"] as? [String]) != (after["cursorWorkspaceAllowlist"] as? [String])) ||
+        ((before["cursorModel"] as? String) != (after["cursorModel"] as? String)) ||
+        ((before["cursorAllowPhones"] as? Bool) != (after["cursorAllowPhones"] as? Bool))
+      if cursorConfigChanged {
+        let pathChanged =
+          ((before["cursorWorkspacePath"] as? String) != (after["cursorWorkspacePath"] as? String))
+        if pathChanged, let path = after["cursorWorkspacePath"] as? String, !path.isEmpty {
+          CursorAgentHost.shared.applyWorkspacePath(path)
+        } else {
+          CursorAgentHost.shared.shutdown()
+        }
+      }
       let needsRestart =
         ((before["port"] as? Int) != (after["port"] as? Int)) ||
         ((before["serverName"] as? String) != (after["serverName"] as? String)) ||
@@ -171,6 +211,389 @@ public class EntangleServerModule: Module {
         self.startServer(promise: nil)
       }
       return after
+    }
+
+    // MARK: - Cursor agent
+
+    Function("cursorIsReady") { () -> Bool in
+      CursorAgentHost.isCapabilityReady()
+    }
+
+    Function("hasCursorApiKey") { () -> Bool in
+      CursorKeychain.hasApiKey()
+    }
+
+    AsyncFunction("setCursorApiKey") { (key: String) -> [String: Any] in
+      let ok = CursorKeychain.saveApiKey(key)
+      if !ok {
+        throw NSError(
+          domain: "entangle.cursor",
+          code: 1,
+          userInfo: [NSLocalizedDescriptionKey: "Could not save API key to Keychain"]
+        )
+      }
+      // Reconfigure on next prompt; drop current host so new key is picked up.
+      CursorAgentHost.shared.shutdown()
+      let after = PreferencesStore.shared.snapshot()
+      self.sendEvent("preferencesChanged", after)
+      return after
+    }
+
+    /// Reads the API key from the system pasteboard — macOS secure TextInputs
+    /// often never deliver paste into JS `onChangeText`.
+    AsyncFunction("setCursorApiKeyFromClipboard") { () -> [String: Any] in
+      let raw = NSPasteboard.general.string(forType: .string) ?? ""
+      let key = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+      guard !key.isEmpty else {
+        throw NSError(
+          domain: "entangle.cursor",
+          code: 2,
+          userInfo: [NSLocalizedDescriptionKey: "Clipboard is empty — copy your key first"]
+        )
+      }
+      let ok = CursorKeychain.saveApiKey(key)
+      if !ok {
+        throw NSError(
+          domain: "entangle.cursor",
+          code: 1,
+          userInfo: [NSLocalizedDescriptionKey: "Could not save API key to Keychain"]
+        )
+      }
+      CursorAgentHost.shared.shutdown()
+      let after = PreferencesStore.shared.snapshot()
+      self.sendEvent("preferencesChanged", after)
+      return after
+    }
+
+    Function("cursorReadinessDetail") { () -> String in
+      let prefs = PreferencesStore.shared
+      if !prefs.cursorAllowPhones { return "Turn on Allow phones" }
+      if !CursorKeychain.hasApiKey() { return "API key not in Keychain yet" }
+      let cwd = prefs.cursorWorkspacePath.trimmingCharacters(in: .whitespacesAndNewlines)
+      if cwd.isEmpty || !PreferencesStore.workspaceEntryExists(cwd) {
+        return "Add a folder or .code-workspace file phones may use"
+      }
+      if CursorAgentHost.resolveNodePath() == nil {
+        return "Node.js not found (need ≥22.13)"
+      }
+      if CursorAgentHost.resolveHostScriptPath() == nil {
+        return "cursor-agent-host missing — run pnpm cursor-host:build"
+      }
+      return "Ready"
+    }
+
+    /// Base64 PNG for an installed app (same encoding as dock `iconPng`).
+    /// Tries `bundleId` first, then `name` via Launch Services. Empty if missing.
+    Function("appIconPng") { (bundleId: String, name: String) -> String in
+      var url: URL?
+      if !bundleId.isEmpty {
+        url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId)
+      }
+      if url == nil, !name.isEmpty,
+         let path = NSWorkspace.shared.fullPath(forApplication: name) {
+        url = URL(fileURLWithPath: path)
+      }
+      guard let path = url?.path else { return "" }
+      let image = NSWorkspace.shared.icon(forFile: path)
+      return IconEncoder.encode(image) ?? ""
+    }
+
+    AsyncFunction("clearCursorApiKey") { () -> [String: Any] in
+      _ = CursorKeychain.deleteApiKey()
+      CursorAgentHost.shared.shutdown()
+      let after = PreferencesStore.shared.snapshot()
+      self.sendEvent("preferencesChanged", after)
+      return after
+    }
+
+    AsyncFunction("pickCursorWorkspace") { (promise: Promise) in
+      CursorAgentHost.pickWorkspaceFolder { path in
+        if let path = path {
+          PreferencesStore.shared.addCursorWorkspace(path)
+          NotificationCenter.default.post(name: PreferencesStore.didChange, object: nil)
+          CursorAgentHost.shared.applyWorkspacePath(path)
+          let after = PreferencesStore.shared.snapshot()
+          self.sendEvent("preferencesChanged", after)
+          promise.resolve(after)
+        } else {
+          promise.resolve(PreferencesStore.shared.snapshot())
+        }
+      }
+    }
+
+    AsyncFunction("removeCursorWorkspace") { (path: String) -> [String: Any] in
+      let before = PreferencesStore.shared.cursorWorkspacePath
+      PreferencesStore.shared.removeCursorWorkspace(path)
+      NotificationCenter.default.post(name: PreferencesStore.didChange, object: nil)
+      let afterPath = PreferencesStore.shared.cursorWorkspacePath
+      if before != afterPath {
+        if afterPath.isEmpty {
+          CursorAgentHost.shared.shutdown()
+        } else {
+          CursorAgentHost.shared.applyWorkspacePath(afterPath)
+        }
+      }
+      let after = PreferencesStore.shared.snapshot()
+      self.sendEvent("preferencesChanged", after)
+      return after
+    }
+
+    AsyncFunction("setActiveCursorWorkspace") { (path: String, promise: Promise) in
+      let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+      guard PreferencesStore.shared.setActiveCursorWorkspace(trimmed) else {
+        promise.reject(
+          "CURSOR_WORKSPACE",
+          "Workspace is not on the allowlist. Add it in Preferences first."
+        )
+        return
+      }
+      guard PreferencesStore.workspaceEntryExists(trimmed) else {
+        promise.reject(
+          "CURSOR_WORKSPACE",
+          "Workspace path does not exist on this Mac (folder or .code-workspace)."
+        )
+        return
+      }
+      NotificationCenter.default.post(name: PreferencesStore.didChange, object: nil)
+      CursorAgentHost.shared.applyWorkspacePath(trimmed) { error in
+        if let error = error {
+          promise.reject("CURSOR_WORKSPACE", error.localizedDescription)
+          return
+        }
+        let after = PreferencesStore.shared.snapshot()
+        self.sendEvent("preferencesChanged", after)
+        promise.resolve(after)
+      }
+    }
+
+    Function("cursorWorkspaces") { () -> [String: Any] in
+      PreferencesStore.shared.cursorWorkspacesPayload()
+    }
+
+    AsyncFunction("listCursorModels") { (promise: Promise) in
+      CursorAgentHost.shared.listModels { result in
+        switch result {
+        case .success(let models):
+          promise.resolve(models)
+        case .failure(let error):
+          promise.reject("CURSOR_MODELS", error.localizedDescription)
+        }
+      }
+    }
+
+    AsyncFunction("cursorSetModel") { (modelId: String, paramsJson: String?, promise: Promise) in
+      PreferencesStore.shared.cursorModel = modelId
+      if let paramsJson = paramsJson {
+        PreferencesStore.shared.cursorModelParams = paramsJson
+      }
+      NotificationCenter.default.post(name: PreferencesStore.didChange, object: nil)
+      var op: [String: Any] = ["op": "setModel", "modelId": modelId]
+      if let data = (paramsJson ?? "[]").data(using: .utf8),
+         let params = try? JSONSerialization.jsonObject(with: data) {
+        op["params"] = params
+      }
+      CursorAgentHost.shared.send(op: op) { error in
+        let after = PreferencesStore.shared.snapshot()
+        self.sendEvent("preferencesChanged", after)
+        if let error = error {
+          promise.reject("CURSOR_MODEL", error.localizedDescription)
+        } else {
+          promise.resolve(after)
+        }
+      }
+    }
+
+    AsyncFunction("cursorUsage") { (agentId: String?, promise: Promise) in
+      var op: [String: Any] = ["op": "usage"]
+      if let agentId = agentId, !agentId.isEmpty {
+        op["agentId"] = agentId
+      }
+      CursorAgentHost.shared.request(op: op, expectType: "usage") { result in
+        switch result {
+        case .success(let json):
+          promise.resolve(json)
+        case .failure(let error):
+          promise.reject("CURSOR_USAGE", error.localizedDescription)
+        }
+      }
+    }
+
+    AsyncFunction("cursorMe") { (promise: Promise) in
+      CursorAgentHost.shared.request(op: ["op": "me"], expectType: "account") { result in
+        switch result {
+        case .success(let json):
+          promise.resolve(json)
+        case .failure(let error):
+          promise.reject("CURSOR_ME", error.localizedDescription)
+        }
+      }
+    }
+
+    AsyncFunction("cursorListAgents") { (cursor: String?, limit: Int?, promise: Promise) in
+      var op: [String: Any] = ["op": "listAgents"]
+      if let cursor = cursor, !cursor.isEmpty { op["cursor"] = cursor }
+      if let limit = limit { op["limit"] = limit }
+      CursorAgentHost.shared.request(op: op, expectType: "agents", timeoutSeconds: 30) { result in
+        switch result {
+        case .success(let json):
+          promise.resolve(json)
+        case .failure(let error):
+          promise.reject("CURSOR_AGENTS", error.localizedDescription)
+        }
+      }
+    }
+
+    AsyncFunction("cursorOpenAgent") { (agentId: String, promise: Promise) in
+      CursorAgentHost.shared.send(op: ["op": "openAgent", "agentId": agentId]) { error in
+        if let error = error {
+          promise.reject("CURSOR_OPEN", error.localizedDescription)
+        } else {
+          promise.resolve(nil)
+        }
+      }
+    }
+
+    AsyncFunction("cursorNewChat") { (promise: Promise) in
+      CursorAgentHost.shared.send(op: ["op": "newChat"]) { error in
+        if let error = error {
+          promise.reject("CURSOR_NEW", error.localizedDescription)
+        } else {
+          promise.resolve(nil)
+        }
+      }
+    }
+
+    AsyncFunction("cursorEnsureHost") { (promise: Promise) in
+      CursorAgentHost.shared.ensureConfigured { error in
+        if let error = error {
+          promise.reject("CURSOR_HOST", error.localizedDescription)
+        } else {
+          promise.resolve(nil)
+        }
+      }
+    }
+
+    AsyncFunction("cursorPrompt") { (text: String, agentId: String?, imagesJson: String?, promise: Promise) in
+      var op: [String: Any] = ["op": "prompt", "text": text]
+      if let agentId = agentId, !agentId.isEmpty {
+        op["agentId"] = agentId
+      }
+      if let imagesJson = imagesJson,
+         let data = imagesJson.data(using: .utf8),
+         let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
+         !arr.isEmpty {
+        op["images"] = arr
+      }
+      CursorAgentHost.shared.send(op: op) { error in
+        if let error = error {
+          promise.reject("CURSOR_PROMPT", error.localizedDescription)
+        } else {
+          promise.resolve(nil)
+        }
+      }
+    }
+
+    AsyncFunction("cursorCancel") { (promise: Promise) in
+      CursorAgentHost.shared.send(op: ["op": "cancel"]) { error in
+        if let error = error {
+          promise.reject("CURSOR_CANCEL", error.localizedDescription)
+        } else {
+          promise.resolve(nil)
+        }
+      }
+    }
+
+    AsyncFunction("cursorResume") { (promise: Promise) in
+      CursorAgentHost.shared.send(op: ["op": "resume"]) { error in
+        if let error = error {
+          promise.reject("CURSOR_RESUME", error.localizedDescription)
+        } else {
+          promise.resolve(nil)
+        }
+      }
+    }
+
+    AsyncFunction("cursorGetSnapshot") { (promise: Promise) in
+      CursorAgentHost.shared.send(op: ["op": "snapshot"]) { error in
+        if let error = error {
+          // Still return whatever we have locally.
+          promise.resolve(CursorAgentHost.shared.snapshotPayload())
+          _ = error
+        } else {
+          // Host will emit snapshot async; also return cached immediately.
+          promise.resolve(CursorAgentHost.shared.snapshotPayload())
+        }
+      }
+    }
+
+    AsyncFunction("cursorReadFile") { (path: String, promise: Promise) in
+      CursorAgentHost.shared.request(
+        op: ["op": "readFile", "path": path],
+        expectType: "file",
+        timeoutSeconds: 15
+      ) { result in
+        switch result {
+        case .success(let json):
+          promise.resolve(json)
+        case .failure(let error):
+          promise.reject("CURSOR_FILE", error.localizedDescription)
+        }
+      }
+    }
+
+    AsyncFunction("cursorListDir") { (path: String?, promise: Promise) in
+      var op: [String: Any] = ["op": "listDir"]
+      if let path = path { op["path"] = path }
+      CursorAgentHost.shared.request(op: op, expectType: "listing", timeoutSeconds: 15) { result in
+        switch result {
+        case .success(let json):
+          promise.resolve(json)
+        case .failure(let error):
+          promise.reject("CURSOR_LIST", error.localizedDescription)
+        }
+      }
+    }
+
+    AsyncFunction("cursorKeepFiles") { (pathsJson: String?, promise: Promise) in
+      var op: [String: Any] = ["op": "keepFiles"]
+      if let pathsJson = pathsJson,
+         let data = pathsJson.data(using: .utf8),
+         let paths = try? JSONSerialization.jsonObject(with: data) as? [String] {
+        op["paths"] = paths
+      }
+      CursorAgentHost.shared.send(op: op) { error in
+        if let error = error {
+          promise.reject("CURSOR_KEEP", error.localizedDescription)
+        } else {
+          promise.resolve(nil)
+        }
+      }
+    }
+
+    AsyncFunction("cursorDiscardFiles") { (pathsJson: String?, promise: Promise) in
+      var op: [String: Any] = ["op": "discardFiles"]
+      if let pathsJson = pathsJson,
+         let data = pathsJson.data(using: .utf8),
+         let paths = try? JSONSerialization.jsonObject(with: data) as? [String] {
+        op["paths"] = paths
+      }
+      CursorAgentHost.shared.send(op: op) { error in
+        if let error = error {
+          promise.reject("CURSOR_DISCARD", error.localizedDescription)
+        } else {
+          promise.resolve(nil)
+        }
+      }
+    }
+
+    AsyncFunction("cursorListDiffs") { (promise: Promise) in
+      CursorAgentHost.shared.send(op: ["op": "listDiffs"]) { error in
+        if let error = error {
+          promise.reject("CURSOR_DIFFS", error.localizedDescription)
+        } else {
+          promise.resolve(nil)
+        }
+      }
     }
   }
 
@@ -207,11 +630,16 @@ public class EntangleServerModule: Module {
 
     let prefs = PreferencesStore.shared
     let name = prefs.serverName
+    // Prefs "auto" (0) used to bind an ephemeral port, which breaks phone
+    // reconnect after a Mac restart. Prefer the protocol default; if that
+    // port is taken, WebSocketServer falls back to an ephemeral bind.
+    let preferredPort: UInt16 = prefs.port == 0 ? 49827 : prefs.port
     let server = WebSocketServer(
       serviceType: "_entangle._tcp.",
       serviceName: name,
-      preferredPort: prefs.port,
-      advertiseService: prefs.discoverable
+      preferredPort: preferredPort,
+      advertiseService: prefs.discoverable,
+      fallbackToEphemeral: prefs.port == 0
     )
     self.serviceName = name
 
@@ -219,6 +647,7 @@ public class EntangleServerModule: Module {
     wireDockEvents(server)
     wireVolumeEvents(server)
     wireDisplayEvents(server)
+    wireClipboardEvents(server)
     wireDiagnostics(server)
 
     do {
@@ -287,6 +716,7 @@ public class EntangleServerModule: Module {
       self?.datagrams.revokeTokens(for: id)
       self?.clearDatagramCount(for: id)
       self?.connectedClients.remove(id.uuidString)
+      ClipboardController.shared.clearClient(id)
       self?.sendEvent("clientDisconnected", ["id": id.uuidString])
       self?.refreshPointerHighlight()
       // Nobody left to read the numbers, and they are not free to collect.
@@ -295,7 +725,17 @@ public class EntangleServerModule: Module {
       }
     }
     server.onMessage = { [weak self] id, text in
-      let handledNatively = MessageDispatcher.handle(text) { response in
+      // Only allocate a clipboard route when sync is on — pointer frames are hot.
+      let route: MessageDispatcher.ClipboardRoute? =
+        PreferencesStore.shared.clipboardSync
+        ? MessageDispatcher.ClipboardRoute(clientId: id) { targetId, payload in
+            self?.server?.send(payload, to: targetId)
+          }
+        : nil
+      let handledNatively = MessageDispatcher.handle(
+        text,
+        clipboard: route
+      ) { response in
         self?.server?.send(response, to: id)
       }
       self?.countInbound(id)
@@ -339,6 +779,16 @@ public class EntangleServerModule: Module {
     DisplayController.shared.startWatching()
   }
 
+  private func wireClipboardEvents(_ server: WebSocketServer) {
+    ClipboardController.shared.onLocalChange = { [weak server] payload in
+      guard let server = server,
+            let encoded = ClipboardController.encodePush(payload) else { return }
+      for clientId in ClipboardController.shared.syncingClientIds() {
+        server.send(encoded, to: clientId)
+      }
+    }
+  }
+
   /// The ring is only wanted while a phone is actually driving the pointer.
   ///
   /// Reads `connectedClients`, which the callbacks update before calling this
@@ -376,7 +826,17 @@ public class EntangleServerModule: Module {
   private func startDatagrams(on port: UInt16) {
     datagrams.onMessage = { [weak self] id, text in
       guard let self = self else { return }
-      let handledNatively = MessageDispatcher.handle(text, transport: .datagram) { response in
+      let route: MessageDispatcher.ClipboardRoute? =
+        PreferencesStore.shared.clipboardSync
+        ? MessageDispatcher.ClipboardRoute(clientId: id) { targetId, payload in
+            self.server?.send(payload, to: targetId)
+          }
+        : nil
+      let handledNatively = MessageDispatcher.handle(
+        text,
+        transport: .datagram,
+        clipboard: route
+      ) { response in
         self.server?.send(response, to: id)
       }
       self.countInbound(id)

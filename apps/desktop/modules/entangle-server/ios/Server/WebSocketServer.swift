@@ -16,6 +16,8 @@ final class WebSocketServer {
   private let serviceName: String
   private let preferredPort: UInt16
   private let advertiseService: Bool
+  private let fallbackToEphemeral: Bool
+  private var didFallbackToEphemeral = false
 
   var onClientConnected: ((UUID, String) -> Void)?
   var onClientDisconnected: ((UUID) -> Void)?
@@ -24,19 +26,46 @@ final class WebSocketServer {
   var onReady: ((UInt16) -> Void)?
   var onPairRejected: ((String, String) -> Void)?
 
+  /// True for cancel/teardown errors that are normal when a phone disconnects.
+  private static func isBenignClose(_ error: NWError) -> Bool {
+    switch error {
+    case .posix(let code) where code == .ECANCELED:
+      return true
+    default:
+      let text = error.localizedDescription.lowercased()
+      return text.contains("operation canceled")
+        || text.contains("operation cancelled")
+        || text.contains("error 89")
+    }
+  }
+
+  private static func isBenignClose(_ error: Error) -> Bool {
+    if let nw = error as? NWError { return isBenignClose(nw) }
+    let text = error.localizedDescription.lowercased()
+    return text.contains("operation canceled")
+      || text.contains("operation cancelled")
+      || text.contains("error 89")
+  }
+
   init(
     serviceType: String,
     serviceName: String,
     preferredPort: UInt16 = 0,
-    advertiseService: Bool = true
+    advertiseService: Bool = true,
+    fallbackToEphemeral: Bool = false
   ) {
     self.serviceType = serviceType
     self.serviceName = serviceName
     self.preferredPort = preferredPort
     self.advertiseService = advertiseService
+    self.fallbackToEphemeral = fallbackToEphemeral
   }
 
   func start() throws {
+    try start(on: preferredPort)
+  }
+
+  private func start(on port: UInt16) throws {
     // Pointer frames are tiny and latency-critical. Nagle would hold one back
     // waiting for company, and a delayed ACK on the other side can stretch
     // that wait into tens of milliseconds.
@@ -51,7 +80,7 @@ final class WebSocketServer {
     params.defaultProtocolStack.applicationProtocols.insert(wsOptions, at: 0)
 
     let endpoint: NWEndpoint.Port
-    if preferredPort > 0, let p = NWEndpoint.Port(rawValue: preferredPort) {
+    if port > 0, let p = NWEndpoint.Port(rawValue: port) {
       endpoint = p
     } else {
       endpoint = .any
@@ -70,10 +99,21 @@ final class WebSocketServer {
       guard let self = self else { return }
       switch state {
       case .ready:
-        if let port = listener.port?.rawValue {
-          self.onReady?(port)
+        if let bound = listener.port?.rawValue {
+          self.onReady?(bound)
         }
       case .failed(let error):
+        listener.cancel()
+        if self.fallbackToEphemeral, !self.didFallbackToEphemeral, port > 0 {
+          self.didFallbackToEphemeral = true
+          self.listener = nil
+          do {
+            try self.start(on: 0)
+          } catch {
+            self.onError?("listener failed: \(error.localizedDescription)")
+          }
+          return
+        }
         self.onError?("listener failed: \(error.localizedDescription)")
       default:
         break
@@ -293,7 +333,10 @@ final class WebSocketServer {
     connection.receiveMessage { [weak self] data, context, _, error in
       guard let self = self else { return }
       if let error = error {
-        self.onError?("receive error: \(error.localizedDescription)")
+        // Phone closed the socket (or we cancelled it) — not a server fault.
+        if !Self.isBenignClose(error) {
+          self.onError?("receive error: \(error.localizedDescription)")
+        }
         connection.cancel()
         return
       }
@@ -320,7 +363,7 @@ final class WebSocketServer {
     let context = NWConnection.ContentContext(identifier: "send", metadata: [metadata])
     let data = Data(text.utf8)
     let completion: NWConnection.SendCompletion = .contentProcessed { [weak self] error in
-      if let error = error {
+      if let error = error, !Self.isBenignClose(error) {
         self?.onError?("send error: \(error.localizedDescription)")
       }
     }

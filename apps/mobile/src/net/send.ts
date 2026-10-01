@@ -1,7 +1,7 @@
 import { encode } from '@entangle/protocol';
 import type { ClientMessage } from '@entangle/protocol';
 
-import { getSocket } from '@/state/connection';
+import { getSocket } from '@/net/socket';
 
 import * as udp from './udp';
 

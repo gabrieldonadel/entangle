@@ -54,3 +54,7 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## Cursor (Apps tab)
+
+When the Mac advertises the `cursor` capability, open **Apps → Cursor**. The gear sheet lets you pick a model (and params), view account/usage, browse past local chats, start a new chat, and share the transcript. The API key and workspace folder stay on the Mac (Entangle Preferences → Cursor).

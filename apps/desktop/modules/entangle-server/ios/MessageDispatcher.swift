@@ -17,9 +17,18 @@ enum MessageDispatcher {
     case datagram
   }
 
+  /// Optional clipboard routing: the originating client id and a way to push
+  /// a payload to another client (used to fan out `cb.push` without echoing
+  /// back to the sender).
+  struct ClipboardRoute {
+    let clientId: UUID
+    let sendTo: (UUID, String) -> Void
+  }
+
   static func handle(
     _ text: String,
     transport: Transport = .stream,
+    clipboard: ClipboardRoute? = nil,
     respond: (String) -> Void
   ) -> Bool {
     guard let data = text.data(using: .utf8),
@@ -31,7 +40,9 @@ enum MessageDispatcher {
     if let handled = dispatchInput(tag: tag, json: json, transport: transport) {
       return handled
     }
-    if let handled = dispatchSystem(tag: tag, json: json, respond: respond) {
+    if let handled = dispatchSystem(
+      tag: tag, json: json, clipboard: clipboard, respond: respond
+    ) {
       return handled
     }
     return false
@@ -56,6 +67,7 @@ enum MessageDispatcher {
   private static func dispatchSystem(
     tag: String,
     json: [String: Any],
+    clipboard: ClipboardRoute?,
     respond: (String) -> Void
   ) -> Bool? {
     switch tag {
@@ -77,6 +89,8 @@ enum MessageDispatcher {
     case "g.mission":
       GestureController.missionControl()
       return true
+    case "cb.sync": return handleClipboardSync(json, clipboard: clipboard, respond: respond)
+    case "cb.push": return handleClipboardPush(json, clipboard: clipboard)
     default: return nil
     }
   }
@@ -262,6 +276,53 @@ enum MessageDispatcher {
     default:
       return false
     }
+  }
+
+  private static func handleClipboardSync(
+    _ json: [String: Any],
+    clipboard: ClipboardRoute?,
+    respond: (String) -> Void
+  ) -> Bool {
+    guard let clipboard = clipboard,
+          let on = json["on"] as? Bool else { return false }
+    guard ClipboardController.shared.isAllowed else {
+      respond("{\"v\":1,\"t\":\"error\",\"code\":\"clipboard_disabled\",\"message\":\"Clipboard sync is off on this Mac\"}")
+      return true
+    }
+    if let seed = ClipboardController.shared.setSync(clientId: clipboard.clientId, on: on),
+       on,
+       let encoded = ClipboardController.encodePush(seed) {
+      respond(encoded)
+    }
+    return true
+  }
+
+  private static func handleClipboardPush(
+    _ json: [String: Any],
+    clipboard: ClipboardRoute?
+  ) -> Bool {
+    guard let clipboard = clipboard,
+          let kind = json["kind"] as? String,
+          let gen = numeric(json["gen"]).map({ Int($0) }) else {
+      return false
+    }
+    guard ClipboardController.shared.isAllowed else { return true }
+    let text = json["text"] as? String
+    let imagePng = json["imagePng"] as? String
+    guard let applied = ClipboardController.shared.applyRemote(
+      from: clipboard.clientId,
+      kindRaw: kind,
+      text: text,
+      imagePngBase64: imagePng,
+      gen: gen
+    ), let encoded = ClipboardController.encodePush(applied) else {
+      return true
+    }
+    // Fan out to other syncing phones; never echo back to the sender.
+    for peer in ClipboardController.shared.syncingClientIds() where peer != clipboard.clientId {
+      clipboard.sendTo(peer, encoded)
+    }
+    return true
   }
 
   // MARK: - Helpers

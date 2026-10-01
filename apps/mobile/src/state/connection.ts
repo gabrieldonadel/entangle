@@ -15,13 +15,18 @@ import {
   isDisplayState,
   isDockListResponse,
   isDockUpdate,
+  isClipboardPush,
 } from '@entangle/protocol';
-import type { ClientMessage, DockApp, Message } from '@entangle/protocol';
+import type { ClientMessage, DockApp, Message, WelcomeIcons } from '@entangle/protocol';
 
 import { drainPointerCounters, syncPointerConfig } from '@/features/trackpad/uplink';
+import { resolveMac } from '@/net/discovery';
 import * as udp from '@/net/udp';
+import { getSocket, setSocket } from '@/net/socket';
 
 import { useAudio } from './audio';
+import { useClipboard } from './clipboard';
+import { useCursor } from './cursor';
 import { recordRtt, tickPhoneStats, useDiag } from './diag';
 import { useDisplay } from './display';
 import { useDock } from './dock';
@@ -59,6 +64,8 @@ interface ConnectionState {
   serverName: string | null;
   serverVersion: string | null;
   serverCaps: string[];
+  /** App icons from `welcome.icons` (base64 PNG, same as dock). */
+  serverIcons: WelcomeIcons;
   lastError: string | null;
   latencyMs: number | null;
   pairingError: string | null;
@@ -78,7 +85,6 @@ interface ConnectionState {
   retryPairing: (code?: string) => void;
 }
 
-let socket: WebSocket | null = null;
 let pingTimer: ReturnType<typeof setInterval> | null = null;
 let pongTimeout: ReturnType<typeof setTimeout> | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -86,6 +92,8 @@ let connectTimeout: ReturnType<typeof setTimeout> | null = null;
 let diagPingTimer: ReturnType<typeof setInterval> | null = null;
 let diagReportTimer: ReturnType<typeof setInterval> | null = null;
 let reconnectAttempt = 0;
+/** Bumped to cancel an in-flight `openSocket` that is awaiting Bonjour. */
+let openGeneration = 0;
 let pingId = 0;
 /** Ping id → send time. Matching the pong by id keeps the round-trip figure
  *  honest when diagnostics add pings of their own. */
@@ -102,6 +110,7 @@ export const useConnection = create<ConnectionState>((set, get) => ({
   serverName: null,
   serverVersion: null,
   serverCaps: [],
+  serverIcons: {},
   lastError: null,
   latencyMs: null,
   pairingError: null,
@@ -111,15 +120,17 @@ export const useConnection = create<ConnectionState>((set, get) => ({
     if (get().demo) return;
     manuallyDisconnected = false;
     reconnectAttempt = 0;
+    openGeneration += 1;
     pendingPairCode = null;
     pendingPairToken = get().trustedTokens[target.host] ?? null;
     set({ target, lastError: null, pairingError: null });
-    openSocket();
+    void openSocket();
   },
   connectWithToken: ({ name, host, port, token }) => {
     if (get().demo) return;
     manuallyDisconnected = false;
     reconnectAttempt = 0;
+    openGeneration += 1;
     pendingPairCode = null;
     pendingPairToken = token;
     const target: ConnectionTarget = { name: name ?? host, host, port };
@@ -127,23 +138,26 @@ export const useConnection = create<ConnectionState>((set, get) => ({
       () => undefined,
     );
     set({ target, lastError: null, pairingError: null });
-    openSocket();
+    void openSocket();
   },
   disconnect: () => {
     manuallyDisconnected = true;
     pendingPairCode = null;
     pendingPairToken = null;
+    openGeneration += 1;
     clearTimers();
-    if (socket) {
+    if (getSocket()) {
       try {
-        socket.close();
+        getSocket()?.close();
       } catch {}
-      socket = null;
+      setSocket(null);
     }
     useDock.getState().clear();
     useAudio.getState().reset();
     useDisplay.getState().reset();
     useDiag.getState().reset();
+    useCursor.getState().reset();
+    useClipboard.getState().stop();
     udp.reset();
     syncPointerConfig({ datagramToken: '', diagEnabled: false });
     set({
@@ -152,6 +166,7 @@ export const useConnection = create<ConnectionState>((set, get) => ({
       serverName: null,
       serverVersion: null,
       serverCaps: [],
+      serverIcons: {},
       latencyMs: null,
       pairingError: null,
       demo: false,
@@ -163,11 +178,11 @@ export const useConnection = create<ConnectionState>((set, get) => ({
     pendingPairCode = null;
     pendingPairToken = null;
     clearTimers();
-    if (socket) {
+    if (getSocket()) {
       try {
-        socket.close();
+        getSocket()?.close();
       } catch {}
-      socket = null;
+      setSocket(null);
     }
     useDock.getState().setApps(DEMO_DOCK_APPS);
     // Demo mode has no Mac to report a level, so seed one the slider can move.
@@ -179,6 +194,7 @@ export const useConnection = create<ConnectionState>((set, get) => ({
       serverName: 'Demo Mac',
       serverVersion: 'demo',
       serverCaps: [],
+      serverIcons: {},
       lastError: null,
       latencyMs: null,
       pairingError: null,
@@ -186,13 +202,15 @@ export const useConnection = create<ConnectionState>((set, get) => ({
     });
   },
   send: (msg) => {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(encode(msg));
+    const ws = getSocket();
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(encode(msg));
     }
   },
   sendRaw: (raw) => {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(raw);
+    const ws = getSocket();
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(raw);
     }
   },
   retryPairing: (code) => {
@@ -204,15 +222,17 @@ export const useConnection = create<ConnectionState>((set, get) => ({
     pendingPairToken = null;
     reconnectAttempt = 0;
     manuallyDisconnected = false;
+    openGeneration += 1;
     set({ pairingError: null });
-    openSocket();
+    void openSocket();
   },
 }));
 
-function openSocket() {
+async function openSocket() {
+  const gen = ++openGeneration;
   const state = useConnection.getState();
   if (state.demo) return;
-  const { target } = state;
+  let { target } = state;
   if (!target) return;
   clearTimers();
 
@@ -220,8 +240,32 @@ function openSocket() {
     phase: reconnectAttempt > 0 ? 'reconnecting' : 'connecting',
   });
 
+  // After a Mac restart the Bonjour name is stable but the port often is not
+  // (prefs "auto" binds an ephemeral port). Re-resolve before dialing so we
+  // do not hammer a dead port forever while the phone UI still looks live.
+  if (reconnectAttempt > 0) {
+    try {
+      const found = await resolveMac(target.name);
+      if (found && (found.host !== target.host || found.port !== target.port)) {
+        target = { name: found.name, host: found.host, port: found.port };
+        useConnection.setState({ target });
+        AsyncStorage.setItem('entangle.lastHost', JSON.stringify(target)).catch(
+          () => undefined,
+        );
+      }
+    } catch {}
+    if (gen !== openGeneration || manuallyDisconnected) return;
+    if (useConnection.getState().target?.name !== target.name) return;
+  }
+
   const ws = new WebSocket(`ws://${target.host}:${target.port}`);
-  socket = ws;
+  if (gen !== openGeneration) {
+    try {
+      ws.close();
+    } catch {}
+    return;
+  }
+  setSocket(ws);
   startConnectTimeout(ws);
 
   ws.onopen = () => {
@@ -262,11 +306,12 @@ function openSocket() {
   };
 
   ws.onclose = () => {
-    socket = null;
+    setSocket(null);
     clearTimers();
     // The token dies with the socket that issued it.
     udp.reset();
     syncPointerConfig({ datagramToken: '' });
+    useClipboard.getState().stop();
     if (manuallyDisconnected) return;
     if (useConnection.getState().phase === 'pairing') return;
     scheduleReconnect();
@@ -277,7 +322,7 @@ function startConnectTimeout(ws: WebSocket) {
   clearConnectTimeout();
   connectTimeout = setTimeout(() => {
     connectTimeout = null;
-    if (socket !== ws || ws.readyState === WebSocket.OPEN) return;
+    if (getSocket() !== ws || ws.readyState === WebSocket.OPEN) return;
     // Nothing ever came back from this socket. Detach it before closing so a
     // late `onclose` cannot schedule a second reconnect on top of ours.
     ws.onopen = null;
@@ -287,7 +332,7 @@ function startConnectTimeout(ws: WebSocket) {
     try {
       ws.close();
     } catch {}
-    socket = null;
+    setSocket(null);
     clearTimers();
     useConnection.setState({ lastError: 'Could not reach that Mac' });
     if (manuallyDisconnected) return;
@@ -328,17 +373,122 @@ function handleMessage(msg: Message) {
     syncPointerConfig({ datagramToken: udp.activeToken() ?? '' });
     return;
   }
+  if (isClipboardPush(msg)) {
+    useClipboard.getState().applyRemote(msg);
+    return;
+  }
   switch (msg.t) {
+    case 'cursor.status': {
+      useCursor.getState().applyStatus(msg);
+      return;
+    }
+    case 'cursor.delta': {
+      useCursor.getState().applyDelta(msg);
+      return;
+    }
+    case 'cursor.snapshot': {
+      useCursor.getState().applySnapshot(msg);
+      return;
+    }
+    case 'cursor.models': {
+      if ('models' in msg) {
+        useCursor.getState().applyModels(msg.models);
+      }
+      return;
+    }
+    case 'cursor.agents': {
+      // fetchAgents clears the list first; fetchMore keeps it → append.
+      useCursor.getState().applyAgents(msg.items, msg.nextCursor, {
+        append: useCursor.getState().agents.length > 0,
+      });
+      return;
+    }
+    case 'cursor.workspaces': {
+      if ('workspaces' in msg) {
+        useCursor.getState().applyWorkspaces(msg.workspaces, msg.active);
+      }
+      return;
+    }
+    case 'cursor.account': {
+      useCursor.getState().applyAccount({
+        apiKeyName: msg.apiKeyName,
+        userEmail: msg.userEmail,
+        error: 'error' in msg && typeof msg.error === 'string' ? msg.error : undefined,
+      });
+      return;
+    }
+    case 'cursor.usage': {
+      if ('usage' in msg) {
+        useCursor.getState().applyUsage({
+          agentId: msg.agentId,
+          usage: msg.usage,
+          costCents: msg.costCents,
+          runs: msg.runs,
+          error: 'error' in msg && typeof msg.error === 'string' ? msg.error : undefined,
+        });
+      }
+      return;
+    }
+    case 'cursor.files': {
+      useCursor.getState().applyFiles(
+        (msg.files ?? []).map((f) => ({
+          path: f.path,
+          op: f.op === 'read' || f.op === 'write' ? f.op : 'other',
+        })),
+      );
+      return;
+    }
+    case 'cursor.diffs': {
+      if (!('files' in msg)) return;
+      useCursor.getState().applyDiffs({
+        files: (msg.files ?? []).map((f) => ({
+          path: f.path,
+          diff: f.diff,
+          linesAdded: f.linesAdded ?? 0,
+          linesRemoved: f.linesRemoved ?? 0,
+        })),
+        kept: msg.kept,
+        discarded: msg.discarded,
+        error: msg.error,
+      });
+      return;
+    }
+    case 'cursor.file': {
+      useCursor.getState().applyFile({
+        path: msg.path,
+        text: msg.text,
+        truncated: msg.truncated,
+        binary: msg.binary,
+        bytes: msg.bytes,
+        error: msg.error,
+        imageBase64: msg.imageBase64,
+        mimeType: msg.mimeType,
+      });
+      return;
+    }
+    case 'cursor.file.listing': {
+      useCursor.getState().applyListing({
+        path: msg.path,
+        entries: msg.entries ?? [],
+        error: msg.error,
+      });
+      return;
+    }
     case 'welcome': {
       useConnection.setState({
         serverName: msg.server.name,
         serverVersion: msg.server.version,
         serverCaps: msg.caps,
+        serverIcons: msg.icons ?? {},
       });
       // The offer carries the port and this session's token. Absent means the
       // Mac has no datagram listener, and pointer frames stay on this socket.
       const { target } = useConnection.getState();
       if (target) udp.configure(target.host, msg.udp);
+      useClipboard.getState().syncWithSession({
+        connected: true,
+        hasCap: msg.caps.includes('clipboard'),
+      });
       return;
     }
     case 'pong': {
@@ -386,7 +536,7 @@ function handleMessage(msg: Message) {
         pairingError: msg.reason || null,
       });
       try {
-        socket?.close();
+        getSocket()?.close();
       } catch {}
       return;
     }
@@ -417,7 +567,8 @@ function applyDockUpdate(msg: {
 const DIAG_PING_INTERVAL_MS = 500;
 
 function sendPing(): number | null {
-  if (!socket || socket.readyState !== WebSocket.OPEN) return null;
+  const ws = getSocket();
+  if (!ws || ws.readyState !== WebSocket.OPEN) return null;
   pingId += 1;
   const id = pingId;
   pendingPings.set(id, Date.now());
@@ -428,7 +579,7 @@ function sendPing(): number | null {
       if (sentAt < cutoff) pendingPings.delete(pending);
     }
   }
-  socket.send(encode({ v: PROTOCOL_VERSION, t: 'ping', id }));
+  ws.send(encode({ v: PROTOCOL_VERSION, t: 'ping', id }));
   return id;
 }
 
@@ -441,7 +592,7 @@ function startHeartbeat() {
     if (pongTimeout) clearTimeout(pongTimeout);
     pongTimeout = setTimeout(() => {
       try {
-        socket?.close();
+        getSocket()?.close();
       } catch {}
     }, HEARTBEAT_TIMEOUT_MS);
   }, HEARTBEAT_INTERVAL_MS);
@@ -465,8 +616,9 @@ function startHeartbeat() {
     if (!useDiag.getState().enabled) return;
     const stats = tickPhoneStats(counters);
     useDiag.setState({ transport: udp.getState() });
-    if (!socket || socket.readyState !== WebSocket.OPEN) return;
-    socket.send(encode({ v: PROTOCOL_VERSION, t: 'diag.report', ...stats }));
+    const ws = getSocket();
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(encode({ v: PROTOCOL_VERSION, t: 'diag.report', ...stats }));
   }, 1000);
 }
 
@@ -474,7 +626,9 @@ function scheduleReconnect() {
   const delay = Math.min(8000, 1000 * Math.pow(2, reconnectAttempt));
   reconnectAttempt += 1;
   useConnection.setState({ phase: 'reconnecting' });
-  reconnectTimer = setTimeout(openSocket, delay);
+  reconnectTimer = setTimeout(() => {
+    void openSocket();
+  }, delay);
 }
 
 function clearTimers() {
@@ -502,9 +656,7 @@ function clearTimers() {
   }
 }
 
-export function getSocket(): WebSocket | null {
-  return socket;
-}
+export { getSocket } from '@/net/socket';
 
 async function persistTrustedTokens(tokens: Record<string, string>): Promise<void> {
   try {
@@ -533,5 +685,5 @@ NetInfo.addEventListener((state) => {
     reconnectTimer = null;
   }
   reconnectAttempt = 0;
-  openSocket();
+  void openSocket();
 });

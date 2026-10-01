@@ -15,6 +15,7 @@ import EntangleServer, {
 import { decode, encode, PROTOCOL_VERSION } from '@entangle/protocol';
 import type { Message, WelcomeMessage } from '@entangle/protocol';
 
+import { bindCursorHostEvents, handleCursorMessage, isCursorCapable } from './cursor-bridge';
 import { foldMessageStats } from './stats';
 import type { ClientInfo } from './stats';
 
@@ -67,7 +68,10 @@ export const useServerStore = create<ServerState>((set, get) => ({
   pairing: null,
   clientNames: EntangleServer.getClientNames(),
   requestAccessibility: async () => {
-    const trusted = await EntangleServer.promptAccessibility();
+    // promptAccessibility may show the system sheet; always re-read trust via
+    // isAccessibilityTrusted so a false prompt-flow result can't stick the gate.
+    await EntangleServer.promptAccessibility();
+    const trusted = EntangleServer.isAccessibilityTrusted();
     set({ accessibilityTrusted: trusted });
     return trusted;
   },
@@ -171,6 +175,7 @@ eventEmitter.addListener('clientConnected', (event: ClientConnectedEvent) => {
     udpOffers.set(event.id, { port: event.udpPort, token: event.udpToken });
   }
   useServerStore.setState((state) => ({
+    lastError: null,
     clients: {
       ...state.clients,
       [event.id]: {
@@ -236,6 +241,9 @@ eventEmitter.addListener('pairingExpired', () => {
 });
 
 function handleMessage(clientId: string, msg: Message) {
+  if (handleCursorMessage(clientId, msg)) {
+    return;
+  }
   switch (msg.t) {
     case 'hello':
       sendWelcome(clientId);
@@ -247,7 +255,6 @@ function handleMessage(clientId: string, msg: Message) {
       EntangleServer.sendToClient(clientId, encode({ v: PROTOCOL_VERSION, t: 'pong', id: msg.id }));
       return;
     default:
-      // Phases B–F handle the rest; for now we just log via the store counters.
       return;
   }
 }
@@ -273,6 +280,22 @@ function sendWelcome(clientId: string) {
   if (udp) {
     caps.push('udp');
   }
+  if (isCursorCapable()) {
+    caps.push('cursor');
+  }
+  if (EntangleServer.getPreferences().clipboardSync) {
+    caps.push('clipboard');
+  }
+  const icons: WelcomeMessage['icons'] = {};
+  // Same IconEncoder path as dock: resolve Cursor.app and ship a tiny PNG.
+  // Bundle id is Cursor's stable Launch Services id; name is the fallback.
+  const cursorIcon = EntangleServer.appIconPng(
+    'com.todesktop.230313mzl4w4u92',
+    'Cursor',
+  );
+  if (cursorIcon) {
+    icons.cursor = cursorIcon;
+  }
   const welcome: WelcomeMessage = {
     v: PROTOCOL_VERSION,
     t: 'welcome',
@@ -283,8 +306,20 @@ function sendWelcome(clientId: string) {
     },
     caps,
     ...(udp ? { udp } : null),
+    ...(Object.keys(icons).length > 0 ? { icons } : null),
   };
   if (port != null) {
     EntangleServer.sendToClient(clientId, encode(welcome));
   }
 }
+
+/** Re-send welcome when caps that phones gate on (agent / clipboard) change. */
+export function refreshWelcomeCaps() {
+  const { clients, port } = useServerStore.getState();
+  if (port == null) return;
+  for (const id of Object.keys(clients)) {
+    sendWelcome(id);
+  }
+}
+
+bindCursorHostEvents();
