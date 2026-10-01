@@ -43,6 +43,26 @@ final class KeyController {
     }
   }
 
+  /// Types the account password at the lock screen and submits it.
+  ///
+  /// `MessageDispatcher` only calls this while the screen is actually locked —
+  /// the same keystrokes sent to an unlocked Mac would spill the password into
+  /// whatever window is focused.
+  ///
+  /// Return is posted as a separate event a beat later rather than as part of
+  /// the string: the lock screen's field commits on the keypress, and bundling
+  /// the newline into one `keyboardSetUnicodeString` submits an empty field on
+  /// some releases. The password is never logged, and nothing holds onto it
+  /// past this call.
+  func submitPassword(_ password: String) {
+    typeText(password)
+    queue.asyncAfter(deadline: .now() + 0.05) {
+      guard let returnKey = Self.virtualKey(for: .return) else { return }
+      self.postKey(returnKey, keyDown: true, flags: [])
+      self.postKey(returnKey, keyDown: false, flags: [])
+    }
+  }
+
   func typeText(_ text: String) {
     queue.async {
       let utf16 = Array(text.utf16)

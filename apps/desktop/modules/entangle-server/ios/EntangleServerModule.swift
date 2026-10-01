@@ -48,6 +48,8 @@ public class EntangleServerModule: Module {
       VolumeController.shared.onChange = nil
       DisplayController.shared.stopWatching()
       DisplayController.shared.onChange = nil
+      LockController.shared.stopWatching()
+      LockController.shared.onChange = nil
       LatencyMonitor.shared.setEnabled(false)
       LatencyMonitor.shared.onSnapshot = nil
       PointerHighlight.shared.setEnabled(false)
@@ -66,6 +68,8 @@ public class EntangleServerModule: Module {
       VolumeController.shared.onChange = nil
       DisplayController.shared.stopWatching()
       DisplayController.shared.onChange = nil
+      LockController.shared.stopWatching()
+      LockController.shared.onChange = nil
       LatencyMonitor.shared.setEnabled(false)
       LatencyMonitor.shared.onSnapshot = nil
       PointerHighlight.shared.setEnabled(false)
@@ -219,6 +223,7 @@ public class EntangleServerModule: Module {
     wireDockEvents(server)
     wireVolumeEvents(server)
     wireDisplayEvents(server)
+    wireLockEvents(server)
     wireDiagnostics(server)
 
     do {
@@ -278,7 +283,8 @@ public class EntangleServerModule: Module {
       // Same for the screen: a phone that connects to a sleeping Mac should
       // offer to wake it right away, not after the next sleep/wake edge.
       if let payload = MessageDispatcher.encodeDisplayState(
-        asleep: DisplayController.shared.isAsleep()
+        asleep: DisplayController.shared.isAsleep(),
+        locked: LockController.shared.isLocked()
       ) {
         server?.send(payload, to: id)
       }
@@ -332,11 +338,29 @@ public class EntangleServerModule: Module {
   private func wireDisplayEvents(_ server: WebSocketServer) {
     DisplayController.shared.onChange = { [weak server] asleep in
       guard let server = server,
-            let payload = MessageDispatcher.encodeDisplayState(asleep: asleep)
+            let payload = MessageDispatcher.encodeDisplayState(
+              asleep: asleep, locked: LockController.shared.isLocked()
+            )
+      else { return }
+      server.broadcast(payload)
+      // Sleeping and locking usually happen together, and only the display
+      // side has a notification the phone can count on. Re-reading the lock
+      // state here is what keeps the two in step.
+      LockController.shared.refresh()
+    }
+    DisplayController.shared.startWatching()
+  }
+
+  private func wireLockEvents(_ server: WebSocketServer) {
+    LockController.shared.onChange = { [weak server] locked in
+      guard let server = server,
+            let payload = MessageDispatcher.encodeDisplayState(
+              asleep: DisplayController.shared.isAsleep(), locked: locked
+            )
       else { return }
       server.broadcast(payload)
     }
-    DisplayController.shared.startWatching()
+    LockController.shared.startWatching()
   }
 
   /// The ring is only wanted while a phone is actually driving the pointer.

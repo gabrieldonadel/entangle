@@ -15,6 +15,7 @@ import Svg, { Path, Rect } from "react-native-svg";
 import { VolumeBar } from "@/features/audio/VolumeBar";
 import { MiniMac } from "@/features/demo/MiniMac";
 import { PracticeBanner } from "@/features/demo/PracticeBanner";
+import { LockScreen } from "@/features/display/LockScreen";
 import { WakeOverlay } from "@/features/display/WakeOverlay";
 import { HiddenInput } from "@/features/keyboard/HiddenInput";
 import { KEYBOARD_BAR_ID, KeyboardBar } from "@/features/keyboard/KeyboardBar";
@@ -35,6 +36,7 @@ export default function TrackpadScreen() {
   const demo = useConnection((s) => s.demo);
   const serverCaps = useConnection((s) => s.serverCaps);
   const screenAsleep = useDisplay((s) => s.asleep);
+  const screenLocked = useDisplay((s) => s.locked);
   const clearModifiers = useModifiers((s) => s.clear);
 
   const inputRef = useRef<TextInput>(null);
@@ -181,6 +183,13 @@ export default function TrackpadScreen() {
           against the window's bottom edge rather than the inset content
           box. */}
       <KeyboardBar visible={focused} />
+
+      {/* A sleeping Mac has to be woken before anything can be typed at it, so
+          the wake overlay gets the first turn and this takes over once the
+          screen is lit and still locked. */}
+      {!demo && screenLocked && !screenAsleep && serverCaps.includes("lock") ? (
+        <LockScreen />
+      ) : null}
     </View>
   );
 }
