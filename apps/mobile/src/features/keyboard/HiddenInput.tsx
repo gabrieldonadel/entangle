@@ -1,9 +1,15 @@
 import { forwardRef, useRef, useState } from 'react';
 import { StyleSheet, TextInput } from 'react-native';
 
-import { ModFlags, PROTOCOL_VERSION } from '@entangle/protocol';
+import {
+  ModFlags,
+  PROTOCOL_VERSION,
+  shortcutForChar,
+} from '@entangle/protocol';
 
 import { sendMessage } from '@/net/send';
+import { useConnection } from '@/state/connection';
+import { useModifiers } from '@/state/modifiers';
 
 export interface HiddenInputHandle {
   focus: () => void;
@@ -17,12 +23,46 @@ export const HiddenInput = forwardRef<
   ({ onFocusChange, inputAccessoryViewID }, ref) => {
     const [buffer, setBuffer] = useState('');
     const lastRef = useRef('');
+    const mask = useModifiers((s) => s.mask);
+    const consumeMods = useModifiers((s) => s.consume);
+    // Letter / digit key codes are newer than the first desktop release, so a
+    // Mac that does not advertise them still gets the character as plain text
+    // rather than a `k.key` it would silently drop.
+    const canShortcut = useConnection(
+      (s) => s.demo || s.serverCaps.includes('shortcuts'),
+    );
+
+    /**
+     * Sends a latched modifier combination (⌘C, ⌘⇧Z) as a key event. Returns
+     * true when the character was consumed as a shortcut and must not also be
+     * typed as text.
+     */
+    const trySendShortcut = (added: string) => {
+      if (mask === ModFlags.None || !canShortcut) return false;
+      const shortcut = shortcutForChar(added);
+      if (!shortcut) return false;
+      const shift = shortcut.shift ? ModFlags.Shift : ModFlags.None;
+      const mods = consumeMods() | shift;
+      sendMessage({
+        v: PROTOCOL_VERSION,
+        t: 'k.key',
+        code: shortcut.code,
+        phase: 'tap',
+        mods,
+      });
+      return true;
+    };
 
     const handleChangeText = (next: string) => {
       const previous = lastRef.current;
       if (next.length > previous.length && next.startsWith(previous)) {
         const added = next.slice(previous.length);
-        sendMessage({ v: PROTOCOL_VERSION, t: 'k.text', text: added });
+        // The character still lands in the (invisible, never-read) buffer when
+        // it becomes a shortcut — rewinding the controlled value is unreliable
+        // on Android, and the next diff only needs `lastRef` to stay truthful.
+        if (!trySendShortcut(added)) {
+          sendMessage({ v: PROTOCOL_VERSION, t: 'k.text', text: added });
+        }
       } else if (next.length < previous.length && previous.startsWith(next)) {
         const removed = previous.length - next.length;
         for (let i = 0; i < removed; i += 1) {

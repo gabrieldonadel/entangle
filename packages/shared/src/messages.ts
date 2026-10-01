@@ -7,6 +7,12 @@ export type ScrollPhase = 'begin' | 'change' | 'end';
 export type SpaceDir = 'left' | 'right';
 export type KeyPhase = 'down' | 'up' | 'tap';
 
+/**
+ * Key identifiers on the wire, named after `KeyboardEvent.code`. Letters,
+ * digits and punctuation exist so a modifier can be combined with an ordinary
+ * character — `k.text` carries no mask, so ⌘C cannot be expressed as text.
+ * Servers that predate these codes do not advertise the `shortcuts` cap.
+ */
 export type KeyCode =
   | 'Escape'
   | 'Tab'
@@ -33,7 +39,33 @@ export type KeyCode =
   | 'F9'
   | 'F10'
   | 'F11'
-  | 'F12';
+  | 'F12'
+  | LetterKeyCode
+  | DigitKeyCode
+  | PunctuationKeyCode;
+
+export type LetterKeyCode =
+  | 'KeyA' | 'KeyB' | 'KeyC' | 'KeyD' | 'KeyE' | 'KeyF' | 'KeyG'
+  | 'KeyH' | 'KeyI' | 'KeyJ' | 'KeyK' | 'KeyL' | 'KeyM' | 'KeyN'
+  | 'KeyO' | 'KeyP' | 'KeyQ' | 'KeyR' | 'KeyS' | 'KeyT' | 'KeyU'
+  | 'KeyV' | 'KeyW' | 'KeyX' | 'KeyY' | 'KeyZ';
+
+export type DigitKeyCode =
+  | 'Digit0' | 'Digit1' | 'Digit2' | 'Digit3' | 'Digit4'
+  | 'Digit5' | 'Digit6' | 'Digit7' | 'Digit8' | 'Digit9';
+
+export type PunctuationKeyCode =
+  | 'Minus'
+  | 'Equal'
+  | 'BracketLeft'
+  | 'BracketRight'
+  | 'Backslash'
+  | 'Semicolon'
+  | 'Quote'
+  | 'Backquote'
+  | 'Comma'
+  | 'Period'
+  | 'Slash';
 
 export interface PointerMoveMessage {
   v: 1;
