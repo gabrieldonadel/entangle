@@ -254,7 +254,19 @@ function handleMessage(clientId: string, msg: Message) {
 
 function sendWelcome(clientId: string) {
   const { serviceName, port } = useServerStore.getState();
-  const caps = ['pointer', 'scroll', 'keyboard', 'dock', 'gestures', 'audio', 'wake', 'diag'];
+  const caps = [
+    'pointer',
+    'scroll',
+    'keyboard',
+    // `k.key` accepts letter / digit / punctuation codes, so the phone can
+    // route ⌘C through the key path instead of as plain text.
+    'shortcuts',
+    'dock',
+    'gestures',
+    'audio',
+    'wake',
+    'diag',
+  ];
   const udp = udpOffers.get(clientId);
   // Only advertise the datagram path when there is actually a listener behind
   // it — the phone falls back to this socket when the offer is absent.
