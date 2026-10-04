@@ -46,6 +46,8 @@ public class EntangleServerModule: Module {
       DockEnumerator.shared.onUpdate = nil
       VolumeController.shared.stopWatching()
       VolumeController.shared.onChange = nil
+      MediaController.shared.stopWatching()
+      MediaController.shared.onChange = nil
       DisplayController.shared.stopWatching()
       DisplayController.shared.onChange = nil
       LockController.shared.stopWatching()
@@ -66,6 +68,8 @@ public class EntangleServerModule: Module {
       self.stopStatsTimer()
       VolumeController.shared.stopWatching()
       VolumeController.shared.onChange = nil
+      MediaController.shared.stopWatching()
+      MediaController.shared.onChange = nil
       DisplayController.shared.stopWatching()
       DisplayController.shared.onChange = nil
       LockController.shared.stopWatching()
@@ -225,6 +229,7 @@ public class EntangleServerModule: Module {
     wireServerEvents(server, name: name, promise: promise)
     wireDockEvents(server)
     wireVolumeEvents(server)
+    wireMediaEvents(server)
     wireDisplayEvents(server)
     wireLockEvents(server)
     wireDiagnostics(server)
@@ -297,6 +302,13 @@ public class EntangleServerModule: Module {
          ) {
         server?.send(payload, to: id)
       }
+      // And what is playing, so the media tab is not blank until the next
+      // track change.
+      if let payload = MessageDispatcher.encodeMediaState(
+        MediaController.shared.currentState()
+      ) {
+        server?.send(payload, to: id)
+      }
       // Same for the screen: a phone that connects to a sleeping Mac should
       // offer to wake it right away, not after the next sleep/wake edge.
       if let payload = MessageDispatcher.encodeDisplayState(
@@ -350,6 +362,15 @@ public class EntangleServerModule: Module {
       server.broadcast(payload)
     }
     VolumeController.shared.startWatching()
+  }
+
+  private func wireMediaEvents(_ server: WebSocketServer) {
+    MediaController.shared.onChange = { [weak server] state in
+      guard let server = server,
+            let payload = MessageDispatcher.encodeMediaState(state) else { return }
+      server.broadcast(payload)
+    }
+    MediaController.shared.startWatching()
   }
 
   private func wireDisplayEvents(_ server: WebSocketServer) {

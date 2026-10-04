@@ -178,6 +178,19 @@ export interface AudioMuteMessage {
   muted?: boolean;
 }
 
+export type MediaCommand = 'playpause' | 'next' | 'prev';
+
+/**
+ * Drive whatever is playing on the Mac. Carried out with the system's media
+ * keys rather than by talking to a particular player, so it reaches anything
+ * that responds to the keyboard — Music, Spotify, a video in a browser tab.
+ */
+export interface MediaCommandMessage {
+  v: 1;
+  t: 'm.cmd';
+  cmd: MediaCommand;
+}
+
 /**
  * Wake the Mac's display. Sent when the phone sees `state.display` report the
  * screen as asleep — a pointer move would otherwise land on a dark screen.
@@ -295,6 +308,7 @@ export type ClientMessage =
   | AudioSetMessage
   | AudioStepMessage
   | AudioMuteMessage
+  | MediaCommandMessage
   | SystemWakeMessage
   | SystemUnlockMessage
   | DiagSetMessage
@@ -385,6 +399,30 @@ export interface AudioStateMessage {
 }
 
 /**
+ * What the Mac is playing. Pushed on connect and whenever a player reports a
+ * change.
+ *
+ * `playing` is the only field that is always known: it is inferred from the
+ * media keys the Mac accepts. The rest arrive from the players that announce
+ * themselves (Music and Spotify broadcast a distributed notification on every
+ * track and state change); a browser tab playing a video reports nothing, so
+ * the phone gets `playing` with no metadata and should say so rather than
+ * show an empty card.
+ */
+export interface MediaStateMessage {
+  v: 1;
+  t: 'state.media';
+  playing: boolean;
+  title?: string;
+  artist?: string;
+  album?: string;
+  /** Display name of the app the metadata came from, e.g. `Spotify`. */
+  app?: string;
+  /** Base64 PNG of that app's icon, capped at 64×64 like the dock's. */
+  iconPng?: string;
+}
+
+/**
  * Whether the Mac's display is asleep. Pushed on connect and whenever the
  * screens sleep or wake, so the phone can offer to wake the Mac instead of
  * moving a cursor nobody can see.
@@ -468,6 +506,7 @@ export type ServerMessage =
   | DockUpdateMessage
   | ModStateMessage
   | AudioStateMessage
+  | MediaStateMessage
   | DisplayStateMessage
   | DiagStateMessage
   | UdpOkMessage

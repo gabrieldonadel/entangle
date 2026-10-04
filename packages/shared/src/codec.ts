@@ -8,6 +8,7 @@ import type {
   DockListResponseMessage,
   DockUpdateMessage,
   AudioStateMessage,
+  MediaStateMessage,
   DisplayStateMessage,
   DiagStateMessage,
   PongMessage,
@@ -26,6 +27,7 @@ const CLIENT_TAGS = new Set<ClientMessage['t']>([
   'a.set',
   'a.step',
   'a.mute',
+  'm.cmd',
   'sys.wake',
   'sys.unlock',
   'diag.set',
@@ -46,6 +48,7 @@ const SERVER_TAGS = new Set<ServerMessage['t']>([
   'd.update',
   'state.mods',
   'state.audio',
+  'state.media',
   'state.display',
   'state.diag',
   'udp.ok',
@@ -108,6 +111,10 @@ export function isDockUpdate(msg: Message): msg is DockUpdateMessage {
 
 export function isAudioState(msg: Message): msg is AudioStateMessage {
   return msg.t === 'state.audio';
+}
+
+export function isMediaState(msg: Message): msg is MediaStateMessage {
+  return msg.t === 'state.media';
 }
 
 export function isDisplayState(msg: Message): msg is DisplayStateMessage {
