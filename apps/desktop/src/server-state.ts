@@ -265,6 +265,7 @@ function sendWelcome(clientId: string) {
     'dock',
     'gestures',
     'audio',
+    'media',
     'wake',
     // The Mac reports its lock screen and will type the account password into
     // it, so the phone can offer a login screen instead of a dead trackpad.

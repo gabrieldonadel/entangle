@@ -20,6 +20,11 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Icon sf="computermouse" md="mouse" />
       </NativeTabs.Trigger>
 
+      <NativeTabs.Trigger name="media">
+        <NativeTabs.Trigger.Label>Media</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="play.circle.fill" md="play_circle" />
+      </NativeTabs.Trigger>
+
       <NativeTabs.Trigger name="dock" disableAutomaticContentInsets>
         <NativeTabs.Trigger.Label>Dock</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="dock.rectangle" md="dock" />

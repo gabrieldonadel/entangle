@@ -10,6 +10,7 @@ import {
   HEARTBEAT_TIMEOUT_MS,
   PROTOCOL_VERSION,
   isAudioState,
+  isMediaState,
   isDiagState,
   isUdpOk,
   isDisplayState,
@@ -26,6 +27,7 @@ import { getSocket, setSocket } from '@/net/socket';
 import { useAudio } from './audio';
 import { recordRtt, tickPhoneStats, useDiag } from './diag';
 import { useDisplay } from './display';
+import { useMedia } from './media';
 import { useDock } from './dock';
 import { DEMO_DOCK_APPS } from './demo';
 
@@ -149,6 +151,7 @@ export const useConnection = create<ConnectionState>((set, get) => ({
     }
     useDock.getState().clear();
     useAudio.getState().reset();
+    useMedia.getState().reset();
     useDisplay.getState().reset();
     useDiag.getState().reset();
     udp.reset();
@@ -182,6 +185,16 @@ export const useConnection = create<ConnectionState>((set, get) => ({
     useDock.getState().setApps(DEMO_DOCK_APPS);
     // Demo mode has no Mac to report a level, so seed one the slider can move.
     useAudio.getState().applyRemote(0.45, false);
+    // Demo mode has no Mac either, so seed a track the transport can act on.
+    useMedia.getState().applyRemote({
+      v: PROTOCOL_VERSION,
+      t: 'state.media',
+      playing: false,
+      title: 'Everything In Its Right Place',
+      artist: 'Radiohead',
+      album: 'Kid A',
+      app: 'Music',
+    });
     useDisplay.getState().reset();
     set({
       phase: 'open',
@@ -345,6 +358,10 @@ function handleMessage(msg: Message) {
   }
   if (isAudioState(msg)) {
     useAudio.getState().applyRemote(msg.level, msg.muted);
+    return;
+  }
+  if (isMediaState(msg)) {
+    useMedia.getState().applyRemote(msg);
     return;
   }
   if (isDisplayState(msg)) {

@@ -12,7 +12,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Path, Rect } from "react-native-svg";
 
-import { VolumeBar } from "@/features/audio/VolumeBar";
 import { MiniMac } from "@/features/demo/MiniMac";
 import { PracticeBanner } from "@/features/demo/PracticeBanner";
 import { LockScreen } from "@/features/display/LockScreen";
@@ -152,11 +151,6 @@ export default function TrackpadScreen() {
             />
           </View>
         ) : null}
-
-        {/* Older Macs ignore `a.*`, so hide the slider rather than let it
-            move with no effect. Demo mode has no caps list but drives it
-            locally. */}
-        {demo || serverCaps.includes("audio") ? <VolumeBar /> : null}
 
         <View style={styles.padWrap}>
           <TrackpadSurface
