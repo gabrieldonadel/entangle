@@ -8,6 +8,8 @@ export interface DiscoveredService {
   host: string;
   port: number;
   fullName?: string;
+  /** Every address the Mac answers at; `host` is the one picked to dial. */
+  addresses?: string[];
 }
 
 type ZeroconfService = {
@@ -19,8 +21,9 @@ type ZeroconfService = {
 };
 
 const SCANNING_INDICATOR_MS = 5000;
-/** How long a reconnect may wait for Bonjour to re-advertise the Mac. */
-const RESOLVE_TIMEOUT_MS = 2500;
+/** How long a reconnect waits for the Mac to answer a Bonjour resolve. */
+const RESOLVE_TIMEOUT_S = 3;
+const SCAN = { type: BONJOUR_SERVICE_NAME, protocol: BONJOUR_PROTOCOL, domain: BONJOUR_DOMAIN };
 
 const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
 
@@ -54,51 +57,30 @@ function toDiscovered(service: ZeroconfService): DiscoveredService | null {
     host,
     port: service.port,
     fullName: service.fullName,
+    addresses: service.addresses,
   };
 }
 
 /**
- * One-shot Bonjour lookup for a Mac by advertised instance name (or any
- * `_entangle` instance when `serviceName` is omitted). Used on reconnect so a
- * Mac that rebound to a new port is still reachable without a trip back to
- * the Connect screen.
+ * One-shot Bonjour lookup of a Mac by its advertised instance name, so a
+ * reconnect can dial a Mac that came back on another port. A single resolve,
+ * not a browse: it shares nothing with the Connect screen's scan, so there is
+ * nothing to stop when it ends and nothing to cancel when the caller moves on.
  */
-export function resolveMac(
-  serviceName?: string | null,
-  timeoutMs = RESOLVE_TIMEOUT_MS,
-): Promise<DiscoveredService | null> {
-  return new Promise((resolve) => {
-    const zeroconf = new Zeroconf();
-    let settled = false;
-
-    const finish = (result: DiscoveredService | null) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      try {
-        zeroconf.stop();
-        zeroconf.removeDeviceListeners();
-      } catch {}
-      resolve(result);
-    };
-
-    const timer = setTimeout(() => finish(null), timeoutMs);
-
-    zeroconf.on('resolved', (service: ZeroconfService) => {
-      if (serviceName && service.name !== serviceName) return;
-      const found = toDiscovered(service);
-      if (found) finish(found);
+export async function resolveMac(serviceName: string): Promise<DiscoveredService | null> {
+  const zeroconf = new Zeroconf();
+  try {
+    const service = await zeroconf.resolveService({
+      ...SCAN,
+      name: serviceName,
+      timeout: RESOLVE_TIMEOUT_S,
     });
-    zeroconf.on('error', () => {
-      // Keep waiting until timeout — a transient browse error is not fatal.
-    });
-
-    try {
-      zeroconf.scan(BONJOUR_SERVICE_NAME, BONJOUR_PROTOCOL, BONJOUR_DOMAIN);
-    } catch {
-      finish(null);
-    }
-  });
+    return toDiscovered(service);
+  } catch {
+    return null;
+  } finally {
+    zeroconf.removeDeviceListeners();
+  }
 }
 
 export function useDiscovery() {
@@ -121,17 +103,9 @@ export function useDiscovery() {
     zeroconfRef.current = zeroconf;
 
     const onResolved = (service: ZeroconfService) => {
-      const host = pickHost(service);
-      if (!host || !service.port) return;
-      setServices((prev) => ({
-        ...prev,
-        [service.name]: {
-          name: service.name,
-          host,
-          port: service.port!,
-          fullName: service.fullName,
-        },
-      }));
+      const found = toDiscovered(service);
+      if (!found) return;
+      setServices((prev) => ({ ...prev, [found.name]: found }));
     };
     const onRemoved = (name: string) => {
       setServices((prev) => {
@@ -149,7 +123,7 @@ export function useDiscovery() {
     zeroconf.on('remove', onRemoved);
     zeroconf.on('error', onError);
 
-    zeroconf.scan(BONJOUR_SERVICE_NAME, BONJOUR_PROTOCOL, BONJOUR_DOMAIN);
+    zeroconf.scan(SCAN);
     startScanIndicator();
 
     return () => {
@@ -168,7 +142,7 @@ export function useDiscovery() {
     if (!zeroconf) return;
     setServices({});
     zeroconf.stop();
-    zeroconf.scan(BONJOUR_SERVICE_NAME, BONJOUR_PROTOCOL, BONJOUR_DOMAIN);
+    zeroconf.scan(SCAN);
     startScanIndicator();
   }, [startScanIndicator]);
 

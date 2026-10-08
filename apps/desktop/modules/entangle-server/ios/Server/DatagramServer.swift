@@ -28,15 +28,6 @@ final class DatagramServer {
   var onError: ((String) -> Void)?
   var onReady: ((UInt16) -> Void)?
 
-  private static func isBenignClose(_ error: Error) -> Bool {
-    if let nw = error as? NWError, case .posix(let code) = nw, code == .ECANCELED {
-      return true
-    }
-    let text = error.localizedDescription.lowercased()
-    return text.contains("operation canceled")
-      || text.contains("operation cancelled")
-      || text.contains("error 89")
-  }
   // MARK: - Lifecycle
 
   func start(port: UInt16) throws {
@@ -128,7 +119,7 @@ final class DatagramServer {
     connection.receiveMessage { [weak self] data, _, isComplete, error in
       guard let self = self else { return }
       if let error = error {
-        if !Self.isBenignClose(error) {
+        if !error.isBenignClose {
           self.onError?("udp receive error: \(error.localizedDescription)")
         }
         connection.cancel()

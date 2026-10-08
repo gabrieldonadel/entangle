@@ -38,6 +38,7 @@ export type ConnectionPhase =
   | 'pairing';
 
 const TRUSTED_TOKENS_KEY = 'entangle.trustedTokens';
+export const LAST_HOST_KEY = 'entangle.lastHost';
 
 /**
  * How long a socket may sit in CONNECTING before we give up on it.
@@ -50,7 +51,9 @@ const TRUSTED_TOKENS_KEY = 'entangle.trustedTokens';
 const CONNECT_TIMEOUT_MS = 8000;
 
 export interface ConnectionTarget {
-  name: string;
+  /** The Mac's Bonjour instance name. Absent until `welcome` for a target
+   *  paired by QR code, which arrives with only a host and port. */
+  name?: string;
   host: string;
   port: number;
 }
@@ -127,10 +130,8 @@ export const useConnection = create<ConnectionState>((set, get) => ({
     openGeneration += 1;
     pendingPairCode = null;
     pendingPairToken = token;
-    const target: ConnectionTarget = { name: name ?? host, host, port };
-    AsyncStorage.setItem('entangle.lastHost', JSON.stringify(target)).catch(
-      () => undefined,
-    );
+    const target: ConnectionTarget = { name, host, port };
+    persistLastHost(target);
     set({ target, lastError: null, pairingError: null });
     void openSocket();
   },
@@ -158,7 +159,7 @@ export const useConnection = create<ConnectionState>((set, get) => ({
       serverName: null,
       serverVersion: null,
       serverCaps: [],
-          latencyMs: null,
+      latencyMs: null,
       pairingError: null,
       demo: false,
     });
@@ -175,6 +176,9 @@ export const useConnection = create<ConnectionState>((set, get) => ({
       } catch {}
       setSocket(null);
     }
+    // The socket's own close handler no longer acts for a detached socket.
+    udp.reset();
+    syncPointerConfig({ datagramToken: '' });
     useDock.getState().setApps(DEMO_DOCK_APPS);
     // Demo mode has no Mac to report a level, so seed one the slider can move.
     useAudio.getState().applyRemote(0.45, false);
@@ -185,7 +189,7 @@ export const useConnection = create<ConnectionState>((set, get) => ({
       serverName: 'Demo Mac',
       serverVersion: 'demo',
       serverCaps: [],
-          lastError: null,
+      lastError: null,
       latencyMs: null,
       pairingError: null,
       demo: true,
@@ -230,31 +234,23 @@ async function openSocket() {
     phase: reconnectAttempt > 0 ? 'reconnecting' : 'connecting',
   });
 
-  // After a Mac restart the Bonjour name is stable but the port often is not
-  // (prefs "auto" binds an ephemeral port). Re-resolve before dialing so we
-  // do not hammer a dead port forever while the phone UI still looks live.
-  if (reconnectAttempt > 0) {
-    try {
-      const found = await resolveMac(target.name);
-      if (found && (found.host !== target.host || found.port !== target.port)) {
-        target = { name: found.name, host: found.host, port: found.port };
-        useConnection.setState({ target });
-        AsyncStorage.setItem('entangle.lastHost', JSON.stringify(target)).catch(
-          () => undefined,
-        );
-      }
-    } catch {}
-    if (gen !== openGeneration || manuallyDisconnected) return;
-    if (useConnection.getState().target?.name !== target.name) return;
+  // A Mac that restarted may be back on another port. Its Bonjour name is
+  // the one thing that survives, so look it up before dialing.
+  if (reconnectAttempt > 0 && target.name) {
+    const found = await resolveMac(target.name);
+    // Disconnected, or pointed at another Mac, while waiting.
+    if (gen !== openGeneration) return;
+    if (found && (found.host !== target.host || found.port !== target.port)) {
+      // A Mac with several interfaces lists them all, in no fixed order. Stay
+      // on the address that worked while the Mac still answers there.
+      const stillThere = found.addresses?.includes(target.host.replace(/^\[|\]$/g, ''));
+      target = { ...target, host: stillThere ? target.host : found.host, port: found.port };
+      useConnection.setState({ target });
+      persistLastHost(target);
+    }
   }
 
   const ws = new WebSocket(`ws://${target.host}:${target.port}`);
-  if (gen !== openGeneration) {
-    try {
-      ws.close();
-    } catch {}
-    return;
-  }
   setSocket(ws);
   startConnectTimeout(ws);
 
@@ -296,6 +292,8 @@ async function openSocket() {
   };
 
   ws.onclose = () => {
+    // A socket this one replaced still fires its close. Not ours to act on.
+    if (getSocket() !== ws) return;
     setSocket(null);
     clearTimers();
     // The token dies with the socket that issued it.
@@ -369,10 +367,18 @@ function handleMessage(msg: Message) {
         serverVersion: msg.server.version,
         serverCaps: msg.caps,
       });
+      const { target } = useConnection.getState();
+      if (!target) return;
+      // The advertised name is what a reconnect looks the Mac up by, and a
+      // target paired by QR code arrived without one.
+      if (!target.name) {
+        const named = { ...target, name: msg.server.name };
+        useConnection.setState({ target: named });
+        persistLastHost(named);
+      }
       // The offer carries the port and this session's token. Absent means the
       // Mac has no datagram listener, and pointer frames stay on this socket.
-      const { target } = useConnection.getState();
-      if (target) udp.configure(target.host, msg.udp);
+      udp.configure(target.host, msg.udp);
       return;
     }
     case 'pong': {
@@ -541,6 +547,11 @@ function clearTimers() {
 }
 
 export { getSocket } from '@/net/socket';
+
+/** Best-effort: remembering the Mac must never gate a connect. */
+function persistLastHost(target: ConnectionTarget) {
+  AsyncStorage.setItem(LAST_HOST_KEY, JSON.stringify(target)).catch(() => undefined);
+}
 
 async function persistTrustedTokens(tokens: Record<string, string>): Promise<void> {
   try {

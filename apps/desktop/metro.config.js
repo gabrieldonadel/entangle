@@ -9,13 +9,6 @@ const config = getDefaultConfig(__dirname);
 
 config.watchFolders = [workspaceRoot];
 
-// RN-macOS ships BaseViewConfig.macos.js / Platform.macos.js; without this,
-// Metro never considers the `.macos` platform extension and Fabric never
-// registers topKeyDown / topKeyUp (crash when typing in TextInput).
-config.resolver.platforms = Array.from(
-  new Set([...(config.resolver.platforms ?? ['ios', 'android']), 'macos']),
-);
-
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (platform === 'macos') {
     if (
@@ -28,15 +21,18 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
       );
       return context.resolveRequest(context, newModuleName, platform);
     }
-    // Prefer `.macos.js`, then fall back to `.ios.js` for packages that only
-    // ship iOS platform files (common for Expo modules).
+    // react-native-macos reaches its `.macos.js` files (BaseViewConfig,
+    // Platform, …) through relative imports, and those must win: the iOS
+    // BaseViewConfig has no key events, so the first keystroke in a TextInput
+    // throws on an unregistered topKeyDown. Every other package only ships
+    // `.ios.js`, so iOS stays the platform for it.
+    const macosFirst =
+      moduleName.startsWith('.') &&
+      context.originModulePath.includes('/react-native-macos/');
     try {
-      return context.resolveRequest(context, moduleName, platform);
-    } catch {
-      try {
-        return context.resolveRequest(context, moduleName, 'ios');
-      } catch {}
-    }
+      return context.resolveRequest(context, moduleName, macosFirst ? platform : 'ios');
+    } catch {}
+    return context.resolveRequest(context, moduleName, macosFirst ? 'ios' : platform);
   }
   return context.resolveRequest(context, moduleName, platform);
 };

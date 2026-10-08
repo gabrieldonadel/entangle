@@ -2,6 +2,9 @@ import Foundation
 import Network
 
 final class WebSocketServer {
+  /// Keep in sync with `DEFAULT_PORT` in packages/shared/src/constants.ts.
+  static let defaultPort: UInt16 = 49827
+
   struct Client {
     let id: UUID
     let connection: NWConnection
@@ -16,49 +19,26 @@ final class WebSocketServer {
   private let serviceName: String
   private let preferredPort: UInt16
   private let advertiseService: Bool
-  private let fallbackToEphemeral: Bool
-  private var didFallbackToEphemeral = false
 
   var onClientConnected: ((UUID, String) -> Void)?
   var onClientDisconnected: ((UUID) -> Void)?
   var onMessage: ((UUID, String) -> Void)?
   var onError: ((String) -> Void)?
   var onReady: ((UInt16) -> Void)?
+  /// The listener could not bind. Terminal: no `onReady` follows.
+  var onListenerFailed: ((String) -> Void)?
   var onPairRejected: ((String, String) -> Void)?
-
-  /// True for cancel/teardown errors that are normal when a phone disconnects.
-  private static func isBenignClose(_ error: NWError) -> Bool {
-    switch error {
-    case .posix(let code) where code == .ECANCELED:
-      return true
-    default:
-      let text = error.localizedDescription.lowercased()
-      return text.contains("operation canceled")
-        || text.contains("operation cancelled")
-        || text.contains("error 89")
-    }
-  }
-
-  private static func isBenignClose(_ error: Error) -> Bool {
-    if let nw = error as? NWError { return isBenignClose(nw) }
-    let text = error.localizedDescription.lowercased()
-    return text.contains("operation canceled")
-      || text.contains("operation cancelled")
-      || text.contains("error 89")
-  }
 
   init(
     serviceType: String,
     serviceName: String,
     preferredPort: UInt16 = 0,
-    advertiseService: Bool = true,
-    fallbackToEphemeral: Bool = false
+    advertiseService: Bool = true
   ) {
     self.serviceType = serviceType
     self.serviceName = serviceName
     self.preferredPort = preferredPort
     self.advertiseService = advertiseService
-    self.fallbackToEphemeral = fallbackToEphemeral
   }
 
   func start() throws {
@@ -95,26 +75,29 @@ final class WebSocketServer {
       )
     }
 
+    var becameReady = false
     listener.stateUpdateHandler = { [weak self] state in
       guard let self = self else { return }
       switch state {
       case .ready:
+        becameReady = true
         if let bound = listener.port?.rawValue {
           self.onReady?(bound)
         }
       case .failed(let error):
         listener.cancel()
-        if self.fallbackToEphemeral, !self.didFallbackToEphemeral, port > 0 {
-          self.didFallbackToEphemeral = true
-          self.listener = nil
+        // A busy port is not fatal: the phone finds the Mac by its Bonjour
+        // name, so any free port will do. One retry, on an ephemeral port.
+        if port > 0, !becameReady {
           do {
             try self.start(on: 0)
+            return
           } catch {
-            self.onError?("listener failed: \(error.localizedDescription)")
+            self.onListenerFailed?("listener failed: \(error.localizedDescription)")
+            return
           }
-          return
         }
-        self.onError?("listener failed: \(error.localizedDescription)")
+        self.onListenerFailed?("listener failed: \(error.localizedDescription)")
       default:
         break
       }
@@ -333,8 +316,7 @@ final class WebSocketServer {
     connection.receiveMessage { [weak self] data, context, _, error in
       guard let self = self else { return }
       if let error = error {
-        // Phone closed the socket (or we cancelled it) — not a server fault.
-        if !Self.isBenignClose(error) {
+        if !error.isBenignClose {
           self.onError?("receive error: \(error.localizedDescription)")
         }
         connection.cancel()
@@ -363,7 +345,7 @@ final class WebSocketServer {
     let context = NWConnection.ContentContext(identifier: "send", metadata: [metadata])
     let data = Data(text.utf8)
     let completion: NWConnection.SendCompletion = .contentProcessed { [weak self] error in
-      if let error = error, !Self.isBenignClose(error) {
+      if let error = error, !error.isBenignClose {
         self?.onError?("send error: \(error.localizedDescription)")
       }
     }

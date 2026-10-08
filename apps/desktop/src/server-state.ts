@@ -67,10 +67,7 @@ export const useServerStore = create<ServerState>((set, get) => ({
   pairing: null,
   clientNames: EntangleServer.getClientNames(),
   requestAccessibility: async () => {
-    // promptAccessibility may show the system sheet; always re-read trust via
-    // isAccessibilityTrusted so a false prompt-flow result can't stick the gate.
-    await EntangleServer.promptAccessibility();
-    const trusted = EntangleServer.isAccessibilityTrusted();
+    const trusted = await EntangleServer.promptAccessibility();
     set({ accessibilityTrusted: trusted });
     return trusted;
   },

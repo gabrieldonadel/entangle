@@ -12,10 +12,9 @@ import {
   Title,
 } from "@/features/onboarding/atoms";
 import { useDiscovery } from "@/net/discovery";
-import { useConnection, type ConnectionTarget } from "@/state/connection";
+import { LAST_HOST_KEY, useConnection, type ConnectionTarget } from "@/state/connection";
 import { Logo } from "@/components/Logo";
 
-export const LAST_HOST_KEY = "entangle.lastHost";
 
 export interface FindMacScreenProps {
   /**
