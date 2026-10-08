@@ -3,7 +3,7 @@
     "name": "entangle",
     "slug": "entangle-mobile",
     "version": "0.1.0",
-    "orientation": "default",
+    "orientation": "portrait",
     "scheme": "entangle",
     "userInterfaceStyle": "automatic",
     "ios": {

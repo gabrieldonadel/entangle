@@ -1,4 +1,6 @@
 import { Image } from "expo-image";
+import { useFocusEffect } from "expo-router";
+import * as ScreenOrientation from "expo-screen-orientation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   InputAccessoryView,
@@ -23,7 +25,6 @@ import { ModifierBar } from "@/features/keyboard/ModifierBar";
 import { SpecialKeys } from "@/features/keyboard/SpecialKeys";
 import { TrackpadSurface } from "@/features/trackpad/TrackpadSurface";
 import type { LocalGestureEvent } from "@/features/trackpad/TrackpadSurface";
-import { getTrackpadLayout } from "@/features/trackpad/layout";
 import { useConnection } from "@/state/connection";
 import { useDisplay } from "@/state/display";
 import { useModifiers } from "@/state/modifiers";
@@ -34,8 +35,9 @@ const CURSOR_W = 14;
 const CURSOR_H = 20;
 
 export default function TrackpadScreen() {
-  const { width, height } = useWindowDimensions();
-  const trackpadLayout = getTrackpadLayout(width, height);
+  // A short viewport means an iPhone on its side. Keyed on height rather
+  // than aspect ratio so a wide browser window keeps the roomy layout.
+  const compact = useWindowDimensions().height < 500;
   const serverName = useConnection((s) => s.serverName);
   const phase = useConnection((s) => s.phase);
   const latency = useConnection((s) => s.latencyMs);
@@ -67,6 +69,18 @@ export default function TrackpadScreen() {
       clearModifiers();
     };
   }, [clearModifiers]);
+
+  // Only this route rotates; app.json keeps the rest of the app portrait.
+  useFocusEffect(
+    useCallback(() => {
+      ScreenOrientation.unlockAsync().catch(() => {});
+      return () => {
+        ScreenOrientation.lockAsync(
+          ScreenOrientation.OrientationLock.PORTRAIT_UP,
+        ).catch(() => {});
+      };
+    }, []),
+  );
 
   // Recenter the cursor when the mini-mac is first measured.
   useEffect(() => {
@@ -118,50 +132,27 @@ export default function TrackpadScreen() {
   );
 
   return (
-    <SafeAreaView
-      style={[
-        styles.root,
-        { paddingVertical: trackpadLayout.rootPaddingVertical },
-      ]}
-    >
+    <SafeAreaView style={[styles.root, compact && styles.rootCompact]}>
       {demo ? (
-        <View style={styles.bannerWrap}>
+        <View style={[styles.bannerWrap, compact && styles.bannerWrapCompact]}>
           <PracticeBanner />
         </View>
       ) : null}
 
-      <View
-        style={[
-          styles.header,
-          { paddingVertical: trackpadLayout.headerPaddingVertical },
-        ]}
-      >
-        <View
-          style={[
-            styles.headerInfo,
-            trackpadLayout.isLandscape && styles.headerInfoLandscape,
-          ]}
-        >
-          {!trackpadLayout.isLandscape ? (
+      <View style={[styles.header, compact && styles.headerCompact]}>
+        <View style={[styles.headerInfo, compact && styles.headerInfoCompact]}>
+          {!compact ? (
             <Text style={styles.connected}>
               {demo ? "Practice mode" : "Connected to"}
             </Text>
           ) : null}
           <Text
-            style={[
-              styles.serverName,
-              { fontSize: trackpadLayout.serverNameFontSize },
-            ]}
+            style={[styles.serverName, compact && styles.serverNameCompact]}
             numberOfLines={1}
           >
             {serverName ?? "…"}
           </Text>
-          <Text
-            style={[
-              styles.meta,
-              trackpadLayout.isLandscape && styles.metaLandscape,
-            ]}
-          >
+          <Text style={[styles.meta, compact && styles.metaCompact]}>
             {demo
               ? "not a real connection"
               : `${phase}${latency != null ? ` · ${latency}ms` : ""}`}
@@ -251,7 +242,10 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: C.bg,
-    paddingHorizontal: 16,
+    padding: 16,
+  },
+  rootCompact: {
+    paddingVertical: 8,
   },
   header: {
     paddingVertical: 8,
@@ -260,10 +254,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 12,
   },
+  headerCompact: {
+    paddingVertical: 2,
+  },
   headerInfo: {
     flexShrink: 1,
   },
-  headerInfoLandscape: {
+  headerInfoCompact: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -274,15 +271,19 @@ const styles = StyleSheet.create({
   },
   serverName: {
     color: "#fff",
+    fontSize: 22,
     fontWeight: "700",
     marginTop: 2,
+  },
+  serverNameCompact: {
+    fontSize: 18,
   },
   meta: {
     color: "#8e8e93",
     fontSize: 12,
     marginTop: 4,
   },
-  metaLandscape: {
+  metaCompact: {
     marginTop: 2,
   },
   kbButton: {
@@ -314,6 +315,9 @@ const styles = StyleSheet.create({
     marginHorizontal: -16,
     marginTop: -8,
     marginBottom: 4,
+  },
+  bannerWrapCompact: {
+    marginTop: -4,
   },
   miniMacWrap: {
     marginBottom: 12,
