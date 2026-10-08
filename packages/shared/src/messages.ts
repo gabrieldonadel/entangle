@@ -188,6 +188,24 @@ export interface SystemWakeMessage {
 }
 
 /**
+ * Unlock the Mac's lock screen with the account password.
+ *
+ * Deliberately its own message rather than a `k.text` plus a `k.key Return`:
+ * the Mac refuses it unless the screen is actually locked, which is the whole
+ * safety guarantee — the same keystrokes sent blind would spill the password
+ * into whatever window happens to be focused. Being its own message also keeps
+ * it off the datagram path and out of the normal typing path.
+ *
+ * The password is never stored on either side. Note the LAN transport is
+ * plaintext (`ws://`), same as every other keystroke.
+ */
+export interface SystemUnlockMessage {
+  v: 1;
+  t: 'sys.unlock';
+  password: string;
+}
+
+/**
  * Turn per-move instrumentation on or off. Off by default: it costs a
  * timestamp on every pointer frame and a `state.diag` push every second.
  */
@@ -278,6 +296,7 @@ export type ClientMessage =
   | AudioStepMessage
   | AudioMuteMessage
   | SystemWakeMessage
+  | SystemUnlockMessage
   | DiagSetMessage
   | DiagReportMessage
   | DockListRequestMessage
@@ -374,6 +393,12 @@ export interface DisplayStateMessage {
   v: 1;
   t: 'state.display';
   asleep: boolean;
+  /**
+   * Whether the Mac is sitting on its lock screen. Absent from Macs that do
+   * not advertise the `lock` cap, which is why the phone treats "missing" as
+   * "unlocked" rather than offering a login screen it cannot act on.
+   */
+  locked?: boolean;
 }
 
 /**

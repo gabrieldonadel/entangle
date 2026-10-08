@@ -316,7 +316,9 @@ function handleMessage(msg: Message) {
     return;
   }
   if (isDisplayState(msg)) {
-    useDisplay.getState().applyRemote(msg.asleep);
+    // `locked` is absent from Macs without the `lock` cap; those never show a
+    // login screen, which is right — they also cannot act on one.
+    useDisplay.getState().applyRemote(msg.asleep, msg.locked === true);
     return;
   }
   if (isDiagState(msg)) {

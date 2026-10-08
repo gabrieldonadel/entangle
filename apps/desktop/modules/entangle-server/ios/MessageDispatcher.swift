@@ -64,7 +64,12 @@ enum MessageDispatcher {
     case "a.mute": return handleAudioMute(json)
     case "sys.wake":
       DisplayController.shared.wake()
+      // A Mac that locked on its way into sleep wakes onto the lock screen
+      // without a fresh `com.apple.screenIsLocked`, so re-read it here: the
+      // phone has just asked for the screen and is about to need the answer.
+      LockController.shared.refresh()
       return true
+    case "sys.unlock": return handleUnlock(json)
     case "diag.set":
       guard let on = json["on"] as? Bool else { return false }
       LatencyMonitor.shared.setEnabled(on)
@@ -208,6 +213,24 @@ enum MessageDispatcher {
     return true
   }
 
+  /// Types the account password at the lock screen.
+  ///
+  /// Refused unless the screen is actually locked. That guard is the point of
+  /// the message existing at all: the phone cannot know the Mac's state at the
+  /// instant the packet lands, and the failure mode without it is the user's
+  /// password typed into whatever window happens to be focused.
+  private static func handleUnlock(_ json: [String: Any]) -> Bool {
+    guard let password = json["password"] as? String, !password.isEmpty else {
+      return false
+    }
+    guard LockController.shared.isLocked() else {
+      NSLog("[Entangle] ignoring sys.unlock: the screen is not locked")
+      return true
+    }
+    KeyController.shared.submitPassword(password)
+    return true
+  }
+
   private static func handleAudioSet(_ json: [String: Any]) -> Bool {
     guard let level = numeric(json["level"]) else { return false }
     VolumeController.shared.setLevel(Float32(level))
@@ -279,11 +302,12 @@ enum MessageDispatcher {
     return String(data: data, encoding: .utf8)
   }
 
-  static func encodeDisplayState(asleep: Bool) -> String? {
+  static func encodeDisplayState(asleep: Bool, locked: Bool) -> String? {
     let payload: [String: Any] = [
       "v": 1,
       "t": "state.display",
-      "asleep": asleep
+      "asleep": asleep,
+      "locked": locked
     ]
     guard let data = try? JSONSerialization.data(withJSONObject: payload) else {
       return nil
