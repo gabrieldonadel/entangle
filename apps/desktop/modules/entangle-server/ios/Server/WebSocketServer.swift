@@ -2,6 +2,9 @@ import Foundation
 import Network
 
 final class WebSocketServer {
+  /// Keep in sync with `DEFAULT_PORT` in packages/shared/src/constants.ts.
+  static let defaultPort: UInt16 = 49827
+
   struct Client {
     let id: UUID
     let connection: NWConnection
@@ -22,6 +25,8 @@ final class WebSocketServer {
   var onMessage: ((UUID, String) -> Void)?
   var onError: ((String) -> Void)?
   var onReady: ((UInt16) -> Void)?
+  /// The listener could not bind. Terminal: no `onReady` follows.
+  var onListenerFailed: ((String) -> Void)?
   var onPairRejected: ((String, String) -> Void)?
 
   init(
@@ -37,6 +42,10 @@ final class WebSocketServer {
   }
 
   func start() throws {
+    try start(on: preferredPort)
+  }
+
+  private func start(on port: UInt16) throws {
     // Pointer frames are tiny and latency-critical. Nagle would hold one back
     // waiting for company, and a delayed ACK on the other side can stretch
     // that wait into tens of milliseconds.
@@ -51,7 +60,7 @@ final class WebSocketServer {
     params.defaultProtocolStack.applicationProtocols.insert(wsOptions, at: 0)
 
     let endpoint: NWEndpoint.Port
-    if preferredPort > 0, let p = NWEndpoint.Port(rawValue: preferredPort) {
+    if port > 0, let p = NWEndpoint.Port(rawValue: port) {
       endpoint = p
     } else {
       endpoint = .any
@@ -66,15 +75,29 @@ final class WebSocketServer {
       )
     }
 
+    var becameReady = false
     listener.stateUpdateHandler = { [weak self] state in
       guard let self = self else { return }
       switch state {
       case .ready:
-        if let port = listener.port?.rawValue {
-          self.onReady?(port)
+        becameReady = true
+        if let bound = listener.port?.rawValue {
+          self.onReady?(bound)
         }
       case .failed(let error):
-        self.onError?("listener failed: \(error.localizedDescription)")
+        listener.cancel()
+        // A busy port is not fatal: the phone finds the Mac by its Bonjour
+        // name, so any free port will do. One retry, on an ephemeral port.
+        if port > 0, !becameReady {
+          do {
+            try self.start(on: 0)
+            return
+          } catch {
+            self.onListenerFailed?("listener failed: \(error.localizedDescription)")
+            return
+          }
+        }
+        self.onListenerFailed?("listener failed: \(error.localizedDescription)")
       default:
         break
       }
@@ -293,7 +316,9 @@ final class WebSocketServer {
     connection.receiveMessage { [weak self] data, context, _, error in
       guard let self = self else { return }
       if let error = error {
-        self.onError?("receive error: \(error.localizedDescription)")
+        if !error.isBenignClose {
+          self.onError?("receive error: \(error.localizedDescription)")
+        }
         connection.cancel()
         return
       }
@@ -320,7 +345,7 @@ final class WebSocketServer {
     let context = NWConnection.ContentContext(identifier: "send", metadata: [metadata])
     let data = Data(text.utf8)
     let completion: NWConnection.SendCompletion = .contentProcessed { [weak self] error in
-      if let error = error {
+      if let error = error, !error.isBenignClose {
         self?.onError?("send error: \(error.localizedDescription)")
       }
     }

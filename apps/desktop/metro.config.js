@@ -21,9 +21,18 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
       );
       return context.resolveRequest(context, newModuleName, platform);
     }
+    // react-native-macos reaches its `.macos.js` files (BaseViewConfig,
+    // Platform, …) through relative imports, and those must win: the iOS
+    // BaseViewConfig has no key events, so the first keystroke in a TextInput
+    // throws on an unregistered topKeyDown. Every other package only ships
+    // `.ios.js`, so iOS stays the platform for it.
+    const macosFirst =
+      moduleName.startsWith('.') &&
+      context.originModulePath.includes('/react-native-macos/');
     try {
-      return context.resolveRequest(context, moduleName, 'ios');
+      return context.resolveRequest(context, moduleName, macosFirst ? platform : 'ios');
     } catch {}
+    return context.resolveRequest(context, moduleName, macosFirst ? 'ios' : platform);
   }
   return context.resolveRequest(context, moduleName, platform);
 };

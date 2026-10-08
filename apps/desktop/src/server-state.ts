@@ -171,6 +171,7 @@ eventEmitter.addListener('clientConnected', (event: ClientConnectedEvent) => {
     udpOffers.set(event.id, { port: event.udpPort, token: event.udpToken });
   }
   useServerStore.setState((state) => ({
+    lastError: null,
     clients: {
       ...state.clients,
       [event.id]: {
