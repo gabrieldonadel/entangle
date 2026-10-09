@@ -27,6 +27,7 @@ import type { LocalGestureEvent } from "@/features/trackpad/TrackpadSurface";
 import { useConnection } from "@/state/connection";
 import { useDisplay } from "@/state/display";
 import { useModifiers } from "@/state/modifiers";
+import { useSettings } from "@/state/settings";
 import { C } from "@/features/onboarding/atoms";
 
 const CURSOR_W = 14;
@@ -44,6 +45,7 @@ export default function TrackpadScreen() {
   const screenAsleep = useDisplay((s) => s.asleep);
   const screenLocked = useDisplay((s) => s.locked);
   const clearModifiers = useModifiers((s) => s.clear);
+  const landscape = useSettings((s) => s.landscape);
 
   const inputRef = useRef<TextInput>(null);
   const [focused, setFocused] = useState(false);
@@ -69,16 +71,18 @@ export default function TrackpadScreen() {
     };
   }, [clearModifiers]);
 
-  // Only this route rotates; app.json keeps the rest of the app portrait.
+  // Opt-in, and only this route rotates; app.json keeps the rest of the
+  // app portrait.
   useFocusEffect(
     useCallback(() => {
+      if (!landscape) return;
       ScreenOrientation.unlockAsync().catch(() => {});
       return () => {
         ScreenOrientation.lockAsync(
           ScreenOrientation.OrientationLock.PORTRAIT_UP,
         ).catch(() => {});
       };
-    }, []),
+    }, [landscape]),
   );
 
   // Recenter the cursor when the mini-mac is first measured.
