@@ -171,6 +171,7 @@ eventEmitter.addListener('clientConnected', (event: ClientConnectedEvent) => {
     udpOffers.set(event.id, { port: event.udpPort, token: event.udpToken });
   }
   useServerStore.setState((state) => ({
+    lastError: null,
     clients: {
       ...state.clients,
       [event.id]: {
@@ -254,7 +255,22 @@ function handleMessage(clientId: string, msg: Message) {
 
 function sendWelcome(clientId: string) {
   const { serviceName, port } = useServerStore.getState();
-  const caps = ['pointer', 'scroll', 'keyboard', 'dock', 'gestures', 'audio', 'wake', 'diag'];
+  const caps = [
+    'pointer',
+    'scroll',
+    'keyboard',
+    // `k.key` accepts letter / digit / punctuation codes, so the phone can
+    // route ⌘C through the key path instead of as plain text.
+    'shortcuts',
+    'dock',
+    'gestures',
+    'audio',
+    'wake',
+    // The Mac reports its lock screen and will type the account password into
+    // it, so the phone can offer a login screen instead of a dead trackpad.
+    'lock',
+    'diag',
+  ];
   const udp = udpOffers.get(clientId);
   // Only advertise the datagram path when there is actually a listener behind
   // it — the phone falls back to this socket when the offer is absent.

@@ -67,6 +67,7 @@ Do not reintroduce `--ignore-workspace` or per-app `pnpm-lock.yaml` files — Xc
 - [messages.ts](packages/shared/src/messages.ts) — every `ClientMessage` and `ServerMessage` shape. All messages carry `v: 1` and a discriminator `t` (e.g. `'p.move'`, `'p.click'`, `'s.wheel'`, `'g.space'`, `'g.mission'`, `'k.text'`, `'k.key'`, `'a.set'`, `'a.step'`, `'a.mute'`, `'sys.wake'`, `'diag.set'`, `'diag.report'`, `'d.list'`, `'d.activate'`, `'hello'`, `'ping'`, and server-pushed `'state.audio'` / `'state.display'` / `'state.diag'`).
 - [codec.ts](packages/shared/src/codec.ts) — encode/decode helpers used by both sides.
 - [udp-policy.ts](packages/shared/src/udp-policy.ts) — when to trust the datagram path, pure and tested; it is the other half of the `udp.ok` contract.
+- [shortcuts.ts](packages/shared/src/shortcuts.ts) — maps a typed character back to the key it sits on, pure and tested. `k.text` carries no modifier mask, so a latched ⌘ can only reach the Mac as a `k.key`; gated on the `shortcuts` cap.
 - [metrics.ts](packages/shared/src/metrics.ts) — `percentile` / `summarize`, so the phone's diagnostics figures mean the same thing as the Mac's (which computes its own in Swift).
 
 Both apps reach this via TS path aliases:

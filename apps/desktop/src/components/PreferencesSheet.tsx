@@ -7,6 +7,8 @@ import {
   View,
 } from 'react-native';
 
+import {DEFAULT_PORT} from '@entangle/protocol';
+
 import {usePreferencesStore} from '../preferences-state';
 import {fonts, tokens} from '../theme';
 import {Toggle} from './atoms/Toggle';
@@ -68,7 +70,7 @@ export function PreferencesSheet({visible, onClose}: Props) {
                     <Toggle
                       on={prefs.port === 0}
                       onChange={autoPick =>
-                        prefs.set('port', autoPick ? 0 : 49827)
+                        prefs.set('port', autoPick ? 0 : DEFAULT_PORT)
                       }
                     />
                     <Text style={styles.checkboxLabel}>Auto-pick</Text>

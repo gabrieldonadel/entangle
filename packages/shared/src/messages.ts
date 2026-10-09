@@ -7,6 +7,12 @@ export type ScrollPhase = 'begin' | 'change' | 'end';
 export type SpaceDir = 'left' | 'right';
 export type KeyPhase = 'down' | 'up' | 'tap';
 
+/**
+ * Key identifiers on the wire, named after `KeyboardEvent.code`. Letters,
+ * digits and punctuation exist so a modifier can be combined with an ordinary
+ * character — `k.text` carries no mask, so ⌘C cannot be expressed as text.
+ * Servers that predate these codes do not advertise the `shortcuts` cap.
+ */
 export type KeyCode =
   | 'Escape'
   | 'Tab'
@@ -33,7 +39,33 @@ export type KeyCode =
   | 'F9'
   | 'F10'
   | 'F11'
-  | 'F12';
+  | 'F12'
+  | LetterKeyCode
+  | DigitKeyCode
+  | PunctuationKeyCode;
+
+export type LetterKeyCode =
+  | 'KeyA' | 'KeyB' | 'KeyC' | 'KeyD' | 'KeyE' | 'KeyF' | 'KeyG'
+  | 'KeyH' | 'KeyI' | 'KeyJ' | 'KeyK' | 'KeyL' | 'KeyM' | 'KeyN'
+  | 'KeyO' | 'KeyP' | 'KeyQ' | 'KeyR' | 'KeyS' | 'KeyT' | 'KeyU'
+  | 'KeyV' | 'KeyW' | 'KeyX' | 'KeyY' | 'KeyZ';
+
+export type DigitKeyCode =
+  | 'Digit0' | 'Digit1' | 'Digit2' | 'Digit3' | 'Digit4'
+  | 'Digit5' | 'Digit6' | 'Digit7' | 'Digit8' | 'Digit9';
+
+export type PunctuationKeyCode =
+  | 'Minus'
+  | 'Equal'
+  | 'BracketLeft'
+  | 'BracketRight'
+  | 'Backslash'
+  | 'Semicolon'
+  | 'Quote'
+  | 'Backquote'
+  | 'Comma'
+  | 'Period'
+  | 'Slash';
 
 export interface PointerMoveMessage {
   v: 1;
@@ -156,6 +188,24 @@ export interface SystemWakeMessage {
 }
 
 /**
+ * Unlock the Mac's lock screen with the account password.
+ *
+ * Deliberately its own message rather than a `k.text` plus a `k.key Return`:
+ * the Mac refuses it unless the screen is actually locked, which is the whole
+ * safety guarantee — the same keystrokes sent blind would spill the password
+ * into whatever window happens to be focused. Being its own message also keeps
+ * it off the datagram path and out of the normal typing path.
+ *
+ * The password is never stored on either side. Note the LAN transport is
+ * plaintext (`ws://`), same as every other keystroke.
+ */
+export interface SystemUnlockMessage {
+  v: 1;
+  t: 'sys.unlock';
+  password: string;
+}
+
+/**
  * Turn per-move instrumentation on or off. Off by default: it costs a
  * timestamp on every pointer frame and a `state.diag` push every second.
  */
@@ -246,6 +296,7 @@ export type ClientMessage =
   | AudioStepMessage
   | AudioMuteMessage
   | SystemWakeMessage
+  | SystemUnlockMessage
   | DiagSetMessage
   | DiagReportMessage
   | DockListRequestMessage
@@ -342,6 +393,12 @@ export interface DisplayStateMessage {
   v: 1;
   t: 'state.display';
   asleep: boolean;
+  /**
+   * Whether the Mac is sitting on its lock screen. Absent from Macs that do
+   * not advertise the `lock` cap, which is why the phone treats "missing" as
+   * "unlocked" rather than offering a login screen it cannot act on.
+   */
+  locked?: boolean;
 }
 
 /**

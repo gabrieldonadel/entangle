@@ -3,3 +3,4 @@ export * from './messages';
 export * from './codec';
 export * from './metrics';
 export * from './udp-policy';
+export * from './shortcuts';

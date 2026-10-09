@@ -43,6 +43,26 @@ final class KeyController {
     }
   }
 
+  /// Types the account password at the lock screen and submits it.
+  ///
+  /// `MessageDispatcher` only calls this while the screen is actually locked —
+  /// the same keystrokes sent to an unlocked Mac would spill the password into
+  /// whatever window is focused.
+  ///
+  /// Return is posted as a separate event a beat later rather than as part of
+  /// the string: the lock screen's field commits on the keypress, and bundling
+  /// the newline into one `keyboardSetUnicodeString` submits an empty field on
+  /// some releases. The password is never logged, and nothing holds onto it
+  /// past this call.
+  func submitPassword(_ password: String) {
+    typeText(password)
+    queue.asyncAfter(deadline: .now() + 0.05) {
+      guard let returnKey = Self.virtualKey(for: .return) else { return }
+      self.postKey(returnKey, keyDown: true, flags: [])
+      self.postKey(returnKey, keyDown: false, flags: [])
+    }
+  }
+
   func typeText(_ text: String) {
     queue.async {
       let utf16 = Array(text.utf16)
@@ -140,7 +160,30 @@ final class KeyController {
     .pageDown: 0x79,
     .f1: 0x7A, .f2: 0x78, .f3: 0x63, .f4: 0x76,
     .f5: 0x60, .f6: 0x61, .f7: 0x62, .f8: 0x64,
-    .f9: 0x65, .f10: 0x6D, .f11: 0x67, .f12: 0x6F
+    .f9: 0x65, .f10: 0x6D, .f11: 0x67, .f12: 0x6F,
+    // ANSI letters, digits and punctuation. Present so a modifier can be
+    // combined with an ordinary character (⌘C, ⌘⇧Z, ⌘+): `k.text` inserts a
+    // Unicode string and carries no modifier mask, so a shortcut has to be
+    // posted as a real key event instead.
+    .keyA: 0x00, .keyB: 0x0B, .keyC: 0x08, .keyD: 0x02, .keyE: 0x0E,
+    .keyF: 0x03, .keyG: 0x05, .keyH: 0x04, .keyI: 0x22, .keyJ: 0x26,
+    .keyK: 0x28, .keyL: 0x25, .keyM: 0x2E, .keyN: 0x2D, .keyO: 0x1F,
+    .keyP: 0x23, .keyQ: 0x0C, .keyR: 0x0F, .keyS: 0x01, .keyT: 0x11,
+    .keyU: 0x20, .keyV: 0x09, .keyW: 0x0D, .keyX: 0x07, .keyY: 0x10,
+    .keyZ: 0x06,
+    .digit0: 0x1D, .digit1: 0x12, .digit2: 0x13, .digit3: 0x14, .digit4: 0x15,
+    .digit5: 0x17, .digit6: 0x16, .digit7: 0x1A, .digit8: 0x1C, .digit9: 0x19,
+    .minus: 0x1B,
+    .equal: 0x18,
+    .bracketLeft: 0x21,
+    .bracketRight: 0x1E,
+    .backslash: 0x2A,
+    .semicolon: 0x29,
+    .quote: 0x27,
+    .backquote: 0x32,
+    .comma: 0x2B,
+    .period: 0x2F,
+    .slash: 0x2C
   ]
 
   private static func virtualKey(for code: KeyCodeName) -> CGKeyCode? {
@@ -166,6 +209,28 @@ enum KeyCodeName: String {
   case f1 = "F1", f2 = "F2", f3 = "F3", f4 = "F4"
   case f5 = "F5", f6 = "F6", f7 = "F7", f8 = "F8"
   case f9 = "F9", f10 = "F10", f11 = "F11", f12 = "F12"
+  case keyA = "KeyA", keyB = "KeyB", keyC = "KeyC", keyD = "KeyD"
+  case keyE = "KeyE", keyF = "KeyF", keyG = "KeyG", keyH = "KeyH"
+  case keyI = "KeyI", keyJ = "KeyJ", keyK = "KeyK", keyL = "KeyL"
+  case keyM = "KeyM", keyN = "KeyN", keyO = "KeyO", keyP = "KeyP"
+  case keyQ = "KeyQ", keyR = "KeyR", keyS = "KeyS", keyT = "KeyT"
+  case keyU = "KeyU", keyV = "KeyV", keyW = "KeyW", keyX = "KeyX"
+  case keyY = "KeyY", keyZ = "KeyZ"
+  case digit0 = "Digit0", digit1 = "Digit1", digit2 = "Digit2"
+  case digit3 = "Digit3", digit4 = "Digit4", digit5 = "Digit5"
+  case digit6 = "Digit6", digit7 = "Digit7", digit8 = "Digit8"
+  case digit9 = "Digit9"
+  case minus = "Minus"
+  case equal = "Equal"
+  case bracketLeft = "BracketLeft"
+  case bracketRight = "BracketRight"
+  case backslash = "Backslash"
+  case semicolon = "Semicolon"
+  case quote = "Quote"
+  case backquote = "Backquote"
+  case comma = "Comma"
+  case period = "Period"
+  case slash = "Slash"
 }
 
 enum KeyPhase: String {

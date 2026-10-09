@@ -3,7 +3,6 @@ import { useFocusEffect } from "expo-router";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  InputAccessoryView,
   Keyboard,
   Platform,
   Pressable,
@@ -19,10 +18,10 @@ import Svg, { Path, Rect } from "react-native-svg";
 import { VolumeBar } from "@/features/audio/VolumeBar";
 import { MiniMac } from "@/features/demo/MiniMac";
 import { PracticeBanner } from "@/features/demo/PracticeBanner";
+import { LockScreen } from "@/features/display/LockScreen";
 import { WakeOverlay } from "@/features/display/WakeOverlay";
 import { HiddenInput } from "@/features/keyboard/HiddenInput";
-import { ModifierBar } from "@/features/keyboard/ModifierBar";
-import { SpecialKeys } from "@/features/keyboard/SpecialKeys";
+import { KEYBOARD_BAR_ID, KeyboardBar } from "@/features/keyboard/KeyboardBar";
 import { TrackpadSurface } from "@/features/trackpad/TrackpadSurface";
 import type { LocalGestureEvent } from "@/features/trackpad/TrackpadSurface";
 import { useConnection } from "@/state/connection";
@@ -30,7 +29,6 @@ import { useDisplay } from "@/state/display";
 import { useModifiers } from "@/state/modifiers";
 import { C } from "@/features/onboarding/atoms";
 
-const KEYBOARD_BAR_ID = "entangle.keyboardBar";
 const CURSOR_W = 14;
 const CURSOR_H = 20;
 
@@ -44,6 +42,7 @@ export default function TrackpadScreen() {
   const demo = useConnection((s) => s.demo);
   const serverCaps = useConnection((s) => s.serverCaps);
   const screenAsleep = useDisplay((s) => s.asleep);
+  const screenLocked = useDisplay((s) => s.locked);
   const clearModifiers = useModifiers((s) => s.clear);
 
   const inputRef = useRef<TextInput>(null);
@@ -122,93 +121,103 @@ export default function TrackpadScreen() {
     }
   };
 
-  const accessoryBar = (
-    <View style={styles.bar}>
-      <ModifierBar />
-      <View style={styles.specialKeys}>
-        <SpecialKeys />
-      </View>
-    </View>
-  );
-
   return (
-    <SafeAreaView style={[styles.root, compact && styles.rootCompact]}>
-      {demo ? (
-        <View style={[styles.bannerWrap, compact && styles.bannerWrapCompact]}>
-          <PracticeBanner />
-        </View>
-      ) : null}
-
-      <View style={[styles.header, compact && styles.headerCompact]}>
-        <View style={[styles.headerInfo, compact && styles.headerInfoCompact]}>
-          {!compact ? (
-            <Text style={styles.connected}>
-              {demo ? "Practice mode" : "Connected to"}
-            </Text>
-          ) : null}
-          <Text
-            style={[styles.serverName, compact && styles.serverNameCompact]}
-            numberOfLines={1}
+    <View style={styles.root}>
+      <SafeAreaView style={[styles.safe, compact && styles.safeCompact]}>
+        {demo ? (
+          <View
+            style={[styles.bannerWrap, compact && styles.bannerWrapCompact]}
           >
-            {serverName ?? "…"}
-          </Text>
-          <Text style={[styles.meta, compact && styles.metaCompact]}>
-            {demo
-              ? "not a real connection"
-              : `${phase}${latency != null ? ` · ${latency}ms` : ""}`}
-          </Text>
-        </View>
-        <Pressable
-          accessibilityLabel={focused ? "Hide keyboard" : "Show keyboard"}
-          style={[styles.kbButton, focused && styles.kbButtonActive]}
-          onPress={toggleKeyboard}
-        >
-          {Platform.OS === "ios" ? (
-            <Image
-              source="sf:keyboard"
-              tintColor={focused ? "#fff" : "#d1d1d6"}
-              style={styles.kbIcon}
-            />
-          ) : (
-            <KeyboardIcon color={focused ? "#fff" : "#d1d1d6"} size={22} />
-          )}
-        </Pressable>
-      </View>
-
-      {demo ? (
-        <View style={styles.miniMacWrap}>
-          <MiniMac cursor={cursor} ripple={ripple} onLayoutSize={setMacSize} />
-        </View>
-      ) : null}
-
-      {/* Older Macs ignore `a.*`, so hide the slider rather than let it move
-          with no effect. Demo mode has no caps list but drives it locally. */}
-      {demo || serverCaps.includes("audio") ? <VolumeBar /> : null}
-
-      <View style={styles.padWrap}>
-        <TrackpadSurface onLocalGesture={demo ? handleLocalGesture : undefined} />
-        {/* A sleeping screen swallows pointer moves, so cover the pad with a
-            tap-to-wake surface instead. Macs without the `wake` cap never
-            report their display state. */}
-        {!demo && screenAsleep && serverCaps.includes("wake") ? (
-          <WakeOverlay />
+            <PracticeBanner />
+          </View>
         ) : null}
-      </View>
 
-      <HiddenInput
-        ref={inputRef}
-        onFocusChange={setFocused}
-        inputAccessoryViewID={
-          Platform.OS === "ios" ? KEYBOARD_BAR_ID : undefined
-        }
-      />
+        <View style={[styles.header, compact && styles.headerCompact]}>
+          <View
+            style={[styles.headerInfo, compact && styles.headerInfoCompact]}
+          >
+            {!compact ? (
+              <Text style={styles.connected}>
+                {demo ? "Practice mode" : "Connected to"}
+              </Text>
+            ) : null}
+            <Text
+              style={[styles.serverName, compact && styles.serverNameCompact]}
+              numberOfLines={1}
+            >
+              {serverName ?? "…"}
+            </Text>
+            <Text style={[styles.meta, compact && styles.metaCompact]}>
+              {demo
+                ? "not a real connection"
+                : `${phase}${latency != null ? ` · ${latency}ms` : ""}`}
+            </Text>
+          </View>
+          <Pressable
+            accessibilityLabel={focused ? "Hide keyboard" : "Show keyboard"}
+            style={[styles.kbButton, focused && styles.kbButtonActive]}
+            onPress={toggleKeyboard}
+          >
+            {Platform.OS === "ios" ? (
+              <Image
+                source="sf:keyboard"
+                tintColor={focused ? "#fff" : "#d1d1d6"}
+                style={styles.kbIcon}
+              />
+            ) : (
+              <KeyboardIcon color={focused ? "#fff" : "#d1d1d6"} size={22} />
+            )}
+          </Pressable>
+        </View>
 
-      {Platform.OS === "ios" ? (
-        <InputAccessoryView nativeID={KEYBOARD_BAR_ID}>
-          {accessoryBar}
-        </InputAccessoryView>
+        {demo ? (
+          <View style={styles.miniMacWrap}>
+            <MiniMac
+              cursor={cursor}
+              ripple={ripple}
+              onLayoutSize={setMacSize}
+            />
+          </View>
+        ) : null}
+
+        {/* Older Macs ignore `a.*`, so hide the slider rather than let it
+            move with no effect. Demo mode has no caps list but drives it
+            locally. */}
+        {demo || serverCaps.includes("audio") ? <VolumeBar /> : null}
+
+        <View style={styles.padWrap}>
+          <TrackpadSurface
+            onLocalGesture={demo ? handleLocalGesture : undefined}
+          />
+          {/* A sleeping screen swallows pointer moves, so cover the pad with a
+              tap-to-wake surface instead. Macs without the `wake` cap never
+              report their display state. */}
+          {!demo && screenAsleep && serverCaps.includes("wake") ? (
+            <WakeOverlay />
+          ) : null}
+        </View>
+
+        <HiddenInput
+          ref={inputRef}
+          onFocusChange={setFocused}
+          inputAccessoryViewID={
+            Platform.OS === "ios" ? KEYBOARD_BAR_ID : undefined
+          }
+        />
+      </SafeAreaView>
+
+      {/* Outside the SafeAreaView so the Android bar can be positioned
+          against the window's bottom edge rather than the inset content
+          box. */}
+      <KeyboardBar visible={focused} />
+
+      {/* A sleeping Mac has to be woken before anything can be typed at it, so
+          the wake overlay gets the first turn and this takes over once the
+          screen is lit and still locked. */}
+      {!demo && screenLocked && !screenAsleep && serverCaps.includes("lock") ? (
+        <LockScreen />
       ) : null}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -242,9 +251,12 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: C.bg,
+  },
+  safe: {
+    flex: 1,
     padding: 16,
   },
-  rootCompact: {
+  safeCompact: {
     paddingVertical: 8,
   },
   header: {
@@ -300,16 +312,6 @@ const styles = StyleSheet.create({
   kbIcon: {
     width: 22,
     height: 22,
-  },
-  bar: {
-    padding: 12,
-    gap: 8,
-    backgroundColor: "#0a0a0b",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#2c2c2e",
-  },
-  specialKeys: {
-    marginHorizontal: -4,
   },
   bannerWrap: {
     marginHorizontal: -16,

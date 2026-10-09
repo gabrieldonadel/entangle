@@ -119,7 +119,9 @@ final class DatagramServer {
     connection.receiveMessage { [weak self] data, _, isComplete, error in
       guard let self = self else { return }
       if let error = error {
-        self.onError?("udp receive error: \(error.localizedDescription)")
+        if !error.isBenignClose {
+          self.onError?("udp receive error: \(error.localizedDescription)")
+        }
         connection.cancel()
         return
       }
