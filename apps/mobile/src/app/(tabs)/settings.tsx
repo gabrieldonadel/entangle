@@ -27,6 +27,8 @@ export default function SettingsScreen() {
   const setPointerSensitivity = useSettings((s) => s.setPointerSensitivity);
   const naturalScroll = useSettings((s) => s.naturalScroll);
   const setNaturalScroll = useSettings((s) => s.setNaturalScroll);
+  const landscape = useSettings((s) => s.landscape);
+  const setLandscape = useSettings((s) => s.setLandscape);
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
@@ -74,6 +76,18 @@ export default function SettingsScreen() {
               </Text>
             </View>
             <Switch value={naturalScroll} onValueChange={setNaturalScroll} />
+          </View>
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleLabels}>
+              <Text style={styles.toggleTitle}>Landscape trackpad</Text>
+              <Text style={styles.toggleSubtitle}>
+                Let the Trackpad tab rotate with the phone for a wider surface.
+              </Text>
+            </View>
+            <Switch value={landscape} onValueChange={setLandscape} />
           </View>
         </View>
 
