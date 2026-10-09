@@ -42,7 +42,7 @@ pnpm desktop test -- -t "name"          # by name
 
 Mobile linting goes through Expo: `pnpm mobile lint` (i.e. `expo lint`).
 
-The pointer diagnostics log path can be exercised without a phone or a real cursor — see the build command in [scripts/diag-harness/main.swift](scripts/diag-harness/main.swift). Keep that file out of `modules/entangle-server/ios`: the podspec globs `**/*.swift` there and a second `main` breaks the app build.
+The pointer diagnostics log path can be exercised without a phone or a real cursor — see the build command in [scripts/diag-harness/main.swift](scripts/diag-harness/main.swift). [scripts/media-harness/main.swift](scripts/media-harness/main.swift) does the same for `MediaController`: it checks the media-key packing without posting the key, and the notification folding without starting a player. Keep both out of `modules/entangle-server/ios`: the podspec globs `**/*.swift` there and a second `main` breaks the app build.
 
 CocoaPods on first clone of desktop:
 
@@ -64,7 +64,7 @@ Do not reintroduce `--ignore-workspace` or per-app `pnpm-lock.yaml` files — Xc
 [packages/shared/src](packages/shared/src) is the single source of truth for the wire format:
 
 - [constants.ts](packages/shared/src/constants.ts) — `PROTOCOL_VERSION`, Bonjour service identifiers (`_entangle._tcp.`), `DEFAULT_PORT` (49827), heartbeat / idle timeouts, close codes, `ModFlags` bitmask.
-- [messages.ts](packages/shared/src/messages.ts) — every `ClientMessage` and `ServerMessage` shape. All messages carry `v: 1` and a discriminator `t` (e.g. `'p.move'`, `'p.click'`, `'s.wheel'`, `'g.space'`, `'g.mission'`, `'k.text'`, `'k.key'`, `'a.set'`, `'a.step'`, `'a.mute'`, `'sys.wake'`, `'diag.set'`, `'diag.report'`, `'d.list'`, `'d.activate'`, `'hello'`, `'ping'`, and server-pushed `'state.audio'` / `'state.display'` / `'state.diag'`).
+- [messages.ts](packages/shared/src/messages.ts) — every `ClientMessage` and `ServerMessage` shape. All messages carry `v: 1` and a discriminator `t` (e.g. `'p.move'`, `'p.click'`, `'s.wheel'`, `'g.space'`, `'g.mission'`, `'k.text'`, `'k.key'`, `'a.set'`, `'a.step'`, `'a.mute'`, `'m.cmd'`, `'sys.wake'`, `'diag.set'`, `'diag.report'`, `'d.list'`, `'d.activate'`, `'hello'`, `'ping'`, and server-pushed `'state.audio'` / `'state.media'` / `'state.display'` / `'state.diag'`).
 - [codec.ts](packages/shared/src/codec.ts) — encode/decode helpers used by both sides.
 - [udp-policy.ts](packages/shared/src/udp-policy.ts) — when to trust the datagram path, pure and tested; it is the other half of the `udp.ok` contract.
 - [shortcuts.ts](packages/shared/src/shortcuts.ts) — maps a typed character back to the key it sits on, pure and tested. `k.text` carries no modifier mask, so a latched ⌘ can only reach the Mac as a `k.key`; gated on the `shortcuts` cap.
@@ -87,7 +87,7 @@ The macOS app is a thin RN-macOS shell over a Swift Expo module that does the re
   - [Server/WebSocketServer.swift](apps/desktop/modules/entangle-server/ios/Server/WebSocketServer.swift) — listens on `DEFAULT_PORT`, advertises Bonjour, manages clients & heartbeats.
   - [Server/DatagramServer.swift](apps/desktop/modules/entangle-server/ios/Server/DatagramServer.swift) — UDP listener on the same port for pointer frames, with per-session tokens issued over the WebSocket.
   - [MessageDispatcher.swift](apps/desktop/modules/entangle-server/ios/MessageDispatcher.swift) — parses incoming JSON `ClientMessage`s and fans out to controllers.
-  - [System/](apps/desktop/modules/entangle-server/ios/System) — `CursorController`, `PointerAccumulator`, `ScrollController`, `KeyController`, `GestureController`, `DockEnumerator` (CGEvent / Accessibility APIs), `VolumeController` (CoreAudio output volume + mute, needs no permission), `DisplayController` (display sleep state + `IOPMAssertionDeclareUserActivity` wake, needs no permission), `LatencyMonitor` (opt-in pointer-path measurement, off by default), `PointerHighlight` (click-through overlay ring shown while a phone is connected).
+  - [System/](apps/desktop/modules/entangle-server/ios/System) — `CursorController`, `PointerAccumulator`, `ScrollController`, `KeyController`, `GestureController`, `DockEnumerator` (CGEvent / Accessibility APIs), `VolumeController` (CoreAudio output volume + mute, needs no permission), `MediaController` (media keys for play/pause/next/prev, plus now-playing metadata from Music and Spotify), `DisplayController` (display sleep state + `IOPMAssertionDeclareUserActivity` wake, needs no permission), `LatencyMonitor` (opt-in pointer-path measurement, off by default), `PointerHighlight` (click-through overlay ring shown while a phone is connected).
   - [Util/AccessibilityCheck.swift](apps/desktop/modules/entangle-server/ios/Util/AccessibilityCheck.swift), [Util/IconEncoder.swift](apps/desktop/modules/entangle-server/ios/Util/IconEncoder.swift), [Util/DiagLog.swift](apps/desktop/modules/entangle-server/ios/Util/DiagLog.swift) (appends the pointer log to `~/Library/Logs/Entangle/pointer-diag.jsonl`; `ENTANGLE_DIAG_LOG_DIR` redirects it).
 - The TS facade is [modules/entangle-server/src/index.ts](apps/desktop/modules/entangle-server/src/index.ts) → `requireNativeModule('EntangleServer')`, re-exporting typed events.
 - Metro [config](apps/desktop/metro.config.js) rewrites `react-native` → `react-native-macos` for the `macos` platform and prepends `react-native-macos/Libraries/Core/InitializeCore` to the run-before-main modules. Keep this when touching Metro config.
@@ -99,12 +99,12 @@ The macOS app is a thin RN-macOS shell over a Swift Expo module that does the re
 - Expo Router app under [apps/mobile/src/app](apps/mobile/src/app):
   - [\_layout.tsx](apps/mobile/src/app/_layout.tsx) routes to `/connect` when the connection is `idle` and `/(tabs)` when `open`.
   - [connect.tsx](apps/mobile/src/app/connect.tsx) drives Bonjour discovery + connection.
-  - [(tabs)/](<apps/mobile/src/app/(tabs)>) hosts trackpad / keyboard / dock surfaces.
-- Feature surfaces in [src/features](apps/mobile/src/features) (`trackpad`, `keyboard`, `dock`, `diag`, `display`).
+  - [(tabs)/](<apps/mobile/src/app/(tabs)>) hosts trackpad / keyboard / media / dock surfaces.
+- Feature surfaces in [src/features](apps/mobile/src/features) (`trackpad`, `keyboard`, `dock`, `audio`, `media`, `diag`, `display`).
 - The datagram socket is an Expo module in [packages/entangle-udp](packages/entangle-udp) (Swift + Kotlin), consumed as `"entangle-udp": "workspace:*"` like `@entangle/protocol`.
 - **Keep its podspec's `s.platforms` at or below the app's iOS deployment target** (`platform :ios, '15.1'` in the generated Podfile). A pod that asks for a newer platform than the target is not an error: `use_expo_modules!` skips it with a yellow warning, `pod install` and the build both succeed, and the app ships with the native module missing — which only shows up at runtime. This cost two EAS builds. [scripts/verify-ios-module.sh](scripts/verify-ios-module.sh) checks a built `.ipa` for a module's symbols; run it before trusting a build that adds native code. `send` is a synchronous `Function`, not an `AsyncFunction`: it runs up to 120 times a second and a promise per frame would cost more than the frame.
 - Networking in [src/net](apps/mobile/src/net): [discovery.ts](apps/mobile/src/net/discovery.ts) (Bonjour via `react-native-zeroconf`) and [send.ts](apps/mobile/src/net/send.ts) (WebSocket + queue).
-- Zustand stores in [src/state](apps/mobile/src/state): `connection`, `audio`, `diag`, `display`, `dock`, `modifiers`, `settings`. AsyncStorage is used for persisted settings.
+- Zustand stores in [src/state](apps/mobile/src/state): `connection`, `audio`, `media`, `diag`, `display`, `dock`, `modifiers`, `settings`. AsyncStorage is used for persisted settings.
 - Path alias `@/*` → `src/*` is set in TS only — Metro resolves through the default config, so prefer the alias for clarity.
 
 ## Conventions worth knowing
@@ -122,5 +122,5 @@ The macOS app is a thin RN-macOS shell over a Swift Expo module that does the re
 - The onboarding lesson and the demo keep the JS path: they need a JavaScript callback per event. `Settings → UI-thread pointer` turns it off at runtime.
 - Pointer sends are paced by a monotonic 4 ms rate limit in [gestures.ts](apps/mobile/src/features/trackpad/gestures.ts), not by `requestAnimationFrame`. RN's rAF is driven by the JS display link, which pins the send rate to 60 Hz even on a 120 Hz phone and adds a frame of quantization. Do not put it back.
 - The pointer hot path (`p.move`, `s.wheel`, `k.*`, `ping`) is answered entirely in Swift and deliberately never reaches the desktop's JavaScript — `EntangleServerModule` emits aggregate counts once a second via `messageStats` instead. Keep it that way; a `sendEvent` per pointer frame costs a React render per cursor sample.
-- Features the Mac may not have are gated on the `caps` list in the `welcome` message (`audio`, `wake`, …). Add a cap in [src/server-state.ts](apps/desktop/src/server-state.ts) and check it on the phone, so an older Mac never shows a dead control.
+- Features the Mac may not have are gated on the `caps` list in the `welcome` message (`audio`, `media`, `wake`, …). Add a cap in [src/server-state.ts](apps/desktop/src/server-state.ts) and check it on the phone, so an older Mac never shows a dead control.
 - Native input synthesis requires the user to grant macOS Accessibility — `AccessibilityGate` blocks the UI until `isAccessibilityTrusted()` returns true.

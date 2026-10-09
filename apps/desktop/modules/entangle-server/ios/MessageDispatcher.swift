@@ -62,6 +62,7 @@ enum MessageDispatcher {
     case "a.set": return handleAudioSet(json)
     case "a.step": return handleAudioStep(json)
     case "a.mute": return handleAudioMute(json)
+    case "m.cmd": return handleMediaCommand(json)
     case "sys.wake":
       DisplayController.shared.wake()
       // A Mac that locked on its way into sleep wakes onto the lock screen
@@ -257,6 +258,15 @@ enum MessageDispatcher {
     return true
   }
 
+  private static func handleMediaCommand(_ json: [String: Any]) -> Bool {
+    guard let raw = json["cmd"] as? String,
+          let command = MediaController.Command(rawValue: raw) else {
+      return false
+    }
+    MediaController.shared.send(command)
+    return true
+  }
+
   private static func handleDockList(respond: (String) -> Void) -> Bool {
     let apps = DockEnumerator.shared.currentApps()
     if let encoded = encodeDockList(apps) {
@@ -296,6 +306,21 @@ enum MessageDispatcher {
       "level": Double(level),
       "muted": muted
     ]
+    guard let data = try? JSONSerialization.data(withJSONObject: payload) else {
+      return nil
+    }
+    return String(data: data, encoding: .utf8)
+  }
+
+  static func encodeMediaState(_ state: MediaController.State) -> String? {
+    var payload: [String: Any] = ["v": 1, "t": "state.media", "playing": state.playing]
+    // Absent rather than empty: the phone distinguishes "no metadata" from a
+    // blank title, and an unknown track should not look like a nameless one.
+    if let title = state.title { payload["title"] = title }
+    if let artist = state.artist { payload["artist"] = artist }
+    if let album = state.album { payload["album"] = album }
+    if let app = state.app { payload["app"] = app }
+    if let iconPng = state.iconPng { payload["iconPng"] = iconPng }
     guard let data = try? JSONSerialization.data(withJSONObject: payload) else {
       return nil
     }
