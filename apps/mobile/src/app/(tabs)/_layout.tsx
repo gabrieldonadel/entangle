@@ -25,6 +25,11 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Icon sf="dock.rectangle" md="dock" />
       </NativeTabs.Trigger>
 
+      <NativeTabs.Trigger name="media">
+        <NativeTabs.Trigger.Label>Media</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="play.circle.fill" md="play_circle" />
+      </NativeTabs.Trigger>
+
       <NativeTabs.Trigger name="settings">
         <NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="gearshape.fill" md="settings" />
