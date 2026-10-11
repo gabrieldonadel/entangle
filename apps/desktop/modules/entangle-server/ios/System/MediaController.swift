@@ -11,16 +11,20 @@ import Foundation
 /// Music, Spotify, a video in a browser tab, a podcast app nobody has heard
 /// of. Like the rest of the input synthesis this needs Accessibility.
 ///
-/// **Metadata** comes from the players that announce themselves. macOS has no
-/// public now-playing API, and the private one everybody used
-/// (`MRMediaRemoteGetNowPlayingInfo`) has required an Apple-only entitlement
-/// since macOS 15.4, so it is not an option on a current system. What is left
-/// is the distributed notification Music and Spotify each post on every track
-/// and state change: free, no permission prompt, no polling. It only covers
-/// those two apps. Anything else gets commands that work and a card with no
-/// title, which is why `playing` is tracked separately from the metadata and
-/// `State.known` exists — the phone has to tell "paused" apart from "playing
-/// something I cannot name".
+/// **Metadata** comes from MediaRemote, the private framework behind Control
+/// Center's Now Playing, so it covers every app that publishes there — Music,
+/// Spotify, a video in Chrome. Since macOS 15.4 MediaRemote answers only
+/// processes Apple signed: called from this app it returns an empty
+/// dictionary. `osascript` is one of Apple's, so a long-lived JXA script asks
+/// on our behalf — see `readerScript`.
+///
+/// Where the script cannot run (a macOS without `MRNowPlayingRequest`), this
+/// falls back to the distributed notification Music and Spotify each post on
+/// every track and state change. That only covers those two apps. Anything
+/// else gets commands that work and a card with no title, which is why
+/// `playing` is tracked separately from the metadata and `State.known` exists
+/// — the phone has to tell "paused" apart from "playing something I cannot
+/// name".
 ///
 /// Receiving another app's distributed notifications requires this app to be
 /// unsandboxed. It is — see `macos/entangle-macOS/entangle.entitlements`.
@@ -73,6 +77,10 @@ final class MediaController {
   /// Bundle id behind the current `state`, so a stop reported by some other
   /// player can be told apart from a stop by the one on screen.
   private var currentBundleId: String?
+  /// The `osascript` running `readerScript`, while it runs.
+  private var reader: Process?
+  /// Reader output that has not reached a newline yet.
+  private var readerBuffer = Data()
 
   private init() {}
 
@@ -133,29 +141,138 @@ final class MediaController {
   /// Starts listening for track changes. Safe to call repeatedly.
   func startWatching() {
     queue.async {
-      guard self.observers.isEmpty else { return }
-      let center = DistributedNotificationCenter.default()
-      for source in Self.sources {
-        let observer = center.addObserver(
-          forName: Notification.Name(source.notification),
-          object: nil,
-          queue: nil
-        ) { [weak self] note in
-          guard let self = self else { return }
-          self.queue.async { self.apply(note, from: source) }
-        }
-        self.observers.append(observer)
-      }
+      guard self.reader == nil, self.observers.isEmpty else { return }
+      self.startReader()
     }
   }
 
   func stopWatching() {
     queue.async {
+      if let reader = self.reader {
+        // Cleared first, so the termination handler sees a stop it asked for.
+        self.reader = nil
+        reader.terminate()
+      }
+      self.readerBuffer.removeAll()
       let center = DistributedNotificationCenter.default()
       for observer in self.observers {
         center.removeObserver(observer)
       }
       self.observers.removeAll()
+    }
+  }
+
+  /// Prints the Now Playing item as one JSON line a second, forever.
+  ///
+  /// Printing every second rather than on change is what ends it: once this
+  /// app is gone, the next write hits a closed pipe and SIGPIPE takes
+  /// `osascript` with it. `emit()` drops the repeats. A poll costs about
+  /// 5 ms of CPU (0.1 s over 20 s, measured); MediaRemote's change
+  /// notifications need a C call with a dispatch queue, which JXA cannot make.
+  static let readerScript = """
+    ObjC.import('Foundation');
+    $.NSBundle.bundleWithPath('/System/Library/PrivateFrameworks/MediaRemote.framework/').load;
+    const R = $.NSClassFromString('MRNowPlayingRequest');
+    if (R.isNil()) throw 'MRNowPlayingRequest unavailable';
+    const out = $.NSFileHandle.fileHandleWithStandardOutput;
+    for (;;) {
+      const info = ObjC.deepUnwrap(R.localNowPlayingItem.nowPlayingInfo) || {};
+      const client = R.localNowPlayingPlayerPath.client;
+      const line = JSON.stringify({
+        playing: R.localIsPlaying,
+        title: info.kMRMediaRemoteNowPlayingInfoTitle,
+        artist: info.kMRMediaRemoteNowPlayingInfoArtist,
+        album: info.kMRMediaRemoteNowPlayingInfoAlbum,
+        app: client?.displayName?.js,
+        bundleId: client?.bundleIdentifier?.js,
+      });
+      out.writeData($(line + '\\n').dataUsingEncoding($.NSUTF8StringEncoding));
+      delay(1);
+    }
+    """
+
+  /// Caller must be on `queue`.
+  private func startReader() {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+    process.arguments = ["-l", "JavaScript", "-e", Self.readerScript]
+    let pipe = Pipe()
+    process.standardOutput = pipe
+    process.standardError = FileHandle.nullDevice
+    pipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
+      let chunk = handle.availableData
+      if chunk.isEmpty {
+        // EOF. Left set, the handler fires again for every empty read.
+        handle.readabilityHandler = nil
+        return
+      }
+      guard let self = self else { return }
+      self.queue.async { self.consume(chunk) }
+    }
+    // An exit nobody asked for means the script cannot run on this Mac.
+    // ponytail: a reader that dies mid-session also falls back for good;
+    // restart it here if that ever shows up in practice.
+    process.terminationHandler = { [weak self] exited in
+      guard let self = self else { return }
+      self.queue.async {
+        guard self.reader === exited else { return }
+        self.reader = nil
+        self.observeNotifications()
+      }
+    }
+    do {
+      try process.run()
+      reader = process
+    } catch {
+      observeNotifications()
+    }
+  }
+
+  /// Caller must be on `queue`.
+  private func consume(_ chunk: Data) {
+    readerBuffer.append(chunk)
+    while let newline = readerBuffer.firstIndex(of: 0x0A) {
+      let line = readerBuffer[..<newline]
+      readerBuffer.removeSubrange(...newline)
+      guard let read = Self.fold(readerLine: line) else { continue }
+      var next = read.state
+      next.iconPng = read.bundleId.flatMap { icon(for: $0) }
+      currentBundleId = read.bundleId
+      state = next
+      emit()
+    }
+  }
+
+  /// What one line of `readerScript` output means, or nil when it is not one.
+  /// Pure, so it can be asserted in `scripts/media-harness/main.swift`.
+  static func fold(readerLine line: Data) -> (state: State, bundleId: String?)? {
+    guard let info = (try? JSONSerialization.jsonObject(with: line)) as? [String: Any] else {
+      return nil
+    }
+    let state = State(
+      playing: info["playing"] as? Bool ?? false,
+      title: nonEmpty(info["title"]),
+      artist: nonEmpty(info["artist"]),
+      album: nonEmpty(info["album"]),
+      app: nonEmpty(info["app"])
+    )
+    return (state, nonEmpty(info["bundleId"]))
+  }
+
+  /// Fallback for a Mac where `readerScript` cannot run. Caller must be on
+  /// `queue`.
+  private func observeNotifications() {
+    let center = DistributedNotificationCenter.default()
+    for source in Self.sources {
+      let observer = center.addObserver(
+        forName: Notification.Name(source.notification),
+        object: nil,
+        queue: nil
+      ) { [weak self] note in
+        guard let self = self else { return }
+        self.queue.async { self.apply(note, from: source) }
+      }
+      observers.append(observer)
     }
   }
 

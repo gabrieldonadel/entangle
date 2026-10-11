@@ -9,10 +9,11 @@
 // successfully and silently ignored. So the harness builds the event and reads
 // the packing back.
 //
-// The metadata half folds a player's notification payload into a `State`.
-// `fold` is pure, so the interesting cases — a missing field, an empty string,
-// one player pausing while another is on screen — can be asserted instead of
-// driven by starting Spotify.
+// The metadata half folds a player's notification payload, or a line from the
+// Now Playing reader, into a `State`. Both folds are pure, so the interesting
+// cases — a missing field, an empty string, one player pausing while another
+// is on screen — can be asserted instead of driven by starting Spotify. The
+// reader script itself is run once: it only reads.
 //
 // Deliberately outside `modules/entangle-server/ios`: the podspec globs
 // `**/*.swift` from there, and a second `main` would break the app build.
@@ -151,6 +152,50 @@ do {
 do {
   let lower = MediaController.fold(["Player State": "playing"], from: music, showing: nil)
   check("the player state is matched case-insensitively", lower?.playing == true)
+}
+
+// ── Now Playing reader ──────────────────────────────────────────────────────
+
+do {
+  let line = #"{"playing":true,"title":"Video","artist":"","app":"Google Chrome","bundleId":"com.google.Chrome"}"#
+  let read = MediaController.fold(readerLine: Data(line.utf8))
+  check("a reader line is read", read != nil)
+  check("the reader's playing flag comes through", read?.state.playing == true)
+  check("the reader's title comes through", read?.state.title == "Video")
+  check("an empty reader artist is dropped", read?.state.artist == nil)
+  check("the reader names the app", read?.state.app == "Google Chrome")
+  check("the reader's bundle id comes through", read?.bundleId == "com.google.Chrome")
+}
+
+do {
+  // Nothing in Now Playing: JSON.stringify drops the undefined fields.
+  let read = MediaController.fold(readerLine: Data(#"{"playing":false}"#.utf8))
+  check("an empty Now Playing is read", read != nil)
+  check("an empty Now Playing is unknown", read?.state.known == false)
+  check("an empty Now Playing has no bundle id", read?.bundleId == nil)
+}
+
+check("a non-JSON reader line is ignored", MediaController.fold(readerLine: Data("oops".utf8)) == nil)
+
+do {
+  // The real script, once. It only reads Now Playing, so it is safe to run; a
+  // typo in it would otherwise show up only as a silent fallback in the app.
+  let process = Process()
+  process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+  process.arguments = ["-l", "JavaScript", "-e", MediaController.readerScript]
+  let pipe = Pipe()
+  process.standardOutput = pipe
+  var output = Data()
+  do { try process.run() } catch { check("osascript launches: \(error)", false) }
+  while process.isRunning, !output.contains(0x0A) {
+    let chunk = pipe.fileHandleForReading.availableData
+    if chunk.isEmpty { break }
+    output.append(chunk)
+  }
+  process.terminate()
+  let firstLine = output.split(separator: 0x0A).first ?? Data()
+  print("      reader said: \(String(decoding: firstLine, as: UTF8.self))")
+  check("the reader script prints a line it can read", MediaController.fold(readerLine: firstLine) != nil)
 }
 
 // ── Starting state ──────────────────────────────────────────────────────────

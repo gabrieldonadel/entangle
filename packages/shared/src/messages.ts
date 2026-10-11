@@ -402,12 +402,11 @@ export interface AudioStateMessage {
  * What the Mac is playing. Pushed on connect and whenever a player reports a
  * change.
  *
- * `playing` is the only field that is always known: it is inferred from the
- * media keys the Mac accepts. The rest arrive from the players that announce
- * themselves (Music and Spotify broadcast a distributed notification on every
- * track and state change); a browser tab playing a video reports nothing, so
- * the phone gets `playing` with no metadata and should say so rather than
- * show an empty card.
+ * `playing` is the only field that is always known. The rest come from
+ * whatever the Mac's Now Playing shows (MediaRemote, read through
+ * `osascript`), or only from Music and Spotify on a Mac where that cannot run.
+ * An app that publishes nothing leaves the phone with `playing` and no
+ * metadata, and the phone should say so rather than show an empty card.
  */
 export interface MediaStateMessage {
   v: 1;
