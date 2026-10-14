@@ -576,7 +576,7 @@ const padStyles = StyleSheet.create({
     overflow: "hidden",
   },
   center: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
     gap: 10,

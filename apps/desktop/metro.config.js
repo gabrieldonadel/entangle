@@ -9,8 +9,16 @@ const config = getDefaultConfig(__dirname);
 
 config.watchFolders = [workspaceRoot];
 
+// Entry points RN 0.88 added and Expo 58 imports. RN-macOS 0.83 only has the
+// deep paths, which the rewrite below then points at react-native-macos.
+const RN_ENTRY_POINTS = {
+  'react-native/asset-registry': 'react-native/Libraries/Image/AssetRegistry',
+  'react-native/unstable-internals-do-not-use': path.join(__dirname, 'src/rn-internals.js'),
+};
+
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (platform === 'macos') {
+    moduleName = RN_ENTRY_POINTS[moduleName] ?? moduleName;
     if (
       moduleName === 'react-native' ||
       moduleName.startsWith('react-native/')

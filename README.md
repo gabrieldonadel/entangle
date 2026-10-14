@@ -112,8 +112,8 @@ That's it. The phone will find the Mac on its own — pick it from the discovere
 ```text
 entangle-monorepo/
 ├─ apps/
-│  ├─ desktop/      ← React Native macOS 0.81 + Expo 55  (the macOS server)
-│  ├─ mobile/       ← Expo 55 + Expo Router + RN 0.83    (iOS / Android client)
+│  ├─ desktop/      ← React Native macOS 0.83 + Expo 58  (the macOS server)
+│  ├─ mobile/       ← Expo 58 + Expo Router + RN 0.88    (iOS / Android client)
 │  └─ website/      ← Vite + React 18                    (marketing site)
 ├─ packages/
 │  └─ shared/       ← @entangle/protocol — shared wire format (TypeScript)
@@ -123,11 +123,11 @@ entangle-monorepo/
 
 | App     | Path                           | Platforms     | Stack                                         |
 | ------- | ------------------------------ | ------------- | --------------------------------------------- |
-| Desktop | [`apps/desktop`](apps/desktop) | macOS         | React Native macOS 0.81 + Expo 55, React 19.1 |
-| Mobile  | [`apps/mobile`](apps/mobile)   | iOS / Android | Expo 55 + Expo Router + RN 0.83, React 19.2   |
+| Desktop | [`apps/desktop`](apps/desktop) | macOS         | React Native macOS 0.83 + Expo 58, React 19.2 |
+| Mobile  | [`apps/mobile`](apps/mobile)   | iOS / Android | Expo 58 + Expo Router + RN 0.88, React 19.3   |
 | Website | [`apps/website`](apps/website) | Web           | Vite + React 18                               |
 
-> **One workspace, one lockfile.** Apps and shared packages all live in the same pnpm workspace. The root [`.npmrc`](.npmrc) sets `node-linker=hoisted` so each app gets a flat `node_modules` tree — conflicting versions (e.g. desktop's `react-native@0.83.6` vs mobile's `react-native@0.83.4`) get nested under the consuming app, while shared deps hoist to the root. Patches for the macOS port of Expo are pinned to specific versions in [`pnpm-workspace.yaml`](pnpm-workspace.yaml) so they only touch the version desktop resolves to.
+> **One workspace, one lockfile.** Apps and shared packages all live in the same pnpm workspace. The root [`.npmrc`](.npmrc) sets `node-linker=hoisted` so each app gets a flat `node_modules` tree — conflicting versions (e.g. desktop's `react-native@0.83.10` vs mobile's `react-native@0.88.0-rc.4`) get nested under the consuming app, while shared deps hoist to the root. Patches for the macOS port live in [`pnpm-workspace.yaml`](pnpm-workspace.yaml).
 
 <br>
 

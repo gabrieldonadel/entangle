@@ -1,4 +1,5 @@
 import { installOnUIRuntime, requireOptionalNativeModule } from 'expo-modules-core';
+import { getUIRuntimeHolder } from 'react-native-worklets';
 
 type NativeEntangleUdp = {
   open(host: string, port: number): boolean;
@@ -36,7 +37,7 @@ export function close(): void {
  */
 export function installOnWorkletRuntime(): boolean {
   try {
-    installOnUIRuntime();
+    installOnUIRuntime(getUIRuntimeHolder());
     return true;
   } catch {
     return false;

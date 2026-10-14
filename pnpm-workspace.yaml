@@ -3,3 +3,6 @@ packages:
   - "packages/*"
 patchedDependencies:
   expo-dev-launcher: patches/expo-dev-launcher.patch
+  # RN-macOS 0.83 split RCTUIKit into its own pod, which no longer pulls in
+  # RCTAssert.h. Drop once react-native-svg imports it itself.
+  react-native-svg: patches/react-native-svg.patch

@@ -165,7 +165,7 @@ function LockIcon({ size }: { size: number }) {
 
 const styles = StyleSheet.create({
   root: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(8, 10, 14, 0.98)",
   },
   safe: {

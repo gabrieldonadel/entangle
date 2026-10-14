@@ -1,7 +1,6 @@
 {
   "extends": "@react-native/typescript-config/tsconfig.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
       "@entangle/protocol": ["../../packages/shared/src"],
       "@entangle/protocol/*": ["../../packages/shared/src/*"],

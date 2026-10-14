@@ -6,8 +6,7 @@ import { C } from "@/features/onboarding/atoms";
 
 export default function TabsLayout() {
   const scheme = useColorScheme();
-  const colors =
-    Colors[scheme === "unspecified" ? "light" : (scheme ?? "light")];
+  const colors = Colors[scheme ?? "light"];
 
   return (
     <NativeTabs
