@@ -89,7 +89,7 @@ jobs:
       - name: Setup Node + pnpm
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
       - run: corepack enable && corepack prepare pnpm@10.33.0 --activate
 
       - name: Install monorepo deps
