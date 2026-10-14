@@ -49,3 +49,11 @@ test('react-native is rewritten to react-native-macos on the macos platform', ()
     { moduleName: 'react-native-macos/Libraries/Core/InitializeCore', platform: 'macos' },
   ]);
 });
+
+test('RN 0.88 entry points map to RN-macOS 0.83 deep imports', () => {
+  expect(resolveWith(APP, 'react-native/asset-registry').attempts).toEqual([
+    { moduleName: 'react-native-macos/Libraries/Image/AssetRegistry', platform: 'macos' },
+  ]);
+  const { attempts } = resolveWith(APP, 'react-native/unstable-internals-do-not-use');
+  expect(attempts[0].moduleName).toMatch(/apps\/desktop\/src\/rn-internals\.js$/);
+});

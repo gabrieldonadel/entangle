@@ -1,5 +1,5 @@
 import { forwardRef, useRef, useState } from 'react';
-import { StyleSheet, TextInput } from 'react-native';
+import { StyleSheet, TextInput, type TextInputInstance } from 'react-native';
 
 import {
   ModFlags,
@@ -17,7 +17,7 @@ export interface HiddenInputHandle {
 }
 
 export const HiddenInput = forwardRef<
-  TextInput,
+  TextInputInstance,
   { onFocusChange?: (focused: boolean) => void; inputAccessoryViewID?: string }
 >(
   ({ onFocusChange, inputAccessoryViewID }, ref) => {

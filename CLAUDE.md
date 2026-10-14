@@ -8,8 +8,8 @@ Entangle is a remote-mouse system: a macOS desktop "server" exposes a WebSocket 
 
 | Path                               | Name                 | Stack                                         |
 | ---------------------------------- | -------------------- | --------------------------------------------- |
-| [apps/desktop](apps/desktop)       | `entangle`           | React Native macOS 0.81 + Expo 55, React 19.1 |
-| [apps/mobile](apps/mobile)         | `entangle-mobile`    | Expo 55 + Expo Router + RN 0.83, React 19.2   |
+| [apps/desktop](apps/desktop)       | `entangle`           | React Native macOS 0.83 + Expo 58, React 19.2 |
+| [apps/mobile](apps/mobile)         | `entangle-mobile`    | Expo 58 + Expo Router + RN 0.88, React 19.3   |
 | [apps/website](apps/website)       | `@entangle/website`  | Vite + React 18                               |
 | [packages/shared](packages/shared) | `@entangle/protocol` | TS-only, source-imported (no build step)      |
 | [packages/entangle-udp](packages/entangle-udp) | `entangle-udp`       | Expo module: Swift + Kotlin datagram socket   |
@@ -52,10 +52,10 @@ cd apps/desktop/macos && bundle install && bundle exec pod install
 
 ## How the install layout stays sane
 
-Desktop and mobile pin **different** React / React Native versions (RN-macOS 0.81 + RN 0.83.6 on desktop, RN 0.83.4 on mobile; React 19.1 vs 19.2). Two things keep Metro from picking up a sibling app's copy:
+Desktop and mobile pin **different** React / React Native versions (RN-macOS 0.83 + RN 0.83.10 on desktop, RN 0.88 on mobile; React 19.2 vs 19.3). Two things keep Metro from picking up a sibling app's copy:
 
-- Root [.npmrc](.npmrc) sets `node-linker=hoisted` so pnpm produces flat `node_modules` trees (no top-level `.pnpm` symlinks). Shared deps hoist to the repo root; conflicting versions nest into the consuming app's `node_modules` (so `apps/desktop/node_modules/react-native` is the 0.83.6 it needs, not mobile's 0.83.4).
-- Expo patches in [pnpm-workspace.yaml](pnpm-workspace.yaml) use version-pinned keys (e.g. `expo@55.0.17`) so the patch only matches the version desktop resolves to. **When desktop bumps Expo, update the patch key.**
+- Root [.npmrc](.npmrc) sets `node-linker=hoisted` so pnpm produces flat `node_modules` trees (no top-level `.pnpm` symlinks). Shared deps hoist to the repo root; conflicting versions nest into the consuming app's `node_modules` (so `apps/desktop/node_modules/react-native` is the 0.83.10 it needs, not mobile's 0.88).
+- Patches in [pnpm-workspace.yaml](pnpm-workspace.yaml) apply to the one copy both apps share. If the apps ever resolve different versions of a patched package, pin the key to the desktop version (e.g. `expo-dev-launcher@58.0.12`) so the patch only matches that copy.
 
 Do not reintroduce `--ignore-workspace` or per-app `pnpm-lock.yaml` files — Xcode's archive script runs `node --print "require.resolve('@expo/cli')"` from `apps/desktop/`, and that only works when the install is a real workspace install (so `@expo/cli` hoists to the root `node_modules`).
 
@@ -91,7 +91,7 @@ The macOS app is a thin RN-macOS shell over a Swift Expo module that does the re
   - [Util/AccessibilityCheck.swift](apps/desktop/modules/entangle-server/ios/Util/AccessibilityCheck.swift), [Util/IconEncoder.swift](apps/desktop/modules/entangle-server/ios/Util/IconEncoder.swift), [Util/DiagLog.swift](apps/desktop/modules/entangle-server/ios/Util/DiagLog.swift) (appends the pointer log to `~/Library/Logs/Entangle/pointer-diag.jsonl`; `ENTANGLE_DIAG_LOG_DIR` redirects it).
 - The TS facade is [modules/entangle-server/src/index.ts](apps/desktop/modules/entangle-server/src/index.ts) → `requireNativeModule('EntangleServer')`, re-exporting typed events.
 - Metro [config](apps/desktop/metro.config.js) rewrites `react-native` → `react-native-macos` for the `macos` platform and prepends `react-native-macos/Libraries/Core/InitializeCore` to the run-before-main modules. Keep this when touching Metro config.
-- Patched `expo` and `expo-modules-core` for macOS support — patches in [apps/desktop/patches](apps/desktop/patches), pinned to specific versions in the root [pnpm-workspace.yaml](pnpm-workspace.yaml).
+- Expo 58 targets RN 0.88, but RN-macOS stops at 0.83. [metro.config.js](apps/desktop/metro.config.js) maps the RN 0.88 entry points Expo imports (`react-native/asset-registry`, and `react-native/unstable-internals-do-not-use` via [src/rn-internals.js](apps/desktop/src/rn-internals.js)) to RN-macOS deep imports. [react-native.config.js](apps/desktop/react-native.config.js) stops autolinking from linking `react-native-macos` as a module. Remove both when RN-macOS catches up.
 - Desktop Metro runs on **port 8090** (not 8081) — see [package.json](apps/desktop/package.json) `start` script.
 
 ## Mobile architecture
@@ -102,7 +102,7 @@ The macOS app is a thin RN-macOS shell over a Swift Expo module that does the re
   - [(tabs)/](<apps/mobile/src/app/(tabs)>) hosts trackpad / keyboard / media / dock surfaces.
 - Feature surfaces in [src/features](apps/mobile/src/features) (`trackpad`, `keyboard`, `dock`, `audio`, `media`, `diag`, `display`).
 - The datagram socket is an Expo module in [packages/entangle-udp](packages/entangle-udp) (Swift + Kotlin), consumed as `"entangle-udp": "workspace:*"` like `@entangle/protocol`.
-- **Keep its podspec's `s.platforms` at or below the app's iOS deployment target** (`platform :ios, '15.1'` in the generated Podfile). A pod that asks for a newer platform than the target is not an error: `use_expo_modules!` skips it with a yellow warning, `pod install` and the build both succeed, and the app ships with the native module missing — which only shows up at runtime. This cost two EAS builds. [scripts/verify-ios-module.sh](scripts/verify-ios-module.sh) checks a built `.ipa` for a module's symbols; run it before trusting a build that adds native code. `send` is a synchronous `Function`, not an `AsyncFunction`: it runs up to 120 times a second and a promise per frame would cost more than the frame.
+- **Keep its podspec's `s.platforms` at or below the app's iOS deployment target** (`platform :ios, '16.4'` in the generated Podfile since SDK 58). A pod that asks for a newer platform than the target is not an error: `use_expo_modules!` skips it with a yellow warning, `pod install` and the build both succeed, and the app ships with the native module missing — which only shows up at runtime. This cost two EAS builds. [scripts/verify-ios-module.sh](scripts/verify-ios-module.sh) checks a built `.ipa` for a module's symbols; run it before trusting a build that adds native code. `send` is a synchronous `Function`, not an `AsyncFunction`: it runs up to 120 times a second and a promise per frame would cost more than the frame.
 - Networking in [src/net](apps/mobile/src/net): [discovery.ts](apps/mobile/src/net/discovery.ts) (Bonjour via `react-native-zeroconf`) and [send.ts](apps/mobile/src/net/send.ts) (WebSocket + queue).
 - Zustand stores in [src/state](apps/mobile/src/state): `connection`, `audio`, `media`, `diag`, `display`, `dock`, `modifiers`, `settings`. AsyncStorage is used for persisted settings.
 - Path alias `@/*` → `src/*` is set in TS only — Metro resolves through the default config, so prefer the alias for clarity.

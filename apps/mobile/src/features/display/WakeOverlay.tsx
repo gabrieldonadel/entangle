@@ -67,7 +67,7 @@ function MoonIcon() {
 
 const styles = StyleSheet.create({
   root: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: 16,
     backgroundColor: "rgba(10, 12, 16, 0.96)",
     alignItems: "center",

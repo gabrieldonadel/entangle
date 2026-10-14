@@ -8,7 +8,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
+  type TextInputInstance,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -46,7 +46,7 @@ export default function TrackpadScreen() {
   const clearModifiers = useModifiers((s) => s.clear);
   const landscape = useSettings((s) => s.landscape);
 
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const [focused, setFocused] = useState(false);
 
   const [macSize, setMacSize] = useState<{ width: number; height: number }>({
