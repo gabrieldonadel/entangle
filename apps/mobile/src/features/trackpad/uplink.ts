@@ -7,10 +7,13 @@ import { makeMutable, runOnJS } from 'react-native-reanimated';
  *
  * Measurements put the touch stream at ~60 Hz on a 120 Hz phone: gesture
  * callbacks were hopping to the JS thread before anything could accumulate
- * them, and half the samples were lost on the way. Everything here runs in a
- * worklet instead, so a frame reaches the socket without the JS thread being
- * involved at all — `expo-modules-core`'s `installOnUIRuntime` is what makes
- * the native send reachable from here.
+ * them, and half the samples were lost on the way. Accumulation runs in a
+ * worklet instead, so every sample is counted; only the send hops to JS.
+ *
+ * The send cannot stay here: since SDK 58, `globalThis.expo.modules` on the UI
+ * runtime hands back the module object built for the main runtime, and calling
+ * `send` on it throws — which aborts a release build. Frames are cumulative,
+ * so a send the hop delays or merges costs nothing.
  *
  * State lives in shared values because worklets get a copy of module scope,
  * not a reference to it. Scalars are cheap: reading and writing one from the
@@ -49,18 +52,10 @@ const sendCount = makeMutable(0);
 // Configuration mirrored from the JS side; it changes rarely.
 const sensitivity = makeMutable(1.5);
 const diagEnabled = makeMutable(false);
-/** Empty until the Mac's datagram path has been confirmed. */
-const datagramToken = makeMutable('');
 
-export function syncPointerConfig(config: {
-  sensitivity?: number;
-  diagEnabled?: boolean;
-  /** Pass an empty string to push frames back onto the JS path. */
-  datagramToken?: string;
-}): void {
+export function syncPointerConfig(config: { sensitivity?: number; diagEnabled?: boolean }): void {
   if (config.sensitivity != null) sensitivity.value = config.sensitivity;
   if (config.diagEnabled != null) diagEnabled.value = config.diagEnabled;
-  if (config.datagramToken != null) datagramToken.value = config.datagramToken;
 }
 
 /** Reads and clears the counters. Called once a second from the JS side. */
@@ -125,7 +120,7 @@ export function setStreamSender(sender: (frame: PointerMoveMessage) => void): vo
   streamSender = sender;
 }
 
-/** The JS path, for when the datagram path is not confirmed. */
+/** `sendPointerFrame` picks the wire: datagram once confirmed, else stream. */
 function sendViaJs(
   dx: number,
   dy: number,
@@ -166,41 +161,6 @@ export function flushPointer(): void {
   const ts = diagEnabled.value ? sentAt : null;
   pendingDx.value = 0;
   pendingDy.value = 0;
-
-  const token = datagramToken.value;
-  if (token !== '') {
-    // Straight out of the UI thread. Building the JSON here rather than
-    // calling the shared encoder keeps this worklet free of imports that
-    // would have to be worklet-safe themselves.
-    const message =
-      '{"v":' +
-      PROTOCOL_VERSION +
-      ',"t":"p.move","dx":' +
-      dx +
-      ',"dy":' +
-      dy +
-      ',"cx":' +
-      cx +
-      ',"cy":' +
-      cy +
-      ',"g":' +
-      g +
-      ',"seq":' +
-      seq +
-      (ts != null ? ',"ts":' + ts : '') +
-      '}';
-    // Reached through the global registry rather than an import: this runs on
-    // the UI thread, where the module handle the JS side holds does not exist.
-    // `installOnUIRuntime` is what puts this here.
-    const socket = (globalThis as any)?.expo?.modules?.EntangleUdp;
-    if (
-      socket &&
-      socket.send('{"v":' + PROTOCOL_VERSION + ',"tk":"' + token + '","m":' + message + '}')
-    ) {
-      return;
-    }
-    // The socket refused it; fall through to the JS path rather than drop it.
-  }
 
   runOnJS(sendViaJs)(dx, dy, cx, cy, g, seq, ts);
 }

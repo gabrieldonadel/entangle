@@ -155,7 +155,7 @@ export const useConnection = create<ConnectionState>((set, get) => ({
     useDisplay.getState().reset();
     useDiag.getState().reset();
     udp.reset();
-    syncPointerConfig({ datagramToken: '', diagEnabled: false });
+    syncPointerConfig({ diagEnabled: false });
     set({
       phase: 'idle',
       target: null,
@@ -181,7 +181,6 @@ export const useConnection = create<ConnectionState>((set, get) => ({
     }
     // The socket's own close handler no longer acts for a detached socket.
     udp.reset();
-    syncPointerConfig({ datagramToken: '' });
     useDock.getState().setApps(DEMO_DOCK_APPS);
     // Demo mode has no Mac to report a level, so seed one the slider can move.
     useAudio.getState().applyRemote(0.45, false);
@@ -311,7 +310,6 @@ async function openSocket() {
     clearTimers();
     // The token dies with the socket that issued it.
     udp.reset();
-    syncPointerConfig({ datagramToken: '' });
     if (manuallyDisconnected) return;
     if (useConnection.getState().phase === 'pairing') return;
     scheduleReconnect();
@@ -376,7 +374,6 @@ function handleMessage(msg: Message) {
   }
   if (isUdpOk(msg)) {
     udp.noteOk();
-    syncPointerConfig({ datagramToken: udp.activeToken() ?? '' });
     return;
   }
   switch (msg.t) {
@@ -518,9 +515,6 @@ function startHeartbeat() {
   diagReportTimer = setInterval(() => {
     const counters = drainPointerCounters();
     udp.reviewPath(counters.sends);
-    // Only a confirmed path is handed to the UI thread; anything else keeps
-    // frames on the JS path, where the probation copy is sent.
-    syncPointerConfig({ datagramToken: udp.activeToken() ?? '' });
 
     if (!useDiag.getState().enabled) return;
     const stats = tickPhoneStats(counters);

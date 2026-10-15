@@ -39,9 +39,6 @@ export function configure(host: string, offer?: UdpOffer): void {
   reset();
   if (!offer || !EntangleUdp.isAvailable) return;
   if (!EntangleUdp.open(host, offer.port)) return;
-  // Makes the socket reachable from the UI thread. Failure is not fatal: the
-  // pointer keeps going through the JS path.
-  EntangleUdp.installOnWorkletRuntime();
   token = offer.token;
   configuredHost = host;
   configuredPort = offer.port;
