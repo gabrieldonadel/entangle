@@ -1,0 +1,18 @@
+diff --git a/ios/EXUpdates/ReactDelegateHandler/ExpoUpdatesReactDelegateHandler.swift b/ios/EXUpdates/ReactDelegateHandler/ExpoUpdatesReactDelegateHandler.swift
+index 9445715..c8b278f 100644
+--- a/ios/EXUpdates/ReactDelegateHandler/ExpoUpdatesReactDelegateHandler.swift
++++ b/ios/EXUpdates/ReactDelegateHandler/ExpoUpdatesReactDelegateHandler.swift
+@@ -180,7 +180,12 @@ public final class ExpoUpdatesReactDelegateHandler: ExpoReactDelegateHandler, Ap
+ 
+   private func getWindow() -> UIWindow {
+     #if os(macOS)
+-    guard let window = NSApplication.shared.windows.first(where: { $0.isKeyWindow }) ?? NSApplication.shared.mainWindow else {
++    // The deferred root view is already hosted in the app's window. Prefer that over
++    // key/main window lookups, which are nil when the app hasn't been activated yet
++    // (e.g. LSUIElement apps, or when macOS declines the activation request).
++    guard let window = self.deferredRootView?.window
++      ?? NSApplication.shared.windows.first(where: { $0.isKeyWindow })
++      ?? NSApplication.shared.mainWindow else {
+       fatalError("Cannot find the current window.")
+     }
+     #else
