@@ -3,6 +3,9 @@ packages:
   - "packages/*"
 patchedDependencies:
   expo-dev-launcher: patches/expo-dev-launcher.patch
+  # macOS: find the window via the deferred root view, so launching without key
+  # window (LSUIElement, declined activation) no longer crashes. See #34.
+  expo-updates: patches/expo-updates.patch
   # RN-macOS 0.83 split RCTUIKit into its own pod, which no longer pulls in
   # RCTAssert.h. Drop once react-native-svg imports it itself.
   react-native-svg: patches/react-native-svg.patch
