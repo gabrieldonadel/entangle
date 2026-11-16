@@ -8,6 +8,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
@@ -26,6 +27,14 @@ export function DockGrid() {
   const apps = useDock(useShallow((s) => s.apps));
   const phase = useConnection((s) => s.phase);
   const demo = useConnection((s) => s.demo);
+  // Four across on phones, more on iPad so the icons don't float in a sea of
+  // empty cells.
+  const width = useWindowDimensions().width;
+  const numColumns = Math.max(4, Math.floor((width - 24) / (CELL_SIZE + 28)));
+  // Fixed cell width so a short last row lines up with the rows above instead
+  // of spreading its icons across the whole width.
+  const cellWidth =
+    (width - GRID_PADDING * 2 - ROW_GAP * (numColumns - 1)) / numColumns;
 
   useEffect(() => {
     if (phase !== 'open' || demo) return;
@@ -46,15 +55,27 @@ export function DockGrid() {
     <FlatList
       data={apps}
       keyExtractor={(app) => app.bundleId}
-      numColumns={4}
+      // FlatList can't change numColumns on the fly; remount instead.
+      key={numColumns}
+      numColumns={numColumns}
       contentContainerStyle={styles.grid}
       columnWrapperStyle={styles.row}
-      renderItem={({ item }) => <DockItem app={item} demo={demo} />}
+      renderItem={({ item }) => (
+        <DockItem app={item} demo={demo} width={cellWidth} />
+      )}
     />
   );
 }
 
-function DockItem({ app, demo }: { app: DockApp; demo: boolean }) {
+function DockItem({
+  app,
+  demo,
+  width,
+}: {
+  app: DockApp;
+  demo: boolean;
+  width: number;
+}) {
   const [activated, setActivated] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
   const demoKind = demo ? getDemoIconKind(app.bundleId) : null;
@@ -84,7 +105,7 @@ function DockItem({ app, demo }: { app: DockApp; demo: boolean }) {
   };
 
   return (
-    <Pressable style={styles.cell} onPress={onPress}>
+    <Pressable style={[styles.cell, { width }]} onPress={onPress}>
       <Animated.View style={[styles.iconWrap, { transform: [{ scale }] }]}>
         {demoKind && demoBg ? (
           <DemoAppIcon kind={demoKind} bg={demoBg} size={CELL_SIZE} />
@@ -111,18 +132,19 @@ function DockItem({ app, demo }: { app: DockApp; demo: boolean }) {
 }
 
 const CELL_SIZE = 72;
+const GRID_PADDING = 12;
+const ROW_GAP = 8;
 
 const styles = StyleSheet.create({
   grid: {
-    padding: 12,
+    padding: GRID_PADDING,
     gap: 12,
   },
   row: {
-    gap: 8,
+    gap: ROW_GAP,
     marginBottom: 12,
   },
   cell: {
-    flex: 1,
     alignItems: 'center',
     gap: 6,
   },

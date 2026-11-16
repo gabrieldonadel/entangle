@@ -1,11 +1,11 @@
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import { PROTOCOL_VERSION } from '@entangle/protocol';
 
 import { DiagnosticsCard } from '@/features/diag/DiagnosticsCard';
-import { C } from '@/features/onboarding/atoms';
+import { C, readableColumn } from '@/features/onboarding/atoms';
 import { useConnection } from '@/state/connection';
 import { useSettings } from '@/state/settings';
 
@@ -79,17 +79,20 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <View style={styles.card}>
-          <View style={styles.toggleRow}>
-            <View style={styles.toggleLabels}>
-              <Text style={styles.toggleTitle}>Landscape trackpad</Text>
-              <Text style={styles.toggleSubtitle}>
-                Let the Trackpad tab rotate with the phone for a wider surface.
-              </Text>
+        {/* iPad always rotates, so the toggle would do nothing there. */}
+        {Platform.OS === 'ios' && Platform.isPad ? null : (
+          <View style={styles.card}>
+            <View style={styles.toggleRow}>
+              <View style={styles.toggleLabels}>
+                <Text style={styles.toggleTitle}>Landscape trackpad</Text>
+                <Text style={styles.toggleSubtitle}>
+                  Let the Trackpad tab rotate with the phone for a wider surface.
+                </Text>
+              </View>
+              <Switch value={landscape} onValueChange={setLandscape} />
             </View>
-            <Switch value={landscape} onValueChange={setLandscape} />
           </View>
-        </View>
+        )}
 
         <View style={styles.card}>
           <Text style={styles.title}>Spaces &amp; Mission Control</Text>
@@ -146,7 +149,7 @@ function ShortcutRow({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
-  content: { padding: 16, paddingBottom: 32 },
+  content: { padding: 16, paddingBottom: 32, ...readableColumn },
   card: {
     backgroundColor: '#1c1c1e',
     borderRadius: 12,

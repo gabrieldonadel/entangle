@@ -22,6 +22,7 @@ import {
   PrimaryButton,
   ScreenBody,
   ScreenFooter,
+  readableColumn,
   Title,
   TopBar,
 } from "@/features/onboarding/atoms";
@@ -434,7 +435,7 @@ function HelpRow({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg, overflow: "hidden" },
-  safe: { flex: 1 },
+  safe: { flex: 1, ...readableColumn },
   contentClip: { flex: 1, overflow: "hidden" },
   glowTopLeft: {
     position: "absolute",

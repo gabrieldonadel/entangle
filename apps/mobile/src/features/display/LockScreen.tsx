@@ -19,6 +19,7 @@ import {
   F,
   GhostLink,
   PrimaryButton,
+  readableColumn,
   Spinner,
 } from "@/features/onboarding/atoms";
 import { sendMessage } from "@/net/send";
@@ -170,6 +171,7 @@ const styles = StyleSheet.create({
   },
   safe: {
     flex: 1,
+    ...readableColumn,
     paddingHorizontal: 24,
     // Anchored to the top so the soft keyboard, which opens with the field,
     // has nothing to cover.

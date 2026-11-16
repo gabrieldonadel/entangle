@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-screens/experimental";
 import { VolumeBar } from "@/features/audio/VolumeBar";
 import { PracticeBanner } from "@/features/demo/PracticeBanner";
 import { MediaPlayer } from "@/features/media/MediaPlayer";
-import { C } from "@/features/onboarding/atoms";
+import { C, readableColumn } from "@/features/onboarding/atoms";
 import { useConnection } from "@/state/connection";
 
 export default function MediaScreen() {
@@ -59,7 +59,7 @@ export default function MediaScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
-  safe: { flex: 1 },
+  safe: { flex: 1, ...readableColumn },
   header: {
     paddingHorizontal: 16,
     paddingTop: 8,

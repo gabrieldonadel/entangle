@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Logo } from "@/components/Logo";
+import { readableColumn } from "@/features/onboarding/atoms";
 import { useConnection } from "@/state/connection";
 
 export default function PairScreen() {
@@ -143,6 +144,7 @@ const styles = StyleSheet.create({
   },
   body: {
     flexGrow: 1,
+    ...readableColumn,
     padding: 24,
     justifyContent: "center",
   },
