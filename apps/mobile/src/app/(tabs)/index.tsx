@@ -23,19 +23,21 @@ import { HiddenInput } from "@/features/keyboard/HiddenInput";
 import { KEYBOARD_BAR_ID, KeyboardBar } from "@/features/keyboard/KeyboardBar";
 import { TrackpadSurface } from "@/features/trackpad/TrackpadSurface";
 import type { LocalGestureEvent } from "@/features/trackpad/TrackpadSurface";
+import { useIsLargeScreen, useLayoutClass } from "@/hooks/use-layout-class";
 import { useConnection } from "@/state/connection";
 import { useDisplay } from "@/state/display";
 import { useModifiers } from "@/state/modifiers";
 import { useSettings } from "@/state/settings";
-import { C, readableColumn } from "@/features/onboarding/atoms";
+import { C, READABLE_WIDTH, readableColumn } from "@/features/onboarding/atoms";
 
 const CURSOR_W = 14;
 const CURSOR_H = 20;
 
 export default function TrackpadScreen() {
-  // A short viewport means an iPhone on its side. Keyed on height rather
-  // than aspect ratio so a wide browser window keeps the roomy layout.
-  const compact = useWindowDimensions().height < 500;
+  // A short viewport means a phone on its side.
+  const compact = useLayoutClass().short;
+  const windowHeight = useWindowDimensions().height;
+  const largeScreen = useIsLargeScreen();
   const serverName = useConnection((s) => s.serverName);
   const phase = useConnection((s) => s.phase);
   const latency = useConnection((s) => s.latencyMs);
@@ -71,18 +73,18 @@ export default function TrackpadScreen() {
   }, [clearModifiers]);
 
   // Opt-in, and only this route rotates; app.json keeps the rest of the
-  // app portrait. iPad always rotates (and multitasking windows ignore
-  // orientation locks anyway), so leave it alone there.
+  // app portrait. Tablets always rotate (the root layout unlocks them), so
+  // leave them alone.
   useFocusEffect(
     useCallback(() => {
-      if (!landscape || (Platform.OS === "ios" && Platform.isPad)) return;
+      if (!landscape || largeScreen) return;
       ScreenOrientation.unlockAsync().catch(() => {});
       return () => {
         ScreenOrientation.lockAsync(
           ScreenOrientation.OrientationLock.PORTRAIT_UP,
         ).catch(() => {});
       };
-    }, [landscape]),
+    }, [landscape, largeScreen]),
   );
 
   // Recenter the cursor when the mini-mac is first measured.
@@ -175,7 +177,14 @@ export default function TrackpadScreen() {
         </View>
 
         {demo ? (
-          <View style={styles.miniMacWrap}>
+          <View
+            style={[
+              styles.miniMacWrap,
+              // 16:10, so this caps the preview at ~35% of the window height
+              // and leaves the pad most of a landscape tablet.
+              { maxWidth: Math.min(READABLE_WIDTH, windowHeight * 0.56) },
+            ]}
+          >
             <MiniMac
               cursor={cursor}
               ripple={ripple}

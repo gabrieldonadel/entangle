@@ -5,10 +5,12 @@ import {
   ThemeProvider,
   useSegments,
 } from "expo-router";
-import { useEffect } from "react";
+import * as ScreenOrientation from "expo-screen-orientation";
+import { useEffect, useRef } from "react";
 import { useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
+import { useIsLargeScreen } from "@/hooks/use-layout-class";
 import { useConnection } from "@/state/connection";
 import { useOnboarding } from "@/state/onboarding";
 import { C } from "@/features/onboarding/atoms";
@@ -26,6 +28,8 @@ export default function RootLayout() {
   useEffect(() => {
     void hydrateOnboarding();
   }, [hydrateOnboarding]);
+
+  useTabletOrientation();
 
   useEffect(() => {
     if (!onboardingHydrated) return;
@@ -63,4 +67,25 @@ export default function RootLayout() {
       </ThemeProvider>
     </GestureHandlerRootView>
   );
+}
+
+// app.json keeps phones in portrait, but tablets and unfolded foldables rotate
+// freely: iPadOS and Android 16+ ignore the lock on large screens anyway, and
+// this unlocks older Android tablets to match. Phones are only touched when a
+// foldable is folded back up.
+function useTabletOrientation() {
+  const largeScreen = useIsLargeScreen();
+  const wasLarge = useRef(false);
+
+  useEffect(() => {
+    const prev = wasLarge.current;
+    wasLarge.current = largeScreen;
+    if (largeScreen) {
+      ScreenOrientation.unlockAsync().catch(() => {});
+    } else if (prev) {
+      ScreenOrientation.lockAsync(
+        ScreenOrientation.OrientationLock.PORTRAIT_UP,
+      ).catch(() => {});
+    }
+  }, [largeScreen]);
 }
