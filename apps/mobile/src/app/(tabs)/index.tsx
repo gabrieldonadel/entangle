@@ -27,7 +27,7 @@ import { useConnection } from "@/state/connection";
 import { useDisplay } from "@/state/display";
 import { useModifiers } from "@/state/modifiers";
 import { useSettings } from "@/state/settings";
-import { C } from "@/features/onboarding/atoms";
+import { C, readableColumn } from "@/features/onboarding/atoms";
 
 const CURSOR_W = 14;
 const CURSOR_H = 20;
@@ -71,10 +71,11 @@ export default function TrackpadScreen() {
   }, [clearModifiers]);
 
   // Opt-in, and only this route rotates; app.json keeps the rest of the
-  // app portrait.
+  // app portrait. iPad always rotates (and multitasking windows ignore
+  // orientation locks anyway), so leave it alone there.
   useFocusEffect(
     useCallback(() => {
-      if (!landscape) return;
+      if (!landscape || (Platform.OS === "ios" && Platform.isPad)) return;
       ScreenOrientation.unlockAsync().catch(() => {});
       return () => {
         ScreenOrientation.lockAsync(
@@ -321,6 +322,8 @@ const styles = StyleSheet.create({
   },
   miniMacWrap: {
     marginBottom: 12,
+    // The preview scales with width; on iPad it would crowd out the pad.
+    ...readableColumn,
   },
   padWrap: {
     flex: 1,

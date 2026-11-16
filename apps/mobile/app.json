@@ -7,6 +7,7 @@
     "scheme": "entangle",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "supportsTablet": true,
       "icon": "./assets/AppIcon.icon",
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "Entangle needs local-network access to discover your Mac and send pointer events.",

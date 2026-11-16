@@ -40,6 +40,16 @@ export const C = {
   accentSoft: "rgba(163, 187, 214, 0.10)",
 };
 
+// iPad and other wide windows keep phone-shaped content in a centered column
+// instead of stretching it edge to edge.
+export const READABLE_WIDTH = 600;
+
+export const readableColumn = {
+  width: "100%",
+  maxWidth: READABLE_WIDTH,
+  alignSelf: "center",
+} as const;
+
 const monoFamily = Platform.select({
   ios: "Menlo",
   android: "monospace",
@@ -299,6 +309,7 @@ const atomStyles = StyleSheet.create({
   },
   bgContent: {
     flex: 1,
+    ...readableColumn,
   },
   glowTopLeft: {
     position: "absolute",
