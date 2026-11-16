@@ -1,10 +1,11 @@
-import { Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import { PROTOCOL_VERSION } from '@entangle/protocol';
 
 import { DiagnosticsCard } from '@/features/diag/DiagnosticsCard';
+import { useIsLargeScreen } from '@/hooks/use-layout-class';
 import { C, readableColumn } from '@/features/onboarding/atoms';
 import { useConnection } from '@/state/connection';
 import { useSettings } from '@/state/settings';
@@ -29,6 +30,7 @@ export default function SettingsScreen() {
   const setNaturalScroll = useSettings((s) => s.setNaturalScroll);
   const landscape = useSettings((s) => s.landscape);
   const setLandscape = useSettings((s) => s.setLandscape);
+  const largeScreen = useIsLargeScreen();
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
@@ -79,8 +81,8 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* iPad always rotates, so the toggle would do nothing there. */}
-        {Platform.OS === 'ios' && Platform.isPad ? null : (
+        {/* Tablets always rotate, so the toggle would do nothing there. */}
+        {largeScreen ? null : (
           <View style={styles.card}>
             <View style={styles.toggleRow}>
               <View style={styles.toggleLabels}>
