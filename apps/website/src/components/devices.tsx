@@ -219,6 +219,33 @@ export const EntangleAppScreen = ({
         </div>
       );
     }
+    if (view === "media") {
+      return (
+        <div
+          style={{ padding: `${4 * scale}px ${22 * scale}px ${10 * scale}px` }}
+        >
+          <div
+            style={{
+              fontSize: 22 * scale,
+              fontWeight: 700,
+              letterSpacing: "-0.025em",
+              fontFamily: "var(--font-display)",
+            }}
+          >
+            Media
+          </div>
+          <div
+            style={{
+              fontSize: 12 * scale,
+              color: "rgba(255,255,255,0.5)",
+              marginTop: 2 * scale,
+            }}
+          >
+            Volume and playback on your Mac.
+          </div>
+        </div>
+      );
+    }
     if (view === "settings") {
       return (
         <div
@@ -449,6 +476,164 @@ export const EntangleAppScreen = ({
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      );
+    }
+    if (view === "media") {
+      const card: React.CSSProperties = {
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.05)",
+        borderRadius: 14 * scale,
+        padding: `${12 * scale}px ${14 * scale}px`,
+      };
+      const round = (size: number, primary = false): React.CSSProperties => ({
+        width: size * scale,
+        height: size * scale,
+        borderRadius: "50%",
+        background: primary ? "#fff" : "rgba(255,255,255,0.06)",
+        color: primary ? "#0a0a0d" : "#fff",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      });
+      return (
+        <div
+          style={{
+            flex: 1,
+            padding: `${4 * scale}px ${16 * scale}px 0`,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10 * scale,
+            overflow: "hidden",
+          }}
+        >
+          <div style={card}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: 11 * scale,
+                color: "rgba(255,255,255,0.55)",
+                marginBottom: 10 * scale,
+              }}
+            >
+              <span>Volume</span>
+              <span style={{ fontFamily: "var(--font-mono)", color: "#fff" }}>
+                62%
+              </span>
+            </div>
+            <div
+              style={{
+                position: "relative",
+                height: 4 * scale,
+                borderRadius: 2 * scale,
+                background: "rgba(255,255,255,0.1)",
+                marginBottom: 6 * scale,
+              }}
+            >
+              <div
+                style={{
+                  width: "62%",
+                  height: "100%",
+                  borderRadius: 2 * scale,
+                  background: "#1E88E5",
+                }}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  left: "62%",
+                  top: -5 * scale,
+                  width: 14 * scale,
+                  height: 14 * scale,
+                  marginLeft: -7 * scale,
+                  borderRadius: "50%",
+                  background: "#fff",
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={card}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10 * scale,
+                marginBottom: 14 * scale,
+              }}
+            >
+              <div
+                style={{
+                  width: 40 * scale,
+                  height: 40 * scale,
+                  borderRadius: 9 * scale,
+                  background:
+                    "linear-gradient(135deg, var(--orb-stop-0), var(--orb-stop-1))",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 13 * scale,
+                    fontWeight: 700,
+                    fontFamily: "var(--font-display)",
+                    letterSpacing: "-0.01em",
+                  }}
+                >
+                  Focus Mix
+                </div>
+                <div
+                  style={{
+                    fontSize: 11 * scale,
+                    color: "rgba(255,255,255,0.55)",
+                  }}
+                >
+                  Music · Now playing
+                </div>
+              </div>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: 16 * scale,
+              }}
+            >
+              <div style={round(34)}>
+                <svg
+                  width={14 * scale}
+                  height={14 * scale}
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path d="M6 5h2v14H6zM20 5v14L9 12z" />
+                </svg>
+              </div>
+              <div style={round(46, true)}>
+                <svg
+                  width={18 * scale}
+                  height={18 * scale}
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
+                </svg>
+              </div>
+              <div style={round(34)}>
+                <svg
+                  width={14 * scale}
+                  height={14 * scale}
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path d="M16 5h2v14h-2zM4 5v14l11-7z" />
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
       );
@@ -784,6 +969,23 @@ export const EntangleAppScreen = ({
             ),
           },
           {
+            label: "Media",
+            id: "media",
+            icon: (
+              <svg
+                width="100%"
+                height="100%"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                style={{ display: "block" }}
+              >
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            ),
+          },
+          {
             label: "Settings",
             id: "settings",
             icon: (
@@ -807,7 +1009,7 @@ export const EntangleAppScreen = ({
             <div
               key={t.label}
               style={{
-                padding: `${6 * scale}px ${14 * scale}px`,
+                padding: `${6 * scale}px ${8 * scale}px`,
                 borderRadius: 999 * scale,
                 background: active ? "rgba(255,255,255,0.10)" : "transparent",
                 display: "flex",
@@ -815,7 +1017,7 @@ export const EntangleAppScreen = ({
                 alignItems: "center",
                 gap: 2 * scale,
                 color: active ? "#7393B8" : "rgba(255,255,255,0.5)",
-                minWidth: 52 * scale,
+                minWidth: 46 * scale,
               }}
             >
               <div style={{ width: 16 * scale, height: 16 * scale }}>

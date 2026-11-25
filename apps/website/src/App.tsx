@@ -1,5 +1,5 @@
 import React from "react";
-import { Nav, Hero, HowItWorks, Screens, OpenSource, Footer } from "./components/sections";
+import { Nav, Hero, HowItWorks, Screens, Features, OpenSource, Footer } from "./components/sections";
 import type { CursorPos, Theme, TrackpadDragHandler } from "./types";
 
 const LATENCY_MS = 11;
@@ -51,6 +51,7 @@ export default function App() {
       />
       <HowItWorks />
       <Screens />
+      <Features />
       <OpenSource />
       <Footer />
     </>

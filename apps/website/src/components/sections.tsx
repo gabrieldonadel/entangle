@@ -687,9 +687,9 @@ export const Hero = ({ cursorPos, onTrackpadDrag, latencyMs }: HeroProps) => (
         with your phone.
       </h1>
       <p className="lede" style={{ marginInline: "auto", marginBottom: 36 }}>
-        Entangle is a free, open-source remote that turns your iPhone into a
-        pocket trackpad for any Mac on your network. Pause your bike, control
-        your video.
+        Entangle is a free, open-source remote that turns your iPhone or iPad
+        into a pocket trackpad, keyboard and media remote for any Mac on your
+        network. Pause your bike, control your video.
         <strong style={{ color: "var(--text)", fontWeight: 500 }}>
           {" "}
           No accounts, no cloud, no ads.
@@ -730,7 +730,7 @@ export const Hero = ({ cursorPos, onTrackpadDrag, latencyMs }: HeroProps) => (
         className="eyebrow"
         style={{ fontSize: 10, color: "var(--text-dim)" }}
       >
-        Requires iOS 15.1+ · macOS 14+ · Wi-Fi or Bluetooth
+        Requires iOS 16.4+ · macOS 14+ · Wi-Fi or Bluetooth
       </div>
     </div>
 
@@ -860,6 +860,78 @@ export const HowItWorks = () => {
   );
 };
 
+export const Features = () => {
+  const features = [
+    {
+      tag: "120 Hz",
+      title: "A faster pointer",
+      body: "Pointer frames travel at up to 120 Hz on a low-latency path, so the cursor keeps up with your finger.",
+    },
+    {
+      tag: "Tablets",
+      title: "Runs on iPad",
+      body: "A native layout for iPad and Android tablets, with an optional landscape trackpad on phones.",
+    },
+    {
+      tag: "Keyboard",
+      title: "⌘ shortcuts",
+      body: "Hold ⌘ and type a letter. Copy, paste, or close a window from the phone keyboard.",
+    },
+    {
+      tag: "Media",
+      title: "Volume and playback",
+      body: "Play, pause and skip, see what is playing, and set your Mac's volume.",
+    },
+    {
+      tag: "Wake",
+      title: "Wake the display",
+      body: "Your Mac's screen went to sleep? Wake it from your phone.",
+    },
+    {
+      tag: "Locked Mac",
+      title: "Log in from the couch",
+      body: "When your Mac is locked, type your password on the phone.",
+    },
+  ];
+
+  return (
+    <section id="features">
+      <div className="container">
+        <div style={{ textAlign: "center", marginBottom: 48 }}>
+          <div className="eyebrow" style={{ marginBottom: 14 }}>
+            What's new
+          </div>
+          <h2 className="h2">More than a trackpad.</h2>
+        </div>
+        <div className="responsive-grid-3">
+          {features.map((f) => (
+            <div key={f.tag} className="glass" style={{ padding: 28 }}>
+              <div
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 11,
+                  color: "var(--accent)",
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  marginBottom: 16,
+                }}
+              >
+                {f.tag}
+              </div>
+              <h3 className="h3" style={{ marginBottom: 8 }}>
+                {f.title}
+              </h3>
+              <p style={{ color: "var(--text-muted)", fontSize: 14.5 }}>
+                {f.body}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
 type ScreenItem = { tag: string; view: AppView; title: string; body: string };
 
 export const Screens = () => {
@@ -875,6 +947,12 @@ export const Screens = () => {
       view: "dock",
       title: "Launch any app",
       body: "Your dock, in your pocket. Tap to open Safari, jump to Spotify, switch spaces.",
+    },
+    {
+      tag: "Media",
+      view: "media",
+      title: "Play, pause, skip",
+      body: "See what is playing on your Mac. Skip a track or set the volume without getting up.",
     },
     {
       tag: "Settings",
@@ -902,7 +980,7 @@ export const Screens = () => {
           </p>
         </div>
 
-        <div className="responsive-grid-3" style={{ gap: 24 }}>
+        <div className="screens-grid">
           {screens.map((s) => (
             <div
               key={s.tag}
