@@ -1,6 +1,6 @@
 export type Theme = "dark" | "light";
 
-export type AppView = "trackpad" | "dock" | "settings";
+export type AppView = "trackpad" | "dock" | "media" | "settings";
 
 export type CursorPos = { x: number; y: number };
 

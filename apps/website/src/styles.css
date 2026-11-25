@@ -293,3 +293,9 @@ body::before {
 
 /* selection */
 ::selection { background: var(--accent-glow); color: var(--text); }
+
+.screens-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+}
